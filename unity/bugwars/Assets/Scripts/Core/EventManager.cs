@@ -12,6 +12,10 @@ namespace BugWars.Core
     {
         #region Singleton
         private static EventManager _instance;
+
+        /// <summary>
+        /// Singleton instance - managed by VContainer
+        /// </summary>
         public static EventManager Instance
         {
             get
@@ -21,8 +25,7 @@ namespace BugWars.Core
                     _instance = FindObjectOfType<EventManager>();
                     if (_instance == null)
                     {
-                        GameObject go = new GameObject("EventManager");
-                        _instance = go.AddComponent<EventManager>();
+                        Debug.LogWarning("[EventManager] Instance not found! Make sure GameLifetimeScope is in the scene.");
                     }
                 }
                 return _instance;

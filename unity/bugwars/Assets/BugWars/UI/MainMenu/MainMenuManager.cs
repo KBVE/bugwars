@@ -12,6 +12,10 @@ namespace BugWars.UI
     {
         #region Singleton
         private static MainMenuManager _instance;
+
+        /// <summary>
+        /// Singleton instance - managed by VContainer
+        /// </summary>
         public static MainMenuManager Instance
         {
             get
@@ -19,6 +23,10 @@ namespace BugWars.UI
                 if (_instance == null)
                 {
                     _instance = FindObjectOfType<MainMenuManager>();
+                    if (_instance == null)
+                    {
+                        Debug.LogWarning("[MainMenuManager] Instance not found! Make sure GameLifetimeScope is in the scene.");
+                    }
                 }
                 return _instance;
             }
