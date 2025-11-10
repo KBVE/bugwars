@@ -2,35 +2,26 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
 using BugWars.UI;
+using VContainer;
 
 namespace BugWars.Core
 {
     /// <summary>
-    /// Universal Game Manager - Singleton pattern with DontDestroyOnLoad
+    /// Universal Game Manager - Managed by VContainer
     /// Handles core game functionality including scene management and main menu control
     /// </summary>
     public class GameManager : MonoBehaviour
     {
-        #region Singleton
-        private static GameManager _instance;
+        #region Dependencies
+        private EventManager _eventManager;
+        private MainMenuManager _mainMenuManager;
 
-        /// <summary>
-        /// Singleton instance - managed by VContainer
-        /// </summary>
-        public static GameManager Instance
+        [Inject]
+        public void Construct(EventManager eventManager, MainMenuManager mainMenuManager)
         {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = FindObjectOfType<GameManager>();
-                    if (_instance == null)
-                    {
-                        Debug.LogWarning("[GameManager] Instance not found! Make sure GameLifetimeScope is in the scene.");
-                    }
-                }
-                return _instance;
-            }
+            _eventManager = eventManager;
+            _mainMenuManager = mainMenuManager;
+            Debug.Log("[GameManager] Dependencies injected");
         }
         #endregion
 
@@ -52,22 +43,10 @@ namespace BugWars.Core
         #endregion
 
         #region Event Management
-        private EventManager _eventManager;
-
         /// <summary>
-        /// Cached reference to the EventManager for performance
+        /// Reference to the EventManager for event triggering
         /// </summary>
-        public EventManager Events
-        {
-            get
-            {
-                if (_eventManager == null)
-                {
-                    _eventManager = EventManager.Instance;
-                }
-                return _eventManager;
-            }
-        }
+        public EventManager Events => _eventManager;
         #endregion
 
         #region Camera Management
@@ -146,33 +125,27 @@ namespace BugWars.Core
         #region Unity Lifecycle
         private void Awake()
         {
-            // Ensure singleton pattern
-            if (_instance != null && _instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            _instance = this;
-            DontDestroyOnLoad(gameObject);
-
             // Initialize current scene reference
             CurrentScene = SceneManager.GetActiveScene();
 
             // Cache main camera reference
             _mainCamera = Camera.main;
 
-            // Initialize EventManager and InputManager (ensures they exist)
-            _eventManager = EventManager.Instance;
-            var inputManager = InputManager.Instance;
+            Debug.Log("[GameManager] Initialized");
+        }
 
-            // Subscribe to EventManager events
-            SubscribeToEvents();
+        private void Start()
+        {
+            // Subscribe to EventManager events (after injection)
+            if (_eventManager != null)
+            {
+                SubscribeToEvents();
+            }
 
             // Subscribe to Unity scene loaded event
             SceneManager.sceneLoaded += OnSceneLoaded;
 
-            Debug.Log("[GameManager] Initialized with Event System");
+            Debug.Log("[GameManager] Event subscriptions configured");
         }
 
         /// <summary>
@@ -202,11 +175,8 @@ namespace BugWars.Core
         private void OnDestroy()
         {
             // Unsubscribe from events
-            if (_instance == this)
-            {
-                UnsubscribeFromEvents();
-                SceneManager.sceneLoaded -= OnSceneLoaded;
-            }
+            UnsubscribeFromEvents();
+            SceneManager.sceneLoaded -= OnSceneLoaded;
         }
         #endregion
 
@@ -289,14 +259,14 @@ namespace BugWars.Core
         /// </summary>
         public void ToggleMainMenu()
         {
-            if (MainMenuManager.Instance != null)
+            if (_mainMenuManager != null)
             {
-                MainMenuManager.Instance.ToggleMenu();
+                _mainMenuManager.ToggleMenu();
                 // Note: Trigger events in MainMenuManager instead, to know actual state
             }
             else
             {
-                Debug.LogWarning("[GameManager] MainMenuManager instance not found!");
+                Debug.LogWarning("[GameManager] MainMenuManager reference not available!");
             }
         }
 
@@ -305,14 +275,14 @@ namespace BugWars.Core
         /// </summary>
         public void ShowMainMenu()
         {
-            if (MainMenuManager.Instance != null)
+            if (_mainMenuManager != null)
             {
-                MainMenuManager.Instance.ShowMenu();
+                _mainMenuManager.ShowMenu();
                 Events.TriggerMainMenuOpened();
             }
             else
             {
-                Debug.LogWarning("[GameManager] MainMenuManager instance not found!");
+                Debug.LogWarning("[GameManager] MainMenuManager reference not available!");
             }
         }
 
@@ -321,14 +291,14 @@ namespace BugWars.Core
         /// </summary>
         public void HideMainMenu()
         {
-            if (MainMenuManager.Instance != null)
+            if (_mainMenuManager != null)
             {
-                MainMenuManager.Instance.HideMenu();
+                _mainMenuManager.HideMenu();
                 Events.TriggerMainMenuClosed();
             }
             else
             {
-                Debug.LogWarning("[GameManager] MainMenuManager instance not found!");
+                Debug.LogWarning("[GameManager] MainMenuManager reference not available!");
             }
         }
         #endregion

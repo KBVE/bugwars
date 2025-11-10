@@ -1,36 +1,25 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using VContainer;
 
 namespace BugWars.Core
 {
     /// <summary>
-    /// Input Manager - Singleton pattern
+    /// Input Manager - Managed by VContainer
     /// Captures all input and fires events through EventManager
     /// Handles global/system-level inputs only (Escape, Pause, etc.)
     /// Game-specific inputs should be handled in their respective controllers
     /// </summary>
     public class InputManager : MonoBehaviour
     {
-        #region Singleton
-        private static InputManager _instance;
+        #region Dependencies
+        private EventManager _eventManager;
 
-        /// <summary>
-        /// Singleton instance - managed by VContainer
-        /// </summary>
-        public static InputManager Instance
+        [Inject]
+        public void Construct(EventManager eventManager)
         {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = FindObjectOfType<InputManager>();
-                    if (_instance == null)
-                    {
-                        Debug.LogWarning("[InputManager] Instance not found! Make sure GameLifetimeScope is in the scene.");
-                    }
-                }
-                return _instance;
-            }
+            _eventManager = eventManager;
+            Debug.Log("[InputManager] Dependencies injected");
         }
         #endregion
 
@@ -43,16 +32,6 @@ namespace BugWars.Core
         #region Unity Lifecycle
         private void Awake()
         {
-            // Ensure singleton pattern
-            if (_instance != null && _instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            _instance = this;
-            DontDestroyOnLoad(gameObject);
-
             Debug.Log("[InputManager] Initialized");
         }
 
@@ -70,7 +49,7 @@ namespace BugWars.Core
         /// </summary>
         private void HandleGlobalInputs()
         {
-            if (Keyboard.current == null) return;
+            if (Keyboard.current == null || _eventManager == null) return;
 
             // Escape key - Main menu toggle
             if (Keyboard.current.escapeKey.wasPressedThisFrame)
@@ -78,7 +57,7 @@ namespace BugWars.Core
                 if (debugMode)
                     Debug.Log("[InputManager] Escape key pressed - firing event");
 
-                EventManager.Instance.TriggerEscapePressed();
+                _eventManager.TriggerEscapePressed();
             }
 
             // P key or Pause - Pause toggle (optional, can be removed if not needed)
@@ -88,7 +67,7 @@ namespace BugWars.Core
                 if (debugMode)
                     Debug.Log("[InputManager] Pause key pressed - firing event");
 
-                EventManager.Instance.TriggerPausePressed();
+                _eventManager.TriggerPausePressed();
             }
 
             // Add more global inputs here as needed:

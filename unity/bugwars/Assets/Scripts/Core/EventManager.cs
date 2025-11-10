@@ -5,33 +5,11 @@ using System.Collections.Generic;
 namespace BugWars.Core
 {
     /// <summary>
-    /// Central event management system - Singleton pattern
+    /// Central event management system - Managed by VContainer
     /// Handles all game events using UnityEvents for decoupled communication
     /// </summary>
     public class EventManager : MonoBehaviour
     {
-        #region Singleton
-        private static EventManager _instance;
-
-        /// <summary>
-        /// Singleton instance - managed by VContainer
-        /// </summary>
-        public static EventManager Instance
-        {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = FindObjectOfType<EventManager>();
-                    if (_instance == null)
-                    {
-                        Debug.LogWarning("[EventManager] Instance not found! Make sure GameLifetimeScope is in the scene.");
-                    }
-                }
-                return _instance;
-            }
-        }
-        #endregion
 
         #region Event Definitions
         // Input Events
@@ -58,35 +36,22 @@ namespace BugWars.Core
         #region Unity Lifecycle
         private void Awake()
         {
-            // Ensure singleton pattern
-            if (_instance != null && _instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            _instance = this;
-            DontDestroyOnLoad(gameObject);
-
             Debug.Log("[EventManager] Initialized");
         }
 
         private void OnDestroy()
         {
             // Clean up all listeners
-            if (_instance == this)
-            {
-                OnEscapePressed.RemoveAllListeners();
-                OnPausePressed.RemoveAllListeners();
-                OnGamePaused.RemoveAllListeners();
-                OnGameResumed.RemoveAllListeners();
-                OnSceneLoadStarted.RemoveAllListeners();
-                OnSceneLoadCompleted.RemoveAllListeners();
-                OnPlayerHealthChanged.RemoveAllListeners();
-                OnPlayerDied.RemoveAllListeners();
-                OnMainMenuOpened.RemoveAllListeners();
-                OnMainMenuClosed.RemoveAllListeners();
-            }
+            OnEscapePressed.RemoveAllListeners();
+            OnPausePressed.RemoveAllListeners();
+            OnGamePaused.RemoveAllListeners();
+            OnGameResumed.RemoveAllListeners();
+            OnSceneLoadStarted.RemoveAllListeners();
+            OnSceneLoadCompleted.RemoveAllListeners();
+            OnPlayerHealthChanged.RemoveAllListeners();
+            OnPlayerDied.RemoveAllListeners();
+            OnMainMenuOpened.RemoveAllListeners();
+            OnMainMenuClosed.RemoveAllListeners();
         }
         #endregion
 
