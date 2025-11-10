@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 
 namespace BugWars.Core
 {
@@ -84,7 +84,7 @@ namespace BugWars.Core
         /// <param name="sceneName">Name of the scene to load</param>
         /// <param name="loadMode">Load mode (Single or Additive)</param>
         /// <returns>AsyncOperation for the scene load</returns>
-        public async Task<AsyncOperation> LoadSceneAsync(string sceneName, LoadSceneMode loadMode = LoadSceneMode.Single)
+        public async UniTask<AsyncOperation> LoadSceneAsync(string sceneName, LoadSceneMode loadMode = LoadSceneMode.Single)
         {
             AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName, loadMode);
 
@@ -93,7 +93,7 @@ namespace BugWars.Core
                 // Wait until the asynchronous scene fully loads
                 while (!asyncLoad.isDone)
                 {
-                    await Task.Yield();
+                    await UniTask.Yield();
                 }
             }
 
@@ -106,7 +106,7 @@ namespace BugWars.Core
         /// <param name="sceneBuildIndex">Build index of the scene to load</param>
         /// <param name="loadMode">Load mode (Single or Additive)</param>
         /// <returns>AsyncOperation for the scene load</returns>
-        public async Task<AsyncOperation> LoadSceneAsync(int sceneBuildIndex, LoadSceneMode loadMode = LoadSceneMode.Single)
+        public async UniTask<AsyncOperation> LoadSceneAsync(int sceneBuildIndex, LoadSceneMode loadMode = LoadSceneMode.Single)
         {
             AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneBuildIndex, loadMode);
 
@@ -115,7 +115,7 @@ namespace BugWars.Core
                 // Wait until the asynchronous scene fully loads
                 while (!asyncLoad.isDone)
                 {
-                    await Task.Yield();
+                    await UniTask.Yield();
                 }
             }
 
@@ -127,7 +127,7 @@ namespace BugWars.Core
         /// </summary>
         /// <param name="sceneName">Name of the scene to unload</param>
         /// <returns>AsyncOperation for the scene unload</returns>
-        public async Task<AsyncOperation> UnloadSceneAsync(string sceneName)
+        public async UniTask<AsyncOperation> UnloadSceneAsync(string sceneName)
         {
             AsyncOperation asyncUnload = SceneManager.UnloadSceneAsync(sceneName);
 
@@ -135,7 +135,7 @@ namespace BugWars.Core
             {
                 while (!asyncUnload.isDone)
                 {
-                    await Task.Yield();
+                    await UniTask.Yield();
                 }
             }
 
