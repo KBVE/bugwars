@@ -69,6 +69,15 @@ namespace BugWars.UI
             InitializeUI();
         }
 
+        private void Update()
+        {
+            // Toggle menu with Escape key
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                ToggleMenu();
+            }
+        }
+
         private void OnDestroy()
         {
             // Unregister button callbacks
@@ -130,8 +139,8 @@ namespace BugWars.UI
                 Debug.LogWarning("[MainMenuManager] ExitButton not found in UXML!");
             }
 
-            // Start with menu hidden
-            HideMenu();
+            // Start with menu visible
+            ShowMenu();
         }
         #endregion
 

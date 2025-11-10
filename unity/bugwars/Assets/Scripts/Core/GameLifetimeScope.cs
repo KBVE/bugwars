@@ -67,9 +67,8 @@ namespace BugWars.Core
                 panelSettings = CreateDefaultPanelSettings();
             }
 
-            // Create new GameObject under this transform
+            // Create new GameObject as root (required for DontDestroyOnLoad)
             var menuObject = new GameObject("MainMenuManager");
-            menuObject.transform.SetParent(transform);
             DontDestroyOnLoad(menuObject);
 
             // Add and configure UIDocument FIRST to avoid null reference errors
