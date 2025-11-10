@@ -14,8 +14,9 @@
     border-width: 2px;
     border-color: rgb(82, 82, 91); /* Zinc 600 */
     border-radius: 12px;
-    padding: 50px;
-    min-width: 450px;
+    padding: 40px; /* Responsive padding */
+    min-width: 30%; /* Responsive width */
+    max-width: 600px; /* Maximum size for large screens */
     align-items: center;
     justify-content: center;
     transition-property: border-color, scale;
@@ -41,7 +42,9 @@
 
 /* Menu buttons with Lime colors and sexy animations */
 .menu-button {
-    width: 280px;
+    width: 80%; /* Responsive width based on parent */
+    min-width: 200px; /* Minimum width for readability */
+    max-width: 400px; /* Maximum width for large screens */
     height: 60px;
     font-size: 26px;
     -unity-font-style: bold;

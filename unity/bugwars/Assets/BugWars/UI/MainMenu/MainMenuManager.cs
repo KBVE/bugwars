@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UIElements;
+using BugWars.Core;
 
 namespace BugWars.UI
 {
@@ -67,19 +68,22 @@ namespace BugWars.UI
         {
             // Initialize UI after VContainer has configured the UIDocument
             InitializeUI();
-        }
 
-        private void Update()
-        {
-            // Toggle menu with Escape key
-            if (Input.GetKeyDown(KeyCode.Escape))
+            // Subscribe to Escape key event from EventManager
+            if (EventManager.Instance != null)
             {
-                ToggleMenu();
+                EventManager.Instance.OnEscapePressed.AddListener(ToggleMenu);
             }
         }
 
         private void OnDestroy()
         {
+            // Unsubscribe from EventManager
+            if (EventManager.Instance != null)
+            {
+                EventManager.Instance.OnEscapePressed.RemoveListener(ToggleMenu);
+            }
+
             // Unregister button callbacks
             if (_settingsButton != null)
             {
