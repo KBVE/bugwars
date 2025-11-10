@@ -19,7 +19,6 @@ namespace BugWars.Core
         public void Construct(EventManager eventManager)
         {
             _eventManager = eventManager;
-            Debug.Log("[InputManager] Dependencies injected");
         }
         #endregion
 
@@ -32,7 +31,7 @@ namespace BugWars.Core
         #region Unity Lifecycle
         private void Awake()
         {
-            Debug.Log("[InputManager] Initialized");
+            // Component initialized
         }
 
         private void Update()
