@@ -1,0 +1,22 @@
+# Git
+.git
+.gitignore
+.github
+
+# Development
+node_modules
+.astro
+.vscode
+.idea
+
+# Build artifacts (will be built inside Docker)
+website/axum/target
+website/axum/templates/dist
+website/astro/dist
+website/astro/.astro
+website/astro/node_modules
+
+# Environment files
+.env
+.env.local
+*.log
