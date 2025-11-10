@@ -1,0 +1,245 @@
+---
+title: Bug Wars - Game Design Document
+description: Comprehensive technical documentation for the Bug Wars Unity game project
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+# Bug Wars - Game Design Document
+
+## Game Overview
+
+**Bug Wars** is a survival action game built in Unity where players face off against relentless waves of insects and creatures from the natural world. The game features intense combat mechanics, strategic resource management, and progressive difficulty scaling. Players must adapt to different bug types, each with unique behaviors and attack patterns, while managing limited resources and upgrading their defensive capabilities.
+
+The game is built using modern Unity development practices, leveraging powerful architectural patterns through dependency injection (VContainer) and asynchronous programming (UniTask). The core architecture emphasizes modularity, testability, and clean separation of concerns, making the codebase maintainable and scalable as new features are added.
+
+## Core Technologies
+
+### VContainer - Dependency Injection Framework
+
+[VContainer GitHub Repository](https://github.com/hadashiA/VContainer)
+
+VContainer is the fastest and most lightweight dependency injection (DI) framework for Unity, providing a robust foundation for managing object lifecycles and dependencies throughout Bug Wars. Unlike traditional Unity development where components find each other using `FindObjectOfType` or singleton patterns, VContainer enables proper inversion of control (IoC) where dependencies are explicitly declared and automatically injected.
+
+In Bug Wars, VContainer serves as the backbone of our architecture through the `GameLifetimeScope` class, which orchestrates all core managers (GameManager, EventManager, InputManager, etc.). This approach eliminates tight coupling between systems, makes testing easier through dependency mocking, and provides clear visibility into system dependencies. VContainer's constructor and method injection automatically resolves dependencies when components are created, ensuring that all required references are available before a component begins its work.
+
+The framework's performance characteristics are crucial for games - VContainer generates optimal IL code at build time, resulting in zero reflection overhead at runtime. This makes it ideal for performance-critical game environments where every frame counts. Our implementation uses VContainer's `LifetimeScope` to manage singleton managers that persist across scenes, while still maintaining the flexibility to add scoped dependencies for level-specific systems.
+
+### UniTask - High-Performance Async/Await
+
+[UniTask GitHub Repository](https://github.com/Cysharp/UniTask)
+
+UniTask is a zero-allocation async/await framework specifically designed for Unity, replacing Unity's older Coroutine system with modern C# async/await patterns. Unlike standard .NET Tasks which allocate garbage on every operation, UniTask is a value-type based implementation that provides true zero-allocation asynchronous programming, making it perfect for game development where garbage collection pauses can cause frame drops.
+
+In Bug Wars, UniTask powers all asynchronous operations including scene loading, resource streaming, and complex animation sequences. The `GameManager` uses UniTask extensively for scene management, providing clean async/await syntax instead of callback-based coroutines. This makes our code more readable and maintainable - for example, loading a scene with progress tracking becomes a straightforward async method rather than a complex IEnumerator with nested callbacks. UniTask also integrates seamlessly with Unity's lifecycle, providing PlayerLoop-based task scheduling that respects Unity's frame timing.
+
+The performance benefits of UniTask are substantial - it avoids the heap allocations associated with coroutines and standard Tasks, operates faster than Unity's coroutine system, and provides better debugging support through proper stack traces. UniTask also includes powerful operators for working with Unity's async operations, time-based delays, and cancellation tokens, giving us fine-grained control over asynchronous workflows. This is particularly important for Bug Wars' gameplay systems where we need responsive, non-blocking operations for enemy spawning, animation blending, and networked events.
+
+## Core Architecture
+
+### GameLifetimeScope
+
+**Location:** `Assets/Scripts/Core/GameLifetimeScope.cs`
+
+The `GameLifetimeScope` is the central orchestrator for Bug Wars' dependency injection container, extending VContainer's `LifetimeScope` base class. This class is responsible for bootstrapping the entire game architecture by registering all core managers in their correct dependency order and ensuring they persist across scene transitions.
+
+#### Key Responsibilities:
+
+- **Dependency Registration**: Manages the registration of all singleton managers (EventManager, InputManager, GameManager, MainMenuManager) with the VContainer container
+- **Initialization Order**: Ensures components are registered in proper dependency order - EventManager first (no dependencies), followed by InputManager (depends on EventManager), then GameManager and MainMenuManager
+- **UI Configuration**: Handles the creation and configuration of UIDocument-based interfaces, including PanelSettings and VisualTreeAssets for the main menu system
+- **Runtime PanelSettings**: Intelligently creates default PanelSettings at runtime if none are assigned, ensuring UI rendering works correctly even without manual configuration
+- **Lifecycle Management**: Marks core managers with `DontDestroyOnLoad()` to persist across scene transitions, maintaining game state throughout the player's session
+
+The `RegisterOrCreateManager<T>()` helper method demonstrates a smart pattern: it first checks if a manager already exists in the scene (useful during editor testing) and registers it if found, otherwise creates a new instance. This flexibility supports both runtime initialization and editor-based scene setup workflows.
+
+---
+
+### GameManager
+
+**Location:** `Assets/Scripts/Core/GameManager.cs`
+
+The `GameManager` serves as the universal game state controller, coordinating high-level game functionality including scene management, pause/resume mechanics, and integration with the main menu system. It acts as a facade for common game operations, providing a clean API for other systems to interact with.
+
+#### Key Features:
+
+- **Scene Management**: Provides async/await-based scene loading and unloading through UniTask, with proper event notifications for scene transitions. Supports both single and additive scene loading modes
+- **Pause System**: Implements pause/resume functionality through Unity's `Time.timeScale` with corresponding event triggers for UI updates
+- **Camera Caching**: Maintains a cached reference to the main camera, avoiding repeated expensive `Camera.main` calls that use `FindGameObjectWithTag` internally
+- **Event Integration**: Exposes the EventManager instance and subscribes to relevant input events (Escape, Pause) to trigger appropriate game state changes
+- **Main Menu Control**: Delegates main menu visibility to MainMenuManager while coordinating with the event system to notify listeners of menu state changes
+- **Current Scene Tracking**: Maintains references to the active scene including name and build index for easy access by other systems
+
+The GameManager demonstrates proper dependency injection patterns - it receives EventManager and MainMenuManager through constructor injection, explicitly declaring its dependencies. It also properly manages the lifecycle of event subscriptions, subscribing in `Start()` and unsubscribing in `OnDestroy()` to prevent memory leaks.
+
+---
+
+### EventManager
+
+**Location:** `Assets/Scripts/Core/EventManager.cs`
+
+The `EventManager` implements a centralized event system using Unity's `UnityEvent` framework, enabling decoupled communication between game systems. Rather than having systems directly reference each other, they communicate through events, making the architecture more modular and testable.
+
+#### Event Categories:
+
+**Input Events:**
+- `OnEscapePressed`: Triggered when the Escape key is pressed
+- `OnPausePressed`: Triggered when the Pause key is pressed
+
+**Game State Events:**
+- `OnGamePaused`: Fired when the game enters paused state
+- `OnGameResumed`: Fired when the game exits paused state
+
+**Scene Events:**
+- `OnSceneLoadStarted`: Notifies listeners when a scene begins loading (includes scene name)
+- `OnSceneLoadCompleted`: Notifies listeners when a scene finishes loading
+
+**Player Events:**
+- `OnPlayerHealthChanged`: Broadcasts player health updates (prepared for future implementation)
+- `OnPlayerDied`: Signals player death event
+
+**UI Events:**
+- `OnMainMenuOpened`: Indicates main menu has been displayed
+- `OnMainMenuClosed`: Indicates main menu has been hidden
+
+#### Design Benefits:
+
+The EventManager provides trigger helper methods (e.g., `TriggerEscapePressed()`, `TriggerGamePaused()`) that encapsulate event invocation, making it easy to fire events from anywhere in the codebase. This pattern ensures null-safety through the null-conditional operator (`?.Invoke()`) and provides a single source of truth for all game events. The debug helper `LogActiveListeners()` aids in troubleshooting by reporting listener counts for registered events.
+
+---
+
+### InputManager
+
+**Location:** `Assets/Scripts/Core/InputManager.cs`
+
+The `InputManager` handles all global system-level input using Unity's new Input System package, translating raw keyboard input into high-level events through the EventManager. It focuses exclusively on global inputs (Escape, Pause, system hotkeys) while leaving game-specific inputs (player movement, combat) to dedicated controller classes.
+
+#### Core Functionality:
+
+- **Global Input Polling**: Monitors keyboard input every frame for system-level keys (Escape, Pause, potential settings/debug keys)
+- **Event Translation**: Converts raw input into semantic events by triggering corresponding EventManager methods
+- **Null-Safety**: Includes proper null checks for keyboard availability, ensuring compatibility with different input configurations
+- **Debug Mode**: Provides optional debug logging to trace input events for troubleshooting
+- **Utility Methods**: Exposes `IsKeyPressed()` and `IsKeyPressedThisFrame()` helpers for other scripts that need to query input state
+
+#### Architecture Justification:
+
+By separating global inputs from gameplay inputs, the architecture remains clean and focused. The InputManager doesn't need to know about player controllers, enemy AI, or game mechanics - it simply reports when system keys are pressed. This separation of concerns makes the codebase easier to understand and modify. Game-specific input handling can be implemented in player controller classes or action map systems without cluttering this core system.
+
+---
+
+### MainMenuManager
+
+**Location:** `Assets/BugWars/UI/MainMenu/MainMenuManager.cs`
+
+The `MainMenuManager` controls the main menu user interface using Unity's UI Toolkit (formerly UIElements), providing a modern, performant UI system built on retained-mode rendering. It manages menu visibility, button interactions, and integration with the game's event system.
+
+#### Key Components:
+
+- **UI Toolkit Integration**: Uses `UIDocument` component with UXML visual trees for declarative UI definition, separating presentation from logic
+- **Element Queries**: Locates UI elements by name using the `Q<T>()` query API (`MainMenuContainer`, `SettingsButton`, `ExitButton`)
+- **Event Handling**: Registers button click callbacks and responds to global events (Escape key) to toggle menu visibility
+- **Visibility Management**: Controls menu display through `DisplayStyle.Flex` and `DisplayStyle.None`, providing instant show/hide functionality
+- **State Tracking**: Maintains `IsMenuVisible` property to allow other systems to query menu state
+
+#### Implementation Details:
+
+The MainMenuManager demonstrates proper component lifecycle management - it waits for VContainer to inject dependencies in `Construct()`, initializes UI elements in `Start()` after the UIDocument is configured, and cleans up event subscriptions in `OnDestroy()`. The `OnExitButtonClicked()` method includes platform-specific quit logic, stopping play mode in the editor and calling `Application.Quit()` in builds.
+
+This component showcases the synergy between VContainer and UI Toolkit - dependencies are injected automatically, while UI elements are queried and configured using UI Toolkit's retained-mode API. The result is clean, testable code that separates concerns between UI presentation and game logic.
+
+---
+
+## Gameplay Systems
+
+### Combat Mechanics
+
+The combat system (currently in development) will feature:
+- Multiple weapon types with distinct behavior patterns
+- Enemy AI with varying aggression and movement strategies
+- Health and damage systems with visual feedback
+- Combo mechanics for skilled players
+- Environmental hazards and interactive elements
+
+### Progression System
+
+Bug Wars will implement a multi-layered progression system:
+- Wave-based difficulty scaling with increasing enemy counts and types
+- Resource collection and upgrade paths
+- Persistent unlocks across play sessions
+- Achievement system tracking player milestones
+- Leaderboard integration for competitive players
+
+### Enemy Design
+
+Each bug type will feature unique characteristics:
+- **Ants**: Swarm mechanics with coordinated group attacks
+- **Spiders**: Web-based area denial and ambush tactics
+- **Wasps**: Aerial assault units with ranged stinger attacks
+- **Beetles**: Heavily armored tanks requiring strategic weak point targeting
+- **Boss Enemies**: Multi-phase encounters with unique mechanics
+
+---
+
+## Technical Roadmap
+
+<CardGrid stagger>
+	<Card title="Physics & Movement" icon="rocket">
+		Implement responsive character controller with custom physics tuning for tight, responsive gameplay feel.
+	</Card>
+	<Card title="AI Behavior Trees" icon="puzzle">
+		Develop modular AI system using behavior trees for complex enemy decision-making and state management.
+	</Card>
+	<Card title="Combat System" icon="swords">
+		Create weapon framework with hit detection, damage calculation, and visual effects integration.
+	</Card>
+	<Card title="Audio System" icon="information">
+		Integrate spatial audio with dynamic mixing, music states, and procedural sound effect layers.
+	</Card>
+	<Card title="Save System" icon="document">
+		Implement serialization framework for player progress, settings, and unlockables with cloud backup support.
+	</Card>
+	<Card title="Performance Optimization" icon="approve-check">
+		Profile and optimize rendering, physics, and gameplay systems to target 60 FPS on all supported platforms.
+	</Card>
+</CardGrid>
+
+---
+
+## Development Guidelines
+
+### Code Standards
+
+- All public methods and classes must include XML documentation comments
+- Use explicit access modifiers (never rely on implicit `private`)
+- Follow Unity's component lifecycle patterns (Awake, Start, Update, OnDestroy)
+- Prefer composition over inheritance for gameplay features
+- Use `readonly` and `const` where appropriate to prevent accidental mutations
+
+### Architecture Principles
+
+- **Dependency Injection**: All managers and controllers use VContainer for dependency resolution
+- **Event-Driven Communication**: Systems communicate through EventManager rather than direct references
+- **Async/Await**: Prefer UniTask over coroutines for asynchronous operations
+- **Single Responsibility**: Each class should have one clear, well-defined purpose
+- **Testability**: Design with unit testing in mind - dependencies should be mockable
+
+### Version Control
+
+- Branch naming: `feature/description`, `bugfix/issue-number`, `refactor/system-name`
+- Commit messages should be descriptive and reference issue numbers
+- All code must pass automated tests before merging to main branch
+- Unity meta files must be committed with corresponding assets
+
+---
+
+## Resources & References
+
+- [VContainer Documentation](https://vcontainer.hadashia.com/)
+- [UniTask Documentation](https://github.com/Cysharp/UniTask)
+- [Unity UI Toolkit Guide](https://docs.unity3d.com/Manual/UIElements.html)
+- [Unity Input System](https://docs.unity3d.com/Packages/com.unity.inputsystem@latest)
+
+---
+
+*Last Updated: 2025-11-10*
