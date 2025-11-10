@@ -160,3 +160,5 @@ node_modules/
 
 ## Astro
 website/axum/templates/dist/**
+website/astro/dist/**
+website/astro/.astro/**
