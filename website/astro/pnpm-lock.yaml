@@ -59,6 +59,9 @@ importers:
       react-hook-form:
         specifier: ^7.66.0
         version: 7.66.0(react@19.2.0)
+      react-unity-webgl:
+        specifier: ^10.1.6
+        version: 10.1.6(react@19.2.0)
       sharp:
         specifier: ^0.34.2
         version: 0.34.5
@@ -2079,6 +2082,11 @@ packages:
   react-refresh@0.17.0:
     resolution: {integrity: sha512-z6F7K9bV85EfseRCp2bzrpyQ0Gkw1uLoCel9XBVWPg/TjRj94SkJzUTGfOa4bs7iJvBWtQG0Wq7wnI0syw3EBQ==}
     engines: {node: '>=0.10.0'}
+
+  react-unity-webgl@10.1.6:
+    resolution: {integrity: sha512-N67RdvdeCfKDpzxKdu9K1fnFpb0xmqDF2Qk74f4B07iP9H/4XouG/RjSK4hYYCUmzeBv76G7DWTUK7hgF43TYw==}
+    peerDependencies:
+      react: '>=16.8.0'
 
   react@19.2.0:
     resolution: {integrity: sha512-tmbWg6W31tQLeB5cdIBOicJDJRR2KzXsV7uSK9iNfLWQ5bIZfxuPEHp7M8wiHyHnn0DD1i7w3Zmin0FtkrwoCQ==}
@@ -5028,6 +5036,10 @@ snapshots:
       react: 19.2.0
 
   react-refresh@0.17.0: {}
+
+  react-unity-webgl@10.1.6(react@19.2.0):
+    dependencies:
+      react: 19.2.0
 
   react@19.2.0: {}
 
