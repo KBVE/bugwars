@@ -53,3 +53,7 @@ rust/target/debug/deps/
 rust/target/debug/examples/
 rust/target/debug/incremental/
 rust/target/debug/.cargo-lock
+
+# Node.js dependencies
+node_modules/
+**/node_modules/
