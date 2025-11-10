@@ -31,13 +31,14 @@ namespace BugWars.Core
             if (mainMenuManagerInstance != null)
             {
                 builder.RegisterComponent(mainMenuManagerInstance);
-                Debug.Log("[GameLifetimeScope] MainMenuManager created and registered");
+            }
+            else
+            {
+                Debug.LogError("[GameLifetimeScope] Failed to create MainMenuManager - UI will not function!");
             }
 
             // GameManager depends on EventManager and MainMenuManager - register last
             RegisterOrCreateManager<GameManager>(builder, "GameManager");
-
-            Debug.Log("[GameLifetimeScope] DI Container configured successfully");
         }
 
         /// <summary>
@@ -50,7 +51,6 @@ namespace BugWars.Core
             var existingManager = FindFirstObjectByType<MainMenuManager>();
             if (existingManager != null)
             {
-                Debug.Log("[GameLifetimeScope] Found existing MainMenuManager in scene");
                 return existingManager;
             }
 
@@ -61,7 +61,7 @@ namespace BugWars.Core
                 return null;
             }
 
-            // If PanelSettings not assigned, try to find or create a default one
+            // If PanelSettings not assigned, create a default one
             if (panelSettings == null)
             {
                 Debug.LogWarning("[GameLifetimeScope] PanelSettings not assigned, creating default runtime PanelSettings");
@@ -81,7 +81,6 @@ namespace BugWars.Core
             // Now add MainMenuManager component (UIDocument is already configured)
             var mainMenuManager = menuObject.AddComponent<MainMenuManager>();
 
-            Debug.Log("[GameLifetimeScope] Created new MainMenuManager with configured UIDocument");
             return mainMenuManager;
         }
 
@@ -102,7 +101,17 @@ namespace BugWars.Core
             settings.clearDepthStencil = true;
             settings.clearColor = false;
 
-            Debug.Log("[GameLifetimeScope] Created default runtime PanelSettings");
+            // Load default Unity runtime theme to avoid "No Theme Style Sheet" warning
+            var defaultTheme = Resources.Load<ThemeStyleSheet>("Runtime Theme");
+            if (defaultTheme != null)
+            {
+                settings.themeStyleSheet = defaultTheme;
+            }
+            else
+            {
+                Debug.LogWarning("[GameLifetimeScope] Could not load default Runtime Theme from Resources - UI may not render correctly");
+            }
+
             return settings;
         }
 
@@ -118,16 +127,13 @@ namespace BugWars.Core
             {
                 // Manager already exists in scene, register it for injection
                 builder.RegisterComponent(existingManager);
-                Debug.Log($"[GameLifetimeScope] Found and registered existing {managerName} in scene");
             }
             else
             {
-                // Create new manager GameObject and register component
+                // Create new manager GameObject and register component as root object
                 // VContainer will handle injection into this component
                 builder.RegisterComponentOnNewGameObject<T>(Lifetime.Singleton, managerName)
-                    .DontDestroyOnLoad()
-                    .UnderTransform(transform);
-                Debug.Log($"[GameLifetimeScope] Created new {managerName}");
+                    .DontDestroyOnLoad();
             }
         }
 
@@ -138,8 +144,6 @@ namespace BugWars.Core
             // Note: IsRoot is automatically determined by parent relationship
             // This LifetimeScope will be root if it has no parent LifetimeScope
             autoRun = true;
-
-            Debug.Log("[GameLifetimeScope] Initializing DI Container");
         }
     }
 }

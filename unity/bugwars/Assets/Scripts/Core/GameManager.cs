@@ -21,7 +21,6 @@ namespace BugWars.Core
         {
             _eventManager = eventManager;
             _mainMenuManager = mainMenuManager;
-            Debug.Log("[GameManager] Dependencies injected");
         }
         #endregion
 
@@ -92,7 +91,6 @@ namespace BugWars.Core
                 _isPaused = true;
                 Time.timeScale = 0f;
                 Events.TriggerGamePaused();
-                Debug.Log("[GameManager] Game paused");
             }
         }
 
@@ -106,7 +104,6 @@ namespace BugWars.Core
                 _isPaused = false;
                 Time.timeScale = 1f;
                 Events.TriggerGameResumed();
-                Debug.Log("[GameManager] Game resumed");
             }
         }
 
@@ -130,8 +127,6 @@ namespace BugWars.Core
 
             // Cache main camera reference
             _mainCamera = Camera.main;
-
-            Debug.Log("[GameManager] Initialized");
         }
 
         private void Start()
@@ -141,11 +136,13 @@ namespace BugWars.Core
             {
                 SubscribeToEvents();
             }
+            else
+            {
+                Debug.LogWarning("[GameManager] EventManager reference is null, cannot subscribe to events!");
+            }
 
             // Subscribe to Unity scene loaded event
             SceneManager.sceneLoaded += OnSceneLoaded;
-
-            Debug.Log("[GameManager] Event subscriptions configured");
         }
 
         /// <summary>
@@ -313,8 +310,6 @@ namespace BugWars.Core
 
             // Refresh camera reference when scene changes
             _mainCamera = Camera.main;
-
-            Debug.Log($"[GameManager] Scene loaded: {scene.name} (Build Index: {scene.buildIndex})");
         }
 
         /// <summary>
