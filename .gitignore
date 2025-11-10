@@ -1,0 +1,68 @@
+# macOS / Windows
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+coverage/
+.cache/
+*.tgz
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+.venv/
+env/
+pip-log.txt
+
+# Logs and temp
+logs/
+*.log
+tmp/
+temp/
+*.tmp
+
+# IDEs / editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.iml
+
+# OS / tooling
+*.swp
+*.bak
+*.pid
+*.seed
+.DS_Store
+
+# Secrets, keys, databases
+*.pem
+*.key
+*.crt
+*.env
+*.sqlite3
+secrets/
+*.db
+
+# Build / compiled artifacts
+dist/
+build/
+out/
+*.o
+*.so
+*.dll
+*.exe
+
+# Git
+*.orig
