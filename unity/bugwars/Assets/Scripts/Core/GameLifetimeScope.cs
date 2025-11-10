@@ -27,33 +27,54 @@ namespace BugWars.Core
             // Register or find GameManager
             RegisterManager<GameManager>(builder, "GameManager");
 
-            // Register MainMenuManager with special handling for UIDocument
-            builder.RegisterComponentOnNewGameObject<MainMenuManager>(Lifetime.Singleton)
-                .DontDestroyOnLoad()
-                .UnderTransform(transform);
-
-            // Register callback to configure UIDocument after MainMenuManager is built
-            builder.RegisterBuildCallback(container =>
+            // Create and configure MainMenuManager with UIDocument properly set up
+            var mainMenuManagerInstance = CreateMainMenuManager();
+            if (mainMenuManagerInstance != null)
             {
-                var mainMenuManager = container.Resolve<MainMenuManager>();
-                if (mainMenuManager != null)
-                {
-                    var uiDocument = mainMenuManager.GetComponent<UIDocument>();
-                    if (uiDocument != null && mainMenuVisualTree != null && panelSettings != null)
-                    {
-                        uiDocument.visualTreeAsset = mainMenuVisualTree;
-                        uiDocument.panelSettings = panelSettings;
-                        uiDocument.sortingOrder = 100;
-                        Debug.Log("[GameLifetimeScope] MainMenuManager UIDocument configured");
-                    }
-                    else if (mainMenuVisualTree == null || panelSettings == null)
-                    {
-                        Debug.LogError("[GameLifetimeScope] MainMenu VisualTreeAsset or PanelSettings not assigned!");
-                    }
-                }
-            });
+                builder.RegisterComponent(mainMenuManagerInstance);
+                Debug.Log("[GameLifetimeScope] MainMenuManager created and registered");
+            }
 
             Debug.Log("[GameLifetimeScope] DI Container configured successfully");
+        }
+
+        /// <summary>
+        /// Creates and configures the MainMenuManager with UIDocument
+        /// This ensures UIDocument is properly configured before Unity Inspector tries to validate it
+        /// </summary>
+        private MainMenuManager CreateMainMenuManager()
+        {
+            // Check if MainMenuManager already exists in scene
+            var existingManager = FindObjectOfType<MainMenuManager>();
+            if (existingManager != null)
+            {
+                Debug.Log("[GameLifetimeScope] Found existing MainMenuManager in scene");
+                return existingManager;
+            }
+
+            // Validate required assets
+            if (mainMenuVisualTree == null || panelSettings == null)
+            {
+                Debug.LogError("[GameLifetimeScope] MainMenu VisualTreeAsset or PanelSettings not assigned!");
+                return null;
+            }
+
+            // Create new GameObject under this transform
+            var menuObject = new GameObject("MainMenuManager");
+            menuObject.transform.SetParent(transform);
+            DontDestroyOnLoad(menuObject);
+
+            // Add and configure UIDocument FIRST to avoid null reference errors
+            var uiDocument = menuObject.AddComponent<UIDocument>();
+            uiDocument.visualTreeAsset = mainMenuVisualTree;
+            uiDocument.panelSettings = panelSettings;
+            uiDocument.sortingOrder = 100;
+
+            // Now add MainMenuManager component (UIDocument is already configured)
+            var mainMenuManager = menuObject.AddComponent<MainMenuManager>();
+
+            Debug.Log("[GameLifetimeScope] Created new MainMenuManager with configured UIDocument");
+            return mainMenuManager;
         }
 
         /// <summary>
