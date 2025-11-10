@@ -1,12 +1,13 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
+using BugWars.UI;
 
 namespace BugWars.Core
 {
     /// <summary>
     /// Universal Game Manager - Singleton pattern with DontDestroyOnLoad
-    /// Handles core game functionality including scene management
+    /// Handles core game functionality including scene management and main menu control
     /// </summary>
     public class GameManager : MonoBehaviour
     {
@@ -75,6 +76,15 @@ namespace BugWars.Core
                 SceneManager.sceneLoaded -= OnSceneLoaded;
             }
         }
+
+        private void Update()
+        {
+            // Toggle main menu with Escape key
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                ToggleMainMenu();
+            }
+        }
         #endregion
 
         #region Scene Loading
@@ -140,6 +150,53 @@ namespace BugWars.Core
             }
 
             return asyncUnload;
+        }
+        #endregion
+
+        #region Main Menu Control
+        /// <summary>
+        /// Toggles the main menu visibility
+        /// </summary>
+        public void ToggleMainMenu()
+        {
+            if (MainMenuManager.Instance != null)
+            {
+                MainMenuManager.Instance.ToggleMenu();
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] MainMenuManager instance not found!");
+            }
+        }
+
+        /// <summary>
+        /// Shows the main menu
+        /// </summary>
+        public void ShowMainMenu()
+        {
+            if (MainMenuManager.Instance != null)
+            {
+                MainMenuManager.Instance.ShowMenu();
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] MainMenuManager instance not found!");
+            }
+        }
+
+        /// <summary>
+        /// Hides the main menu
+        /// </summary>
+        public void HideMainMenu()
+        {
+            if (MainMenuManager.Instance != null)
+            {
+                MainMenuManager.Instance.HideMenu();
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] MainMenuManager instance not found!");
+            }
         }
         #endregion
 
