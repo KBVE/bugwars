@@ -36,7 +36,7 @@ namespace BugWars.Core
         #region Unity Lifecycle
         private void Awake()
         {
-            Debug.Log("[EventManager] Initialized");
+            // Component initialized
         }
 
         private void OnDestroy()

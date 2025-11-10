@@ -19,7 +19,6 @@ namespace BugWars.UI
         public void Construct(EventManager eventManager)
         {
             _eventManager = eventManager;
-            Debug.Log("[MainMenuManager] Dependencies injected");
         }
         #endregion
 
@@ -42,7 +41,7 @@ namespace BugWars.UI
         #region Unity Lifecycle
         private void Awake()
         {
-            Debug.Log("[MainMenuManager] Initialized");
+            // Component initialized
         }
 
         private void Start()
@@ -54,7 +53,6 @@ namespace BugWars.UI
             if (_eventManager != null)
             {
                 _eventManager.OnEscapePressed.AddListener(ToggleMenu);
-                Debug.Log("[MainMenuManager] Subscribed to EventManager events");
             }
             else
             {
@@ -144,7 +142,6 @@ namespace BugWars.UI
             {
                 _mainMenuContainer.style.display = DisplayStyle.Flex;
                 _isMenuVisible = true;
-                Debug.Log("[MainMenuManager] Menu shown");
             }
         }
 
@@ -157,7 +154,6 @@ namespace BugWars.UI
             {
                 _mainMenuContainer.style.display = DisplayStyle.None;
                 _isMenuVisible = false;
-                Debug.Log("[MainMenuManager] Menu hidden");
             }
         }
 
@@ -183,7 +179,6 @@ namespace BugWars.UI
         /// </summary>
         private void OnSettingsButtonClicked()
         {
-            Debug.Log("[MainMenuManager] Settings button clicked");
             // TODO: Implement settings panel
         }
 
@@ -192,8 +187,6 @@ namespace BugWars.UI
         /// </summary>
         private void OnExitButtonClicked()
         {
-            Debug.Log("[MainMenuManager] Exit button clicked - Quitting game");
-
             #if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;
             #else
