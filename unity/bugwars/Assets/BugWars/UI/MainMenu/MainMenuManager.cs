@@ -60,8 +60,12 @@ namespace BugWars.UI
             }
 
             _instance = this;
-            DontDestroyOnLoad(gameObject);
+            // Note: DontDestroyOnLoad is handled by VContainer
+        }
 
+        private void Start()
+        {
+            // Initialize UI after VContainer has configured the UIDocument
             InitializeUI();
         }
 

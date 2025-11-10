@@ -28,27 +28,30 @@ namespace BugWars.Core
             RegisterManager<GameManager>(builder, "GameManager");
 
             // Register MainMenuManager with special handling for UIDocument
-            builder.Register<MainMenuManager>(Lifetime.Singleton)
-                .FromComponentOnNewGameObject()
+            builder.RegisterComponentOnNewGameObject<MainMenuManager>(Lifetime.Singleton)
                 .DontDestroyOnLoad()
-                .OnBuild((container, mainMenuManager) =>
-                {
-                    // Set up UIDocument component
-                    var uiDocument = mainMenuManager.gameObject.AddComponent<UIDocument>();
+                .UnderTransform(transform);
 
-                    if (mainMenuVisualTree != null && panelSettings != null)
+            // Register callback to configure UIDocument after MainMenuManager is built
+            builder.RegisterBuildCallback(container =>
+            {
+                var mainMenuManager = container.Resolve<MainMenuManager>();
+                if (mainMenuManager != null)
+                {
+                    var uiDocument = mainMenuManager.GetComponent<UIDocument>();
+                    if (uiDocument != null && mainMenuVisualTree != null && panelSettings != null)
                     {
                         uiDocument.visualTreeAsset = mainMenuVisualTree;
                         uiDocument.panelSettings = panelSettings;
-                        uiDocument.sortingOrder = 100; // Ensure menu renders on top
+                        uiDocument.sortingOrder = 100;
+                        Debug.Log("[GameLifetimeScope] MainMenuManager UIDocument configured");
                     }
-                    else
+                    else if (mainMenuVisualTree == null || panelSettings == null)
                     {
                         Debug.LogError("[GameLifetimeScope] MainMenu VisualTreeAsset or PanelSettings not assigned!");
                     }
-
-                    mainMenuManager.gameObject.name = "MainMenuManager";
-                });
+                }
+            });
 
             Debug.Log("[GameLifetimeScope] DI Container configured successfully");
         }
@@ -69,13 +72,9 @@ namespace BugWars.Core
             else
             {
                 // Create new manager
-                builder.Register<T>(Lifetime.Singleton)
-                    .FromComponentOnNewGameObject()
+                builder.RegisterComponentOnNewGameObject<T>(Lifetime.Singleton)
                     .DontDestroyOnLoad()
-                    .OnBuild((container, component) =>
-                    {
-                        component.gameObject.name = managerName;
-                    });
+                    .UnderTransform(transform);
                 Debug.Log($"[GameLifetimeScope] Created new {managerName}");
             }
         }
@@ -84,8 +83,8 @@ namespace BugWars.Core
         {
             base.Awake();
 
-            // Ensure this is the root lifetime scope
-            IsRoot = true;
+            // Note: IsRoot is automatically determined by parent relationship
+            // This LifetimeScope will be root if it has no parent LifetimeScope
             autoRun = true;
 
             Debug.Log("[GameLifetimeScope] Initializing DI Container");

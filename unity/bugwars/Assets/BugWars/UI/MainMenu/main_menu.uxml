@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
-    <Style src="project://database/Assets/BugWars/UI/MainMenu/menu.uss?fileID=7433441132597879392&amp;guid=835fc193799044ba8a535ad6fa36df05&amp;type=3#menu" />
+    <Style src="menu.uss" />
 
     <ui:VisualElement name="MainMenuContainer" class="main-menu-container">
         <ui:VisualElement name="MenuPanel" class="menu-panel">
