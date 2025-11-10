@@ -1,0 +1,42 @@
+@layer base, starlight, theme, components, utilities, galaxy, my-overrides;
+
+@import '@astrojs/starlight-tailwind';
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+:root {
+  --sl-color-accent-low: #faf5ff;
+  --sl-color-accent: #a855f7;
+  --sl-color-accent-high: #7e22ce;
+  --sl-color-text-accent: #9333ea;
+  --sl-color-link: #a855f7;
+  --sl-color-link-hover: #c084fc;
+  --sl-color-bg-accent: #f3e8ff;
+  --sl-color-code-bg: #3b0764;
+  --sl-color-border: #e9d5ff;
+}
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #3b0764;
+  --sl-color-accent: #a855f7;
+  --sl-color-accent-high: #e9d5ff;
+  --sl-color-text-accent: #c084fc;
+  --sl-color-link: #c084fc;
+  --sl-color-link-hover: #d8b4fe;
+  --sl-color-bg-accent: #581c87;
+  --sl-color-code-bg: #3b0764;
+  --sl-color-border: #6b21a8;
+}
+
+@layer utilities {
+  .focus-ring {
+    @apply ring-purple-500 ring-offset-2 focus:outline-none focus-visible:ring-2;
+  }
+}
+@layer components {
+  .sl-link-button {
+    @apply bg-purple-600 hover:bg-purple-700 text-white;
+  }
+  .sl-markdown-content a {
+    @apply text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300;
+  }
+}
