@@ -14,7 +14,8 @@ namespace BugWars.Core
     {
         [Header("UI Configuration")]
         [SerializeField] private VisualTreeAsset mainMenuVisualTree;
-        [SerializeField] private PanelSettings panelSettings;
+        [SerializeField] [Tooltip("Optional - Will create default runtime PanelSettings if not assigned")]
+        private PanelSettings panelSettings;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -52,11 +53,18 @@ namespace BugWars.Core
                 return existingManager;
             }
 
-            // Validate required assets
-            if (mainMenuVisualTree == null || panelSettings == null)
+            // Validate required UXML asset
+            if (mainMenuVisualTree == null)
             {
-                Debug.LogError("[GameLifetimeScope] MainMenu VisualTreeAsset or PanelSettings not assigned!");
+                Debug.LogError("[GameLifetimeScope] MainMenu VisualTreeAsset not assigned!");
                 return null;
+            }
+
+            // If PanelSettings not assigned, try to find or create a default one
+            if (panelSettings == null)
+            {
+                Debug.LogWarning("[GameLifetimeScope] PanelSettings not assigned, creating default runtime PanelSettings");
+                panelSettings = CreateDefaultPanelSettings();
             }
 
             // Create new GameObject under this transform
@@ -75,6 +83,27 @@ namespace BugWars.Core
 
             Debug.Log("[GameLifetimeScope] Created new MainMenuManager with configured UIDocument");
             return mainMenuManager;
+        }
+
+        /// <summary>
+        /// Creates a default PanelSettings at runtime
+        /// </summary>
+        private PanelSettings CreateDefaultPanelSettings()
+        {
+            var settings = ScriptableObject.CreateInstance<PanelSettings>();
+            settings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+            settings.scale = 1f;
+            settings.fallbackDpi = 96f;
+            settings.referenceDpi = 96f;
+            settings.referenceResolution = new Vector2Int(1920, 1080);
+            settings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
+            settings.match = 0f;
+            settings.sortingOrder = 0;
+            settings.clearDepthStencil = true;
+            settings.clearColor = false;
+
+            Debug.Log("[GameLifetimeScope] Created default runtime PanelSettings");
+            return settings;
         }
 
         /// <summary>
