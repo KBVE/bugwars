@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 using Cysharp.Threading.Tasks;
 using BugWars.UI;
 
@@ -80,7 +81,7 @@ namespace BugWars.Core
         private void Update()
         {
             // Toggle main menu with Escape key
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 ToggleMainMenu();
             }
