@@ -13,6 +13,10 @@ namespace BugWars.Core
     {
         #region Singleton
         private static InputManager _instance;
+
+        /// <summary>
+        /// Singleton instance - managed by VContainer
+        /// </summary>
         public static InputManager Instance
         {
             get
@@ -22,8 +26,7 @@ namespace BugWars.Core
                     _instance = FindObjectOfType<InputManager>();
                     if (_instance == null)
                     {
-                        GameObject go = new GameObject("InputManager");
-                        _instance = go.AddComponent<InputManager>();
+                        Debug.LogWarning("[InputManager] Instance not found! Make sure GameLifetimeScope is in the scene.");
                     }
                 }
                 return _instance;
