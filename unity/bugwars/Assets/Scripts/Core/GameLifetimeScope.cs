@@ -9,9 +9,12 @@ namespace BugWars.Core
     /// <summary>
     /// Main DI Container Orchestrator using VContainer
     /// Manages dependency injection and initialization of all core managers
+    /// Singleton pattern ensures only one instance exists across scene transitions
     /// </summary>
     public class GameLifetimeScope : LifetimeScope
     {
+        private static GameLifetimeScope _instance;
+
         [Header("UI Configuration")]
         [SerializeField] private VisualTreeAsset mainMenuVisualTree;
         [SerializeField] [Tooltip("Optional - Will create default runtime PanelSettings if not assigned")]
@@ -139,11 +142,39 @@ namespace BugWars.Core
 
         protected override void Awake()
         {
+            // Singleton pattern with defensive guards
+            if (_instance != null && _instance != this)
+            {
+                Debug.LogWarning($"[GameLifetimeScope] Duplicate instance detected on '{gameObject.name}'. " +
+                    $"Only one GameLifetimeScope should exist. Destroying duplicate to prevent DI container conflicts.");
+                Destroy(gameObject);
+                return;
+            }
+
+            // Set this as the singleton instance
+            _instance = this;
+
+            // Persist across scene transitions
+            DontDestroyOnLoad(gameObject);
+            Debug.Log($"[GameLifetimeScope] Initialized on '{gameObject.name}' and marked as DontDestroyOnLoad");
+
             base.Awake();
 
             // Note: IsRoot is automatically determined by parent relationship
             // This LifetimeScope will be root if it has no parent LifetimeScope
             autoRun = true;
+        }
+
+        protected override void OnDestroy()
+        {
+            // Clean up singleton reference when this instance is destroyed
+            if (_instance == this)
+            {
+                Debug.Log("[GameLifetimeScope] Singleton instance destroyed");
+                _instance = null;
+            }
+
+            base.OnDestroy();
         }
     }
 }
