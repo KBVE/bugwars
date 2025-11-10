@@ -1,68 +1,55 @@
-# macOS / Windows
-.DS_Store
-Thumbs.db
-Desktop.ini
-ehthumbs.db
+COMMAND.md
+logs.txt
+logs_archive.txt
 
-# Node
-node_modules/
-npm-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-dist/
-build/
-coverage/
-.cache/
-*.tgz
+# Godot 4+ specific ignores
+.godot/
+.nomedia
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-venv/
-.env
-.venv/
-env/
-pip-log.txt
+# Godot-specific ignores
+.import/
+export.cfg
+export_credentials.cfg
 
-# Logs and temp
-logs/
-*.log
-tmp/
-temp/
-*.tmp
+# Imported translations (automatically generated from CSV files)
+*.translation
 
-# IDEs / editors
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-*.iml
+# Mono-specific ignores
+.mono/
+data_*/
+mono_crash.*.json
 
-# OS / tooling
-*.swp
-*.bak
-*.pid
-*.seed
+# DSTore
+*/.DS_Store
 .DS_Store
 
-# Secrets, keys, databases
-*.pem
-*.key
-*.crt
-*.env
-*.sqlite3
-secrets/
-*.db
+# Ignore all Rust build outputs by default
+/rust/target/**
 
-# Build / compiled artifacts
-dist/
-build/
-out/
-*.o
-*.so
-*.dll
-*.exe
+# Allow the dirs we need to reach the files we want to keep
+!/rust/target/debug/
+!/rust/target/release/
+!/rust/target/wasm32-unknown-emscripten/
+!/rust/target/wasm32-unknown-emscripten/debug/
+!/rust/target/wasm32-unknown-emscripten/release/
 
-# Git
-*.orig
+# Re-ignore everything inside those dirs...
+/rust/target/debug/**
+/rust/target/release/**
+/rust/target/wasm32-unknown-emscripten/debug/**
+/rust/target/wasm32-unknown-emscripten/release/**
+
+# ...except the exact binaries Godot references
+!/rust/target/**/libgodo.so
+!/rust/target/**/godo.dll
+!/rust/target/**/libgodo.dylib
+!/rust/target/**/godo.wasm
+
+# If you still want to explicitly ignore these per your note:
+# (harmless since the directories above are already ignored)
+rust/target/debug/.fingerprint/
+rust/target/debug/build/
+rust/target/debug/deps/
+rust/target/debug/examples/
+rust/target/debug/incremental/
+rust/target/debug/.cargo-lock
