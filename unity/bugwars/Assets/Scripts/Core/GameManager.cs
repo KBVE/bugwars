@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.InputSystem;
 using Cysharp.Threading.Tasks;
 using BugWars.UI;
 
@@ -49,6 +48,25 @@ namespace BugWars.Core
         public int CurrentSceneBuildIndex => CurrentScene.buildIndex;
         #endregion
 
+        #region Event Management
+        private EventManager _eventManager;
+
+        /// <summary>
+        /// Cached reference to the EventManager for performance
+        /// </summary>
+        public EventManager Events
+        {
+            get
+            {
+                if (_eventManager == null)
+                {
+                    _eventManager = EventManager.Instance;
+                }
+                return _eventManager;
+            }
+        }
+        #endregion
+
         #region Camera Management
         private Camera _mainCamera;
 
@@ -91,6 +109,7 @@ namespace BugWars.Core
             {
                 _isPaused = true;
                 Time.timeScale = 0f;
+                Events.TriggerGamePaused();
                 Debug.Log("[GameManager] Game paused");
             }
         }
@@ -104,6 +123,7 @@ namespace BugWars.Core
             {
                 _isPaused = false;
                 Time.timeScale = 1f;
+                Events.TriggerGameResumed();
                 Debug.Log("[GameManager] Game resumed");
             }
         }
@@ -139,8 +159,41 @@ namespace BugWars.Core
             // Cache main camera reference
             _mainCamera = Camera.main;
 
-            // Subscribe to scene loaded event
+            // Initialize EventManager and InputManager (ensures they exist)
+            _eventManager = EventManager.Instance;
+            var inputManager = InputManager.Instance;
+
+            // Subscribe to EventManager events
+            SubscribeToEvents();
+
+            // Subscribe to Unity scene loaded event
             SceneManager.sceneLoaded += OnSceneLoaded;
+
+            Debug.Log("[GameManager] Initialized with Event System");
+        }
+
+        /// <summary>
+        /// Subscribe to all relevant events from EventManager
+        /// </summary>
+        private void SubscribeToEvents()
+        {
+            // Input events
+            Events.OnEscapePressed.AddListener(OnEscapePressed);
+            Events.OnPausePressed.AddListener(OnPausePressed);
+
+            // You can subscribe to more events here as needed
+        }
+
+        /// <summary>
+        /// Unsubscribe from all EventManager events
+        /// </summary>
+        private void UnsubscribeFromEvents()
+        {
+            if (_eventManager != null)
+            {
+                Events.OnEscapePressed.RemoveListener(OnEscapePressed);
+                Events.OnPausePressed.RemoveListener(OnPausePressed);
+            }
         }
 
         private void OnDestroy()
@@ -148,31 +201,8 @@ namespace BugWars.Core
             // Unsubscribe from events
             if (_instance == this)
             {
+                UnsubscribeFromEvents();
                 SceneManager.sceneLoaded -= OnSceneLoaded;
-            }
-        }
-
-        private void Update()
-        {
-            // Handle global/system-level inputs only
-            // Game-specific inputs should be handled in their respective controllers
-            HandleGlobalInputs();
-        }
-        #endregion
-
-        #region Input Handling
-        /// <summary>
-        /// Handles global system-level inputs (menu, pause, etc.)
-        /// Game-specific inputs should be handled in their respective controllers
-        /// </summary>
-        private void HandleGlobalInputs()
-        {
-            if (Keyboard.current == null) return;
-
-            // Toggle main menu with Escape key
-            if (Keyboard.current.escapeKey.wasPressedThisFrame)
-            {
-                ToggleMainMenu();
             }
         }
         #endregion
@@ -186,6 +216,8 @@ namespace BugWars.Core
         /// <returns>AsyncOperation for the scene load</returns>
         public async UniTask<AsyncOperation> LoadSceneAsync(string sceneName, LoadSceneMode loadMode = LoadSceneMode.Single)
         {
+            Events.TriggerSceneLoadStarted(sceneName);
+
             AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName, loadMode);
 
             if (asyncLoad != null)
@@ -197,6 +229,7 @@ namespace BugWars.Core
                 }
             }
 
+            Events.TriggerSceneLoadCompleted(sceneName);
             return asyncLoad;
         }
 
@@ -208,6 +241,9 @@ namespace BugWars.Core
         /// <returns>AsyncOperation for the scene load</returns>
         public async UniTask<AsyncOperation> LoadSceneAsync(int sceneBuildIndex, LoadSceneMode loadMode = LoadSceneMode.Single)
         {
+            string sceneName = SceneManager.GetSceneByBuildIndex(sceneBuildIndex).name;
+            Events.TriggerSceneLoadStarted(sceneName);
+
             AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneBuildIndex, loadMode);
 
             if (asyncLoad != null)
@@ -219,6 +255,7 @@ namespace BugWars.Core
                 }
             }
 
+            Events.TriggerSceneLoadCompleted(sceneName);
             return asyncLoad;
         }
 
@@ -252,6 +289,7 @@ namespace BugWars.Core
             if (MainMenuManager.Instance != null)
             {
                 MainMenuManager.Instance.ToggleMenu();
+                // Note: Trigger events in MainMenuManager instead, to know actual state
             }
             else
             {
@@ -267,6 +305,7 @@ namespace BugWars.Core
             if (MainMenuManager.Instance != null)
             {
                 MainMenuManager.Instance.ShowMenu();
+                Events.TriggerMainMenuOpened();
             }
             else
             {
@@ -282,6 +321,7 @@ namespace BugWars.Core
             if (MainMenuManager.Instance != null)
             {
                 MainMenuManager.Instance.HideMenu();
+                Events.TriggerMainMenuClosed();
             }
             else
             {
@@ -302,6 +342,22 @@ namespace BugWars.Core
             _mainCamera = Camera.main;
 
             Debug.Log($"[GameManager] Scene loaded: {scene.name} (Build Index: {scene.buildIndex})");
+        }
+
+        /// <summary>
+        /// Event handler for Escape key press from EventManager
+        /// </summary>
+        private void OnEscapePressed()
+        {
+            ToggleMainMenu();
+        }
+
+        /// <summary>
+        /// Event handler for Pause key press from EventManager
+        /// </summary>
+        private void OnPausePressed()
+        {
+            TogglePause();
         }
         #endregion
     }
