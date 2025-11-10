@@ -49,6 +49,77 @@ namespace BugWars.Core
         public int CurrentSceneBuildIndex => CurrentScene.buildIndex;
         #endregion
 
+        #region Camera Management
+        private Camera _mainCamera;
+
+        /// <summary>
+        /// Cached reference to the main camera for performance
+        /// Avoids repeated Camera.main calls which use FindGameObjectWithTag internally
+        /// </summary>
+        public Camera MainCamera
+        {
+            get
+            {
+                // Refresh camera reference if it's null or destroyed
+                if (_mainCamera == null)
+                {
+                    _mainCamera = Camera.main;
+                    if (_mainCamera == null)
+                    {
+                        Debug.LogWarning("[GameManager] No main camera found in scene!");
+                    }
+                }
+                return _mainCamera;
+            }
+        }
+        #endregion
+
+        #region Game State
+        private bool _isPaused = false;
+
+        /// <summary>
+        /// Indicates whether the game is currently paused
+        /// </summary>
+        public bool IsPaused => _isPaused;
+
+        /// <summary>
+        /// Pauses the game by setting timeScale to 0
+        /// </summary>
+        public void PauseGame()
+        {
+            if (!_isPaused)
+            {
+                _isPaused = true;
+                Time.timeScale = 0f;
+                Debug.Log("[GameManager] Game paused");
+            }
+        }
+
+        /// <summary>
+        /// Resumes the game by setting timeScale to 1
+        /// </summary>
+        public void ResumeGame()
+        {
+            if (_isPaused)
+            {
+                _isPaused = false;
+                Time.timeScale = 1f;
+                Debug.Log("[GameManager] Game resumed");
+            }
+        }
+
+        /// <summary>
+        /// Toggles between paused and resumed states
+        /// </summary>
+        public void TogglePause()
+        {
+            if (_isPaused)
+                ResumeGame();
+            else
+                PauseGame();
+        }
+        #endregion
+
         #region Unity Lifecycle
         private void Awake()
         {
@@ -65,6 +136,9 @@ namespace BugWars.Core
             // Initialize current scene reference
             CurrentScene = SceneManager.GetActiveScene();
 
+            // Cache main camera reference
+            _mainCamera = Camera.main;
+
             // Subscribe to scene loaded event
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
@@ -80,8 +154,23 @@ namespace BugWars.Core
 
         private void Update()
         {
+            // Handle global/system-level inputs only
+            // Game-specific inputs should be handled in their respective controllers
+            HandleGlobalInputs();
+        }
+        #endregion
+
+        #region Input Handling
+        /// <summary>
+        /// Handles global system-level inputs (menu, pause, etc.)
+        /// Game-specific inputs should be handled in their respective controllers
+        /// </summary>
+        private void HandleGlobalInputs()
+        {
+            if (Keyboard.current == null) return;
+
             // Toggle main menu with Escape key
-            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 ToggleMainMenu();
             }
@@ -208,6 +297,10 @@ namespace BugWars.Core
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             CurrentScene = scene;
+
+            // Refresh camera reference when scene changes
+            _mainCamera = Camera.main;
+
             Debug.Log($"[GameManager] Scene loaded: {scene.name} (Build Index: {scene.buildIndex})");
         }
         #endregion
