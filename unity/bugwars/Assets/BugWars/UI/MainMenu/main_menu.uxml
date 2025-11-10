@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/BugWars/UI/MainMenu/menu.uss?fileID=7433441132597879392&amp;guid=835fc193799044ba8a535ad6fa36df05&amp;type=3#menu" />
+
+    <ui:VisualElement name="MainMenuContainer" class="main-menu-container">
+        <ui:VisualElement name="MenuPanel" class="menu-panel">
+            <ui:Label text="Bug Wars" name="Title" class="menu-title" />
+
+            <ui:VisualElement name="ButtonContainer" class="button-container">
+                <ui:Button text="Settings" name="SettingsButton" class="menu-button" />
+                <ui:Button text="Exit" name="ExitButton" class="menu-button exit-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
