@@ -19,14 +19,12 @@ namespace BugWars.Core
 
         protected override void Configure(IContainerBuilder builder)
         {
-            // Register or find EventManager
-            RegisterManager<EventManager>(builder, "EventManager");
+            // Register core managers in dependency order
+            // EventManager has no dependencies - register first
+            RegisterOrCreateManager<EventManager>(builder, "EventManager");
 
-            // Register or find InputManager
-            RegisterManager<InputManager>(builder, "InputManager");
-
-            // Register or find GameManager
-            RegisterManager<GameManager>(builder, "GameManager");
+            // InputManager depends on EventManager
+            RegisterOrCreateManager<InputManager>(builder, "InputManager");
 
             // Create and configure MainMenuManager with UIDocument properly set up
             var mainMenuManagerInstance = CreateMainMenuManager();
@@ -35,6 +33,9 @@ namespace BugWars.Core
                 builder.RegisterComponent(mainMenuManagerInstance);
                 Debug.Log("[GameLifetimeScope] MainMenuManager created and registered");
             }
+
+            // GameManager depends on EventManager and MainMenuManager - register last
+            RegisterOrCreateManager<GameManager>(builder, "GameManager");
 
             Debug.Log("[GameLifetimeScope] DI Container configured successfully");
         }
@@ -106,22 +107,24 @@ namespace BugWars.Core
         }
 
         /// <summary>
-        /// Helper method to register or find existing managers in the scene
+        /// Helper method to register or create managers using VContainer
+        /// Checks for existing instance first, otherwise creates new one
         /// </summary>
-        private void RegisterManager<T>(IContainerBuilder builder, string managerName) where T : Component
+        private void RegisterOrCreateManager<T>(IContainerBuilder builder, string managerName) where T : Component
         {
             var existingManager = FindFirstObjectByType<T>();
 
             if (existingManager != null)
             {
-                // Manager already exists in scene, register it
-                builder.RegisterComponent(existingManager).AsSelf();
-                Debug.Log($"[GameLifetimeScope] Found existing {managerName} in scene");
+                // Manager already exists in scene, register it for injection
+                builder.RegisterComponent(existingManager);
+                Debug.Log($"[GameLifetimeScope] Found and registered existing {managerName} in scene");
             }
             else
             {
-                // Create new manager
-                builder.RegisterComponentOnNewGameObject<T>(Lifetime.Singleton)
+                // Create new manager GameObject and register component
+                // VContainer will handle injection into this component
+                builder.RegisterComponentOnNewGameObject<T>(Lifetime.Singleton, managerName)
                     .DontDestroyOnLoad()
                     .UnderTransform(transform);
                 Debug.Log($"[GameLifetimeScope] Created new {managerName}");

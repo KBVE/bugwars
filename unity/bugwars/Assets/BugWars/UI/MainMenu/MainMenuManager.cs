@@ -1,36 +1,25 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 using BugWars.Core;
+using VContainer;
 
 namespace BugWars.UI
 {
     /// <summary>
-    /// Main Menu Manager - Singleton pattern
+    /// Main Menu Manager - Managed by VContainer
     /// Manages the main menu UI including visibility and button interactions
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public class MainMenuManager : MonoBehaviour
     {
-        #region Singleton
-        private static MainMenuManager _instance;
+        #region Dependencies
+        private EventManager _eventManager;
 
-        /// <summary>
-        /// Singleton instance - managed by VContainer
-        /// </summary>
-        public static MainMenuManager Instance
+        [Inject]
+        public void Construct(EventManager eventManager)
         {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = FindFirstObjectByType<MainMenuManager>();
-                    if (_instance == null)
-                    {
-                        Debug.LogWarning("[MainMenuManager] Instance not found! Make sure GameLifetimeScope is in the scene.");
-                    }
-                }
-                return _instance;
-            }
+            _eventManager = eventManager;
+            Debug.Log("[MainMenuManager] Dependencies injected");
         }
         #endregion
 
@@ -53,15 +42,7 @@ namespace BugWars.UI
         #region Unity Lifecycle
         private void Awake()
         {
-            // Ensure singleton pattern
-            if (_instance != null && _instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-
-            _instance = this;
-            // Note: DontDestroyOnLoad is handled by VContainer
+            Debug.Log("[MainMenuManager] Initialized");
         }
 
         private void Start()
@@ -70,18 +51,23 @@ namespace BugWars.UI
             InitializeUI();
 
             // Subscribe to Escape key event from EventManager
-            if (EventManager.Instance != null)
+            if (_eventManager != null)
             {
-                EventManager.Instance.OnEscapePressed.AddListener(ToggleMenu);
+                _eventManager.OnEscapePressed.AddListener(ToggleMenu);
+                Debug.Log("[MainMenuManager] Subscribed to EventManager events");
+            }
+            else
+            {
+                Debug.LogWarning("[MainMenuManager] EventManager reference is null, cannot subscribe to events!");
             }
         }
 
         private void OnDestroy()
         {
             // Unsubscribe from EventManager
-            if (EventManager.Instance != null)
+            if (_eventManager != null)
             {
-                EventManager.Instance.OnEscapePressed.RemoveListener(ToggleMenu);
+                _eventManager.OnEscapePressed.RemoveListener(ToggleMenu);
             }
 
             // Unregister button callbacks
