@@ -46,7 +46,7 @@ namespace BugWars.Core
         private MainMenuManager CreateMainMenuManager()
         {
             // Check if MainMenuManager already exists in scene
-            var existingManager = FindObjectOfType<MainMenuManager>();
+            var existingManager = FindFirstObjectByType<MainMenuManager>();
             if (existingManager != null)
             {
                 Debug.Log("[GameLifetimeScope] Found existing MainMenuManager in scene");
@@ -110,7 +110,7 @@ namespace BugWars.Core
         /// </summary>
         private void RegisterManager<T>(IContainerBuilder builder, string managerName) where T : Component
         {
-            var existingManager = FindObjectOfType<T>();
+            var existingManager = FindFirstObjectByType<T>();
 
             if (existingManager != null)
             {

@@ -22,7 +22,7 @@ namespace BugWars.Core
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<EventManager>();
+                    _instance = FindFirstObjectByType<EventManager>();
                     if (_instance == null)
                     {
                         Debug.LogWarning("[EventManager] Instance not found! Make sure GameLifetimeScope is in the scene.");

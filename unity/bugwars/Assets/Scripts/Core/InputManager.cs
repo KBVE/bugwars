@@ -23,7 +23,7 @@ namespace BugWars.Core
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<InputManager>();
+                    _instance = FindFirstObjectByType<InputManager>();
                     if (_instance == null)
                     {
                         Debug.LogWarning("[InputManager] Instance not found! Make sure GameLifetimeScope is in the scene.");

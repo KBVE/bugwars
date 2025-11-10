@@ -23,7 +23,7 @@ namespace BugWars.UI
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<MainMenuManager>();
+                    _instance = FindFirstObjectByType<MainMenuManager>();
                     if (_instance == null)
                     {
                         Debug.LogWarning("[MainMenuManager] Instance not found! Make sure GameLifetimeScope is in the scene.");
