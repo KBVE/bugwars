@@ -122,6 +122,7 @@ namespace BugWars.Core
         #region Unity Lifecycle
         private void Awake()
         {
+            Debug.Log("[GameManager] Awake called");
             // Initialize current scene reference
             CurrentScene = SceneManager.GetActiveScene();
 
@@ -131,6 +132,8 @@ namespace BugWars.Core
 
         private void Start()
         {
+            Debug.Log($"[GameManager] Start called - EventManager: {(_eventManager != null ? "available" : "NULL")}, MainMenuManager: {(_mainMenuManager != null ? "available" : "NULL")}");
+
             // Subscribe to EventManager events (after injection)
             if (_eventManager != null)
             {
@@ -138,11 +141,18 @@ namespace BugWars.Core
             }
             else
             {
-                Debug.LogWarning("[GameManager] EventManager reference is null, cannot subscribe to events!");
+                Debug.LogError("[GameManager] EventManager reference is null, cannot subscribe to events!");
+            }
+
+            if (_mainMenuManager == null)
+            {
+                Debug.LogError("[GameManager] MainMenuManager reference is null!");
             }
 
             // Subscribe to Unity scene loaded event
             SceneManager.sceneLoaded += OnSceneLoaded;
+
+            Debug.Log("[GameManager] Start complete");
         }
 
         /// <summary>
@@ -153,10 +163,15 @@ namespace BugWars.Core
             // Input events
             Debug.Log("[GameManager] Subscribing to OnEscapePressed event");
             Events.OnEscapePressed.AddListener(OnEscapePressed);
+            Debug.Log("[GameManager] Subscribing to OnPausePressed event");
             Events.OnPausePressed.AddListener(OnPausePressed);
 
             // You can subscribe to more events here as needed
-            Debug.Log($"[GameManager] Event subscriptions complete. OnEscapePressed listener count: {Events.OnEscapePressed.GetPersistentEventCount()}");
+            Debug.Log("[GameManager] Event subscriptions complete");
+
+            // Note: GetPersistentEventCount() only returns Inspector-assigned listeners, not runtime ones
+            // We've added runtime listeners, so this will show 0 but that's expected
+            Debug.Log($"[GameManager] Persistent listener count: {Events.OnEscapePressed.GetPersistentEventCount()} (runtime listeners not included in this count)");
         }
 
         /// <summary>
