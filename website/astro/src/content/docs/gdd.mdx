@@ -35,6 +35,36 @@ In Bug Wars, UniTask powers all asynchronous operations including scene loading,
 
 The performance benefits of UniTask are substantial - it avoids the heap allocations associated with coroutines and standard Tasks, operates faster than Unity's coroutine system, and provides better debugging support through proper stack traces. UniTask also includes powerful operators for working with Unity's async operations, time-based delays, and cancellation tokens, giving us fine-grained control over asynchronous workflows. This is particularly important for Bug Wars' gameplay systems where we need responsive, non-blocking operations for enemy spawning, animation blending, and networked events.
 
+### Cinemachine - Procedural Camera System
+
+[Cinemachine Documentation](https://docs.unity3d.com/Packages/com.unity.cinemachine@latest)
+
+Cinemachine is Unity's powerful procedural camera system that enables AAA-quality camera behaviors without complex manual scripting. Instead of writing custom camera controllers with follow logic, damping, and collision detection, Cinemachine provides a component-based approach where cameras are assembled from modular building blocks called Virtual Cameras. This shifts camera work from programming to design, allowing rapid iteration on camera feel and behavior.
+
+In Bug Wars, Cinemachine serves as the foundation for all camera systems, providing dynamic camera control that responds to gameplay situations. The framework's Virtual Camera concept allows us to define multiple camera perspectives (combat camera, boss fight camera, death camera) and seamlessly blend between them based on game state. Each Virtual Camera can have its own priority, follow target, look-at target, and behavioral components, making it trivial to create context-sensitive camera work that enhances the player experience.
+
+#### Key Features for Bug Wars:
+
+- **Dynamic Follow & Framing**: Cinemachine's Body components (Transposer, Framing Transposer, Orbital Transposer) provide sophisticated player-following logic with customizable damping, dead zones, and screen composition rules. This ensures the player character stays optimally framed even during intense combat sequences.
+
+- **Smart Aim Handling**: The Aim components manage where the camera looks, supporting hard look-at, composer-based framing, POV rotation, and more. For Bug Wars' combat scenarios, this allows the camera to intelligently frame both the player and approaching enemy threats.
+
+- **Procedural Noise & Shake**: The CinemachineBasicMultiChannelPerlin component enables realistic camera shake for impacts, explosions, and damage feedback. Unlike manual shake implementations, Cinemachine's procedural noise is based on Perlin noise profiles, providing organic, non-repetitive camera movement that can be tuned with frequency and amplitude curves.
+
+- **Collision Detection**: Cinemachine's Collider extension automatically handles camera collision with environment geometry, preventing the camera from clipping through walls or obstacles. This is crucial for Bug Wars' varied combat arenas where maintaining visibility is essential.
+
+- **State-Driven Cameras**: Integration with Unity's Timeline and animation system allows camera cuts and blends to be choreographed alongside gameplay events. Boss introductions, player death sequences, and victory celebrations can all leverage cinematic camera work.
+
+- **Input-Responsive Systems**: Cinemachine's input axes support player-controlled camera rotation, zoom, and positioning, enabling features like manual camera control during strategic moments or targeting specific enemies.
+
+#### Performance & Architecture Benefits:
+
+Cinemachine is designed for zero-garbage-collection camera updates, running all calculations on the same frame timeline as Unity's camera system. The framework uses a priority-based blending system where multiple Virtual Cameras can coexist, with the highest-priority camera taking control. Transitions between cameras use sophisticated blending algorithms that can interpolate position, rotation, and lens properties over time, creating smooth cinematic transitions without writing custom interpolation code.
+
+For Bug Wars' architecture, Cinemachine integrates seamlessly with our existing VContainer and UniTask infrastructure. Virtual Cameras can be activated/deactivated in response to EventManager triggers (player death, boss spawn, wave completion), and camera transitions can be awaited using UniTask for precise sequencing. The component-based design also supports dependency injection - custom Cinemachine extensions can receive injected dependencies for accessing game state when making camera decisions.
+
+The separation between Virtual Cameras (what you want to shoot) and the Brain (how to execute the shot) provides excellent testability and designer iteration. Camera behaviors can be tuned in the editor without code changes, and multiple camera setups can be A/B tested simply by adjusting priorities. This design philosophy aligns perfectly with Bug Wars' emphasis on clean architecture and rapid iteration.
+
 ## Core Architecture
 
 ### GameLifetimeScope
@@ -179,6 +209,52 @@ Each bug type will feature unique characteristics:
 - **Beetles**: Heavily armored tanks requiring strategic weak point targeting
 - **Boss Enemies**: Multi-phase encounters with unique mechanics
 
+### Camera System
+
+Bug Wars employs a sophisticated camera system powered by Cinemachine to create dynamic, responsive camera behaviors that enhance gameplay clarity and cinematic presentation. The camera is not just a passive observer but an active participant in the game's feel and player experience.
+
+#### Virtual Camera Setup:
+
+**Main Combat Camera (Priority: 10)**
+- **Body**: Framing Transposer - Keeps player character optimally positioned in frame with soft zone dead zones for natural movement
+- **Aim**: Composer - Dynamically frames the player and nearby threats, adjusting composition based on combat intensity
+- **Extensions**: Collision detection to prevent camera clipping, subtle procedural noise for organic feel
+- **Use Case**: Default camera during standard gameplay and combat encounters
+
+**Boss Encounter Camera (Priority: 20)**
+- **Body**: Transposer with wider framing offset to show both player and boss simultaneously
+- **Aim**: Group Composer - Frames both player and boss within the viewport for dramatic confrontations
+- **Extensions**: Impulse listener for impact-based camera shake during boss attacks
+- **Activation**: Triggered by EventManager's boss spawn events, automatically takes priority over combat camera
+
+**Death Camera (Priority: 30)**
+- **Body**: Hard Lock to player position with slow dolly-out effect
+- **Aim**: POV with timed rotation to create dramatic final moments
+- **Activation**: Triggered on player death event, highest priority for cinematic presentation
+
+**Cutscene/Scripted Cameras (Priority: 100)**
+- **Body & Aim**: Varies per sequence, controlled via Timeline integration
+- **Use Case**: Wave completion celebrations, boss introductions, tutorial moments
+
+#### Dynamic Camera Behaviors:
+
+- **Combat Intensity Response**: Camera field of view (FOV) and damping values adjust based on enemy proximity and count - tighter framing during one-on-one encounters, wider framing during swarm situations
+- **Impact Feedback**: Cinemachine Impulse System triggers procedural shake on damage events, with magnitude scaled to damage amount
+- **Smooth Transitions**: Automatic blending between Virtual Cameras using ease-in-out curves for seamless priority changes
+- **Look-Ahead**: Camera anticipates player movement direction, positioning the frame slightly ahead for better visibility
+- **Vertical Reframing**: Automatic camera tilt adjustments when facing flying enemies (wasps) or ground-based threats (beetles)
+
+#### Integration with Game Systems:
+
+The camera system integrates with Bug Wars' event-driven architecture through EventManager subscriptions:
+- `OnGamePaused` → Reduces camera update rate and locks position
+- `OnGameResumed` → Restores normal camera behavior
+- `OnPlayerHealthChanged` → Triggers intensity-based FOV changes and trauma shake
+- `OnPlayerDied` → Activates death camera sequence
+- Boss-related events → Switch to specialized boss camera rigs
+
+Camera state changes can be sequenced with UniTask for precise timing - for example, awaiting a camera blend completion before starting a boss fight introduction or victory celebration. Custom Cinemachine extensions can receive VContainer-injected dependencies to access GameManager state, enabling camera behaviors that respond to game conditions.
+
 ---
 
 ## Technical Roadmap
@@ -186,6 +262,9 @@ Each bug type will feature unique characteristics:
 <CardGrid stagger>
 	<Card title="Physics & Movement" icon="rocket">
 		Implement responsive character controller with custom physics tuning for tight, responsive gameplay feel.
+	</Card>
+	<Card title="Cinemachine Camera System" icon="star">
+		Configure Virtual Camera rigs for combat, boss encounters, and cinematic sequences with dynamic blending and procedural behaviors.
 	</Card>
 	<Card title="AI Behavior Trees" icon="puzzle">
 		Develop modular AI system using behavior trees for complex enemy decision-making and state management.
@@ -237,9 +316,10 @@ Each bug type will feature unique characteristics:
 
 - [VContainer Documentation](https://vcontainer.hadashia.com/)
 - [UniTask Documentation](https://github.com/Cysharp/UniTask)
+- [Cinemachine Documentation](https://docs.unity3d.com/Packages/com.unity.cinemachine@latest)
 - [Unity UI Toolkit Guide](https://docs.unity3d.com/Manual/UIElements.html)
 - [Unity Input System](https://docs.unity3d.com/Packages/com.unity.inputsystem@latest)
 
 ---
 
-*Last Updated: 2025-11-10*
+*Last Updated: 2025-11-11*
