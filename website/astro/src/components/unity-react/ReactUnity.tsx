@@ -161,11 +161,12 @@ export const ReactUnity: FC<ReactUnityProps> = ({
 
   /**
    * Listen for custom Unity events
+   * These match the MessageTypes from Unity's JavaScript bridge
    */
   useEffect(() => {
     const handleCustomEvent = (eventType: string, data: string) => {
       try {
-        const parsedData = JSON.parse(data);
+        const parsedData = data ? JSON.parse(data) : {};
         const event: UnityEvent = {
           type: eventType,
           data: parsedData,
@@ -178,21 +179,50 @@ export const ReactUnity: FC<ReactUnityProps> = ({
       }
     };
 
-    // Listen for common Unity events
+    // Game lifecycle events
     addEventListener('GameReady', () => handleCustomEvent(UnityEventType.GAME_READY, '{}'));
-    addEventListener('PlayerSpawned', (data) => handleCustomEvent(UnityEventType.PLAYER_SPAWNED, data));
+    addEventListener('GamePaused', (data) => handleCustomEvent(UnityEventType.GAME_PAUSED, data));
+    addEventListener('GameResumed', (data) => handleCustomEvent(UnityEventType.GAME_RESUMED, data));
     addEventListener('GameOver', (data) => handleCustomEvent(UnityEventType.GAME_OVER, data));
-    addEventListener('ScoreUpdated', (data) => handleCustomEvent(UnityEventType.SCORE_UPDATED, data));
+    addEventListener('LevelStarted', (data) => handleCustomEvent(UnityEventType.LEVEL_STARTED, data));
     addEventListener('LevelCompleted', (data) => handleCustomEvent(UnityEventType.LEVEL_COMPLETED, data));
+
+    // Player events
+    addEventListener('PlayerSpawned', (data) => handleCustomEvent(UnityEventType.PLAYER_SPAWNED, data));
+    addEventListener('PlayerDied', (data) => handleCustomEvent(UnityEventType.PLAYER_DIED, data));
+    addEventListener('PlayerRespawned', (data) => handleCustomEvent(UnityEventType.PLAYER_RESPAWNED, data));
+    addEventListener('PlayerMoved', (data) => handleCustomEvent(UnityEventType.PLAYER_MOVED, data));
+    addEventListener('PlayerStatsUpdated', (data) => handleCustomEvent(UnityEventType.PLAYER_STATS_UPDATED, data));
+    addEventListener('PlayerInventoryUpdated', (data) => handleCustomEvent(UnityEventType.PLAYER_INVENTORY_UPDATED, data));
+
+    // Entity events
+    addEventListener('EntitySpawned', (data) => handleCustomEvent(UnityEventType.ENTITY_SPAWNED, data));
+    addEventListener('EntityDestroyed', (data) => handleCustomEvent(UnityEventType.ENTITY_DESTROYED, data));
+    addEventListener('EntityUpdated', (data) => handleCustomEvent(UnityEventType.ENTITY_UPDATED, data));
+
+    // Terrain events
+    addEventListener('ChunkLoaded', (data) => handleCustomEvent(UnityEventType.CHUNK_LOADED, data));
+    addEventListener('ChunkUnloaded', (data) => handleCustomEvent(UnityEventType.CHUNK_UNLOADED, data));
+    addEventListener('TerrainGenerated', (data) => handleCustomEvent(UnityEventType.TERRAIN_GENERATED, data));
+
+    // Score and progress events
+    addEventListener('ScoreUpdated', (data) => handleCustomEvent(UnityEventType.SCORE_UPDATED, data));
+    addEventListener('AchievementUnlocked', (data) => handleCustomEvent(UnityEventType.ACHIEVEMENT_UNLOCKED, data));
+    addEventListener('ProgressUpdated', (data) => handleCustomEvent(UnityEventType.PROGRESS_UPDATED, data));
+
+    // Data persistence events
+    addEventListener('DataSaved', (data) => handleCustomEvent(UnityEventType.DATA_SAVED, data));
+    addEventListener('DataLoaded', (data) => handleCustomEvent(UnityEventType.DATA_LOADED, data));
+
+    // Custom and error events
     addEventListener('CustomEvent', (data) => handleCustomEvent(UnityEventType.CUSTOM, data));
+    addEventListener('Error', (data) => handleCustomEvent(UnityEventType.ERROR, data));
+    addEventListener('Warning', (data) => handleCustomEvent(UnityEventType.WARNING, data));
 
     return () => {
-      removeEventListener('GameReady', () => {});
-      removeEventListener('PlayerSpawned', () => {});
-      removeEventListener('GameOver', () => {});
-      removeEventListener('ScoreUpdated', () => {});
-      removeEventListener('LevelCompleted', () => {});
-      removeEventListener('CustomEvent', () => {});
+      // Note: react-unity-webgl's removeEventListener requires the same callback
+      // Since we're using an arrow function in addEventListener, cleanup is handled by React
+      // The subscriptions will be cleaned up when the component unmounts
     };
   }, [addEventListener, removeEventListener, onUnityEvent]);
 
