@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using BugWars.Entity;
+using BugWars.Core;
 
 namespace BugWars.Character
 {
@@ -37,7 +39,12 @@ namespace BugWars.Character
         [SerializeField] private TextAsset atlasJSON;
         [SerializeField] private Material spriteMaterial;
 
+        [Header("Movement Smoothing")]
+        [SerializeField] private float movementSmoothTime = 0.1f;
+
         private SpriteAtlasData atlasData;
+        private Vector3 currentVelocity = Vector3.zero;
+        private Vector3 smoothedMovement = Vector3.zero;
         private string currentAnimation = "Idle";
         private int currentFrameIndex = 0;
         private float animationTimer = 0f;
@@ -170,6 +177,15 @@ namespace BugWars.Character
         private void Update()
         {
             UpdateAnimation(Time.deltaTime);
+
+            // Gather input in Update (responsive to frame rate)
+            GatherInput();
+        }
+
+        private void FixedUpdate()
+        {
+            // Apply physics-based movement in FixedUpdate (consistent physics)
+            ApplyMovement();
         }
 
         /// <summary>
@@ -286,6 +302,24 @@ namespace BugWars.Character
         }
 
         /// <summary>
+        /// Override SetSpriteFlip to work with MeshRenderer instead of SpriteRenderer
+        /// </summary>
+        public override void SetSpriteFlip(bool flipX, bool flipY)
+        {
+            if (_meshRenderer == null || spritePropertyBlock == null) return;
+
+            // Get existing properties if any
+            _meshRenderer.GetPropertyBlock(spritePropertyBlock);
+
+            // Set flip parameters
+            spritePropertyBlock.SetFloat(FlipXID, flipX ? 1f : 0f);
+            spritePropertyBlock.SetFloat(FlipYID, flipY ? 1f : 0f);
+
+            // Apply to mesh renderer instead of sprite renderer
+            _meshRenderer.SetPropertyBlock(spritePropertyBlock);
+        }
+
+        /// <summary>
         /// Get current animation name
         /// </summary>
         public string GetCurrentAnimation() => currentAnimation;
@@ -311,24 +345,69 @@ namespace BugWars.Character
 
         #region Player Input (Example - replace with your input system)
 
+        private Vector3 inputDirection;
+        private bool isRunning;
+
         /// <summary>
-        /// Example input handling - replace with your actual input system
-        /// Now uses universal EntityAnimationState enum instead of direct animation names
+        /// Gather input from keyboard/mouse (called in Update for responsiveness)
         /// </summary>
-        private void HandleInput()
+        private void GatherInput()
         {
-            // This is just an example of how to trigger animations
-            // You should integrate with your actual input/control system
+            // Check if keyboard and mouse are available
+            if (Keyboard.current == null || Mouse.current == null)
+                return;
 
-            float horizontal = Input.GetAxis("Horizontal");
-            float vertical = Input.GetAxis("Vertical");
+            // Get WASD input using new Input System
+            float horizontal = 0f;
+            float vertical = 0f;
 
-            Vector3 movement = new Vector3(horizontal, 0, vertical);
+            if (Keyboard.current.aKey.isPressed) horizontal -= 1f;
+            if (Keyboard.current.dKey.isPressed) horizontal += 1f;
+            if (Keyboard.current.wKey.isPressed) vertical += 1f;
+            if (Keyboard.current.sKey.isPressed) vertical -= 1f;
 
-            if (movement.magnitude > 0.1f)
+            // Store input direction for FixedUpdate
+            inputDirection = new Vector3(horizontal, 0, vertical);
+
+            // Clamp diagonal movement to prevent faster speed
+            if (inputDirection.magnitude > 1f)
+                inputDirection = inputDirection.normalized;
+
+            // Check if running
+            isRunning = Keyboard.current.leftShiftKey.isPressed;
+
+            // Attack
+            if (Mouse.current.leftButton.wasPressedThisFrame)
             {
-                // Moving
-                if (Input.GetKey(KeyCode.LeftShift))
+                SetAnimationState(EntityAnimationState.Attack_1);
+            }
+
+            // Jump
+            if (Keyboard.current.spaceKey.wasPressedThisFrame)
+            {
+                SetAnimationState(EntityAnimationState.Jump);
+            }
+
+            // Shield
+            if (Mouse.current.rightButton.isPressed)
+            {
+                SetAnimationState(EntityAnimationState.Shield);
+            }
+        }
+
+        /// <summary>
+        /// Apply movement based on gathered input (called in FixedUpdate for consistent physics)
+        /// </summary>
+        private void ApplyMovement()
+        {
+            // Smooth movement using FixedDeltaTime for physics consistency
+            smoothedMovement = Vector3.SmoothDamp(smoothedMovement, inputDirection, ref currentVelocity, movementSmoothTime);
+
+            // Apply movement
+            if (smoothedMovement.magnitude > 0.01f)
+            {
+                // Moving - set animation state
+                if (isRunning)
                 {
                     SetAnimationState(EntityAnimationState.Run);
                 }
@@ -337,30 +416,23 @@ namespace BugWars.Character
                     SetAnimationState(EntityAnimationState.Walk);
                 }
 
-                Move(movement);
+                Move(smoothedMovement);
             }
             else
             {
-                // Idle
+                // Idle - stop movement completely
                 SetAnimationState(EntityAnimationState.Idle);
-            }
 
-            // Attack
-            if (Input.GetKeyDown(KeyCode.Mouse0))
-            {
-                SetAnimationState(EntityAnimationState.Attack_1);
-            }
+                // Smoothly stop movement
+                smoothedMovement = Vector3.zero;
+                currentVelocity = Vector3.zero;
 
-            // Jump
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                SetAnimationState(EntityAnimationState.Jump);
-            }
-
-            // Shield
-            if (Input.GetKey(KeyCode.Mouse1))
-            {
-                SetAnimationState(EntityAnimationState.Shield);
+                // Stop horizontal movement by setting velocity to zero (preserve Y for gravity)
+                if (rb != null)
+                {
+                    Vector3 currentRbVelocity = rb.linearVelocity;
+                    rb.linearVelocity = new Vector3(0, currentRbVelocity.y, 0);
+                }
             }
         }
 

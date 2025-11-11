@@ -56,8 +56,8 @@ namespace BugWars.Entity
         // Sprite flipping
         protected int facingDirection = 1; // 1 = right, -1 = left
         protected MaterialPropertyBlock spritePropertyBlock;
-        private static readonly int FlipXID = Shader.PropertyToID("_FlipX");
-        private static readonly int FlipYID = Shader.PropertyToID("_FlipY");
+        protected static readonly int FlipXID = Shader.PropertyToID("_FlipX");
+        protected static readonly int FlipYID = Shader.PropertyToID("_FlipY");
 
         protected virtual void Awake()
         {
@@ -106,6 +106,9 @@ namespace BugWars.Entity
                 rb.freezeRotation = true; // Prevent physics rotation interfering with billboard
                 rb.useGravity = true;
                 rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+                rb.linearDamping = 0f; // No drag - we handle stopping in code
+                rb.angularDamping = 0.05f; // Minimal angular drag
+                rb.interpolation = RigidbodyInterpolation.Interpolate; // Smooth movement
             }
 
             // Auto-find sprite renderer if not assigned
@@ -205,12 +208,15 @@ namespace BugWars.Entity
 
         /// <summary>
         /// Move entity using physics
+        /// Respects input magnitude for smooth acceleration (e.g., from Vector3.SmoothDamp)
         /// </summary>
         protected virtual void Move(Vector3 direction)
         {
             if (rb == null || !isAlive) return;
 
-            Vector3 movement = direction.normalized * moveSpeed;
+            // Use direction magnitude directly (don't normalize) to preserve smoothing
+            // This allows Vector3.SmoothDamp to gradually ramp up from 0 to 1
+            Vector3 movement = direction * moveSpeed;
             movement.y = rb.linearVelocity.y; // Preserve vertical velocity for gravity
             rb.linearVelocity = movement;
 
@@ -278,7 +284,7 @@ namespace BugWars.Entity
         /// </summary>
         protected virtual void InitializeSpriteFlip()
         {
-            SetSpriteFlip(false, false); // Start facing right, not flipped
+            SetSpriteFlip(false, false); // Start facing left (no flip = sprite default orientation)
         }
 
         /// <summary>
@@ -310,16 +316,16 @@ namespace BugWars.Entity
 
                     float dotRight = Vector3.Dot(horizontal.normalized, cameraRight);
 
-                    // Flip if moving left (negative dot product with camera right)
+                    // Flip if moving right (positive dot product with camera right)
                     if (dotRight < -0.1f && facingDirection != -1)
                     {
                         facingDirection = -1;
-                        SetSpriteFlip(true, false);
+                        SetSpriteFlip(false, false); // Moving left - no flip
                     }
                     else if (dotRight > 0.1f && facingDirection != 1)
                     {
                         facingDirection = 1;
-                        SetSpriteFlip(false, false);
+                        SetSpriteFlip(true, false); // Moving right - flip
                     }
                 }
                 else
@@ -328,12 +334,12 @@ namespace BugWars.Entity
                     if (horizontal.x < -0.1f && facingDirection != -1)
                     {
                         facingDirection = -1;
-                        SetSpriteFlip(true, false);
+                        SetSpriteFlip(false, false); // Moving left - no flip
                     }
                     else if (horizontal.x > 0.1f && facingDirection != 1)
                     {
                         facingDirection = 1;
-                        SetSpriteFlip(false, false);
+                        SetSpriteFlip(true, false); // Moving right - flip
                     }
                 }
             }

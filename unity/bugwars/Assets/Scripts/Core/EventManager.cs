@@ -79,6 +79,10 @@ namespace BugWars.Core
         // UI Events
         public UnityEvent OnMainMenuOpened = new UnityEvent();
         public UnityEvent OnMainMenuClosed = new UnityEvent();
+
+        // Camera Events
+        public UnityEvent<CameraFollowConfig> OnCameraFollowRequested = new UnityEvent<CameraFollowConfig>();
+        public UnityEvent<string> OnCameraStopFollowRequested = new UnityEvent<string>();
         #endregion
 
         #region Unity Lifecycle
@@ -104,6 +108,8 @@ namespace BugWars.Core
             OnPlayerDied.RemoveAllListeners();
             OnMainMenuOpened.RemoveAllListeners();
             OnMainMenuClosed.RemoveAllListeners();
+            OnCameraFollowRequested.RemoveAllListeners();
+            OnCameraStopFollowRequested.RemoveAllListeners();
 
             // Clean up generic events
             _genericEvents.Clear();
@@ -173,6 +179,27 @@ namespace BugWars.Core
         public void TriggerMainMenuClosed()
         {
             OnMainMenuClosed?.Invoke();
+        }
+
+        /// <summary>
+        /// Request camera to follow a target
+        /// </summary>
+        public void RequestCameraFollow(CameraFollowConfig config)
+        {
+            if (config.target == null)
+            {
+                Debug.LogWarning("[EventManager] Cannot request camera follow - target is null");
+                return;
+            }
+            OnCameraFollowRequested?.Invoke(config);
+        }
+
+        /// <summary>
+        /// Request camera to stop following
+        /// </summary>
+        public void RequestCameraStopFollow(string cameraName = null)
+        {
+            OnCameraStopFollowRequested?.Invoke(cameraName);
         }
         #endregion
 

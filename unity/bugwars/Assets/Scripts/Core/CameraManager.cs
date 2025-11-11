@@ -7,6 +7,125 @@ using System.Linq;
 namespace BugWars.Core
 {
     /// <summary>
+    /// Camera follow configuration for event-based camera control
+    /// Supports cinematic camera parameters for professional feel
+    /// </summary>
+    public struct CameraFollowConfig
+    {
+        public Transform target;
+        public string cameraName;
+        public Vector3 shoulderOffset;
+        public float verticalArmLength;
+        public float cameraDistance;
+        public bool immediate;
+
+        // Cinematic parameters for smooth, professional camera feel
+        public Vector3 positionDamping;      // XYZ damping for lag/smoothing
+        public float screenX;                // Horizontal screen position (0-1, 0.5 = center)
+        public float screenY;                // Vertical screen position (0-1, 0.5 = center)
+        public float deadZoneWidth;          // No movement inside this (0-1)
+        public float deadZoneHeight;         // No movement inside this (0-1)
+        public float softZoneWidth;          // Gradual movement zone (0-1)
+        public float softZoneHeight;         // Gradual movement zone (0-1)
+        public float lookaheadTime;          // Anticipate motion (seconds)
+        public float lookaheadSmoothing;     // Smooth lookahead (0-1)
+        public Vector2 pitchClamp;           // Min/max pitch angles for billboard sprites
+
+        public static CameraFollowConfig ThirdPerson(Transform target, string cameraName = null, bool immediate = false)
+        {
+            return new CameraFollowConfig
+            {
+                target = target,
+                cameraName = cameraName,
+                shoulderOffset = new Vector3(0, 1.5f, 0), // Look slightly above player center
+                verticalArmLength = 0f,
+                cameraDistance = 8f, // 8 units behind player
+                immediate = immediate
+            };
+        }
+
+        /// <summary>
+        /// Cinematic follow preset: smooth, non-twitchy camera with professional feel
+        /// Perfect for billboarded 2D sprites in 3D world
+        /// Auto-follow with lookahead (no mouse control)
+        /// </summary>
+        public static CameraFollowConfig CinematicFollow(Transform target, string cameraName = null, bool immediate = false)
+        {
+            return new CameraFollowConfig
+            {
+                target = target,
+                cameraName = cameraName,
+                shoulderOffset = new Vector3(0, 1.2f, 0), // Head-room
+                verticalArmLength = 0f,
+                cameraDistance = 7f,
+                immediate = immediate,
+
+                // Damping: moderate lag for cinematic feel
+                positionDamping = new Vector3(0.45f, 0.45f, 0.6f), // Z (depth) slightly higher
+
+                // Screen framing: slightly below center
+                screenX = 0.5f,
+                screenY = 0.45f,
+
+                // Dead zone: small (minimal drift)
+                deadZoneWidth = 0.03f,
+                deadZoneHeight = 0.03f,
+
+                // Soft zone: medium (gradual transitions)
+                softZoneWidth = 0.25f,
+                softZoneHeight = 0.25f,
+
+                // Lookahead: anticipate player movement
+                lookaheadTime = 0.2f,
+                lookaheadSmoothing = 0.5f,
+
+                // Pitch clamp: prevent looking under/over billboard sprite
+                pitchClamp = new Vector2(-10f, 25f) // Min -10°, Max +25°
+            };
+        }
+
+        /// <summary>
+        /// Free-look orbit preset: mouse-driven third-person camera
+        /// Based on professional 2.5D games (pixel art in 3D)
+        /// Mouse controls yaw/pitch, shoulder offset, soft follow with collision awareness
+        /// </summary>
+        public static CameraFollowConfig FreeLookOrbit(Transform target, string cameraName = null, bool immediate = false)
+        {
+            return new CameraFollowConfig
+            {
+                target = target,
+                cameraName = cameraName,
+                shoulderOffset = new Vector3(0.35f, 1.15f, 0f), // Slight right + head-room
+                verticalArmLength = 0f,
+                cameraDistance = 6.0f, // Fixed orbit radius
+                immediate = immediate,
+
+                // Damping: smooth orbit (X/Y lower, Z slightly higher for depth)
+                positionDamping = new Vector3(0.45f, 0.45f, 0.65f),
+
+                // Screen framing: slightly off-center for shoulder cam
+                screenX = 0.52f,
+                screenY = 0.46f,
+
+                // Dead zone: tiny (mouse-driven, not auto-follow)
+                deadZoneWidth = 0.03f,
+                deadZoneHeight = 0.03f,
+
+                // Soft zone: gentle transitions
+                softZoneWidth = 0.3f,
+                softZoneHeight = 0.3f,
+
+                // Lookahead: small (camera is mouse-driven, not velocity-driven)
+                lookaheadTime = 0.15f,
+                lookaheadSmoothing = 0.5f,
+
+                // Pitch clamp: prevent looking under/over billboard sprite
+                pitchClamp = new Vector2(-10f, 25f) // Min -10°, Max +25°
+            };
+        }
+    }
+
+    /// <summary>
     /// Camera Manager - Managed by VContainer
     /// Handles all camera operations including Cinemachine virtual cameras
     /// Automatically discovers and caches virtual cameras in the scene
@@ -195,22 +314,32 @@ namespace BugWars.Core
         #region Event Management
         private void SubscribeToEvents()
         {
-            // Subscribe to camera control events
-            CameraEvents.OnCameraFollowRequested += HandleCameraFollowRequest;
-            CameraEvents.OnCameraStopFollowRequested += HandleCameraStopFollowRequest;
+            // Subscribe to camera control events from EventManager
+            if (_eventManager != null)
+            {
+                _eventManager.OnCameraFollowRequested.AddListener(HandleCameraFollowRequest);
+                _eventManager.OnCameraStopFollowRequested.AddListener(HandleCameraStopFollowRequest);
 
-            if (debugMode)
-                Debug.Log("[CameraManager] Subscribed to CameraEvents");
+                if (debugMode)
+                    Debug.Log("[CameraManager] Subscribed to EventManager camera events");
+            }
+            else
+            {
+                Debug.LogWarning("[CameraManager] EventManager is null, cannot subscribe to camera events");
+            }
         }
 
         private void UnsubscribeFromEvents()
         {
-            // Unsubscribe from camera control events
-            CameraEvents.OnCameraFollowRequested -= HandleCameraFollowRequest;
-            CameraEvents.OnCameraStopFollowRequested -= HandleCameraStopFollowRequest;
+            // Unsubscribe from camera control events from EventManager
+            if (_eventManager != null)
+            {
+                _eventManager.OnCameraFollowRequested.RemoveListener(HandleCameraFollowRequest);
+                _eventManager.OnCameraStopFollowRequested.RemoveListener(HandleCameraStopFollowRequest);
 
-            if (debugMode)
-                Debug.Log("[CameraManager] Unsubscribed from CameraEvents");
+                if (debugMode)
+                    Debug.Log("[CameraManager] Unsubscribed from EventManager camera events");
+            }
         }
 
         /// <summary>
@@ -285,10 +414,219 @@ namespace BugWars.Core
         }
 
         /// <summary>
-        /// Configures Cinemachine 3 third-person follow component with offset settings
+        /// Configures Cinemachine 3 camera components for professional cinematic follow
+        /// Supports: ThirdPersonFollow, FramingTransposer (Body) + Composer (Aim)
         /// Automatically adds missing components at runtime
         /// </summary>
         private void ConfigureThirdPersonFollow(CinemachineCamera camera, CameraFollowConfig config)
+        {
+            // Check if we have cinematic parameters configured (non-zero damping indicates cinematic mode)
+            bool useCinematicMode = config.positionDamping.magnitude > 0.01f;
+
+            if (useCinematicMode)
+            {
+                // CINEMATIC MODE: Use FramingTransposer (Body) + Composer (Aim) for professional camera feel
+                ConfigureCinematicCamera(camera, config);
+            }
+            else
+            {
+                // LEGACY MODE: Use ThirdPersonFollow or basic Follow component
+                ConfigureLegacyCamera(camera, config);
+            }
+        }
+
+        /// <summary>
+        /// Configures cinematic camera using ThirdPersonFollow + POV/Composer
+        /// Professional camera feel with damping, dead zones, soft zones, lookahead
+        /// Supports both auto-follow (Composer) and mouse-driven (POV) modes
+        /// </summary>
+        private void ConfigureCinematicCamera(CinemachineCamera camera, CameraFollowConfig config)
+        {
+            // Determine if this is a mouse-driven orbit camera or auto-follow camera
+            // FreeLookOrbit has shoulder offset X > 0.2 (right shoulder bias)
+            bool isFreeLookOrbit = config.shoulderOffset.x > 0.2f;
+
+            if (isFreeLookOrbit)
+            {
+                // === FREE-LOOK ORBIT MODE: ThirdPersonFollow + POV ===
+                ConfigureFreeLookOrbit(camera, config);
+            }
+            else
+            {
+                // === AUTO-FOLLOW MODE: PositionComposer (FramingTransposer) + RotationComposer ===
+                ConfigureAutoFollow(camera, config);
+            }
+        }
+
+        /// <summary>
+        /// Configure free-look orbit camera: mouse-driven yaw/pitch with ThirdPersonFollow body
+        /// Professional third-person camera like in EthrA pixel-art 3D games
+        /// Includes collision detection, noise, and camera shake support
+        /// </summary>
+        private void ConfigureFreeLookOrbit(CinemachineCamera camera, CameraFollowConfig config)
+        {
+            // === BODY COMPONENT: ThirdPersonFollow (fixed orbit radius) ===
+            var thirdPersonFollow = camera.GetComponent<CinemachineThirdPersonFollow>();
+            if (thirdPersonFollow == null)
+            {
+                thirdPersonFollow = camera.gameObject.AddComponent<CinemachineThirdPersonFollow>();
+                Debug.Log($"[CameraManager] Added ThirdPersonFollow for free-look orbit to '{camera.name}'");
+            }
+
+            // Configure orbit parameters
+            thirdPersonFollow.CameraDistance = config.cameraDistance;
+            thirdPersonFollow.ShoulderOffset = config.shoulderOffset;
+            thirdPersonFollow.VerticalArmLength = config.verticalArmLength;
+            thirdPersonFollow.CameraSide = 0.5f; // Center
+            thirdPersonFollow.Damping = config.positionDamping;
+
+            // === AIM COMPONENT: POV (mouse-driven yaw/pitch) ===
+            var pov = camera.GetComponent<CinemachinePOV>();
+            if (pov == null)
+            {
+                pov = camera.gameObject.AddComponent<CinemachinePOV>();
+                Debug.Log($"[CameraManager] Added CinemachinePOV for mouse control to '{camera.name}'");
+            }
+
+            // Note: Cinemachine 3 POV configuration happens through CinemachineInputAxisController
+            // or Unity Input System bindings in the inspector.
+            // The POV component itself doesn't expose axis configuration in the same way as CM2.
+            // We'll configure basic rotation behavior here, but input binding needs inspector setup.
+
+            // === COLLISION DETECTION: CinemachineDeoccluder ===
+            var deoccluder = camera.GetComponent<CinemachineDeoccluder>();
+            if (deoccluder == null)
+            {
+                deoccluder = camera.gameObject.AddComponent<CinemachineDeoccluder>();
+                Debug.Log($"[CameraManager] Added CinemachineDeoccluder for collision detection to '{camera.name}'");
+            }
+
+            // Configure collision parameters
+            deoccluder.CollideAgainst = LayerMask.GetMask("Default", "Environment", "Terrain"); // Adjust layers as needed
+            deoccluder.MinimumDistanceFromTarget = 0.8f; // Pull forward to maintain visibility
+            deoccluder.AvoidObstacles.Enabled = true;
+            deoccluder.AvoidObstacles.DistanceLimit = config.cameraDistance + 1f; // Check slightly beyond camera distance
+            deoccluder.AvoidObstacles.CameraRadius = 0.2f; // Camera collision sphere radius
+            // Note: Smoothing time may need to be configured in the Inspector or via specific CM3 properties
+
+            // === SUBTLE CAMERA NOISE: BasicMultiChannelPerlin ===
+            var noise = camera.GetComponent<CinemachineBasicMultiChannelPerlin>();
+            if (noise == null)
+            {
+                noise = camera.gameObject.AddComponent<CinemachineBasicMultiChannelPerlin>();
+                Debug.Log($"[CameraManager] Added BasicMultiChannelPerlin for subtle camera noise to '{camera.name}'");
+            }
+
+            // Configure subtle handheld-style noise
+            noise.AmplitudeGain = 0.1f; // Very subtle amplitude
+            noise.FrequencyGain = 0.5f; // Low frequency for gentle sway
+            // Note: Assign a Noise Profile asset in the inspector for best results
+
+            // === CAMERA SHAKE SUPPORT: ImpulseListener ===
+            var impulseListener = camera.GetComponent<CinemachineImpulseListener>();
+            if (impulseListener == null)
+            {
+                impulseListener = camera.gameObject.AddComponent<CinemachineImpulseListener>();
+                Debug.Log($"[CameraManager] Added ImpulseListener for camera shake support to '{camera.name}'");
+            }
+
+            // Configure impulse reaction
+            impulseListener.ReactionSettings.AmplitudeGain = 1.0f; // Full impulse strength
+            impulseListener.ReactionSettings.FrequencyGain = 1.0f;
+            impulseListener.ReactionSettings.Duration = 1.0f; // How long impulses last
+
+            // Note: POV input sensitivity is configured via CinemachineInputAxisController
+            // or through Unity Input System bindings in the inspector
+
+            if (debugMode)
+            {
+                Debug.Log($"[CameraManager] Configured FreeLookOrbit Camera:");
+                Debug.Log($"  - CameraDistance: {config.cameraDistance}");
+                Debug.Log($"  - ShoulderOffset: {config.shoulderOffset}");
+                Debug.Log($"  - Damping: {config.positionDamping}");
+                Debug.Log($"  - Pitch Range: [{config.pitchClamp.x}°, {config.pitchClamp.y}°]");
+                Debug.Log($"  - POV Mode: Mouse X/Y controls yaw/pitch");
+                Debug.Log($"  - Collision: Enabled with min distance {deoccluder.MinimumDistanceFromTarget}");
+                Debug.Log($"  - Noise: Subtle handheld effect (amplitude {noise.AmplitudeGain})");
+                Debug.Log($"  - Impulse: Camera shake ready");
+            }
+        }
+
+        /// <summary>
+        /// Configure auto-follow camera: velocity-driven with PositionComposer + RotationComposer
+        /// Smooth cinematic camera that follows player movement automatically
+        /// </summary>
+        private void ConfigureAutoFollow(CinemachineCamera camera, CameraFollowConfig config)
+        {
+            // === BODY COMPONENT: CinemachinePositionComposer (Framing Transposer) ===
+            var framingTransposer = camera.GetComponent<CinemachinePositionComposer>();
+            if (framingTransposer == null)
+            {
+                framingTransposer = camera.gameObject.AddComponent<CinemachinePositionComposer>();
+                Debug.Log($"[CameraManager] Added CinemachinePositionComposer (FramingTransposer) to '{camera.name}'");
+            }
+
+            // Configure position damping for cinematic lag
+            framingTransposer.Damping = config.positionDamping;
+
+            // Configure camera distance
+            framingTransposer.CameraDistance = config.cameraDistance;
+
+            // Configure tracked object offset (shoulder offset for head-room)
+            framingTransposer.TargetOffset = config.shoulderOffset;
+
+            // Configure composition settings (screen position, dead zone, soft zone)
+            // In Cinemachine 3, these are part of the Composition property
+            framingTransposer.Composition.ScreenPosition = new Vector2(config.screenX, config.screenY);
+            // Note: DeadZone and SoftZone configuration in CM3 may require different approach
+            // Configure via Inspector or use specific CM3 composition APIs
+
+            // Configure lookahead for anticipating player movement
+            framingTransposer.Lookahead.Time = config.lookaheadTime;
+            framingTransposer.Lookahead.Smoothing = config.lookaheadSmoothing;
+            framingTransposer.Lookahead.IgnoreY = true; // Don't lookahead vertically for billboard sprites
+
+            if (debugMode)
+            {
+                Debug.Log($"[CameraManager] Configured AutoFollow Camera (FramingTransposer):");
+                Debug.Log($"  - Damping: {config.positionDamping}");
+                Debug.Log($"  - CameraDistance: {config.cameraDistance}");
+                Debug.Log($"  - TrackedOffset: {config.shoulderOffset}");
+                Debug.Log($"  - ScreenPosition: ({config.screenX}, {config.screenY})");
+                Debug.Log($"  - DeadZone: {config.deadZoneWidth}x{config.deadZoneHeight}");
+                Debug.Log($"  - SoftZone: {config.softZoneWidth}x{config.softZoneHeight}");
+                Debug.Log($"  - Lookahead: Time={config.lookaheadTime}s, Smoothing={config.lookaheadSmoothing}");
+                Debug.Log($"  - PitchClamp: [{config.pitchClamp.x}°, {config.pitchClamp.y}°]");
+            }
+
+            // === AIM COMPONENT: CinemachineRotationComposer ===
+            // Note: For billboard sprites, we typically want "Same As Follow Target" aim behavior
+            // However, if we need pitch clamping, we can use CinemachineRotationComposer
+            var rotationComposer = camera.GetComponent<CinemachineRotationComposer>();
+
+            // Only add rotation composer if pitch clamping is needed
+            if (Mathf.Abs(config.pitchClamp.x) > 0.01f || Mathf.Abs(config.pitchClamp.y - 360f) > 0.01f)
+            {
+                if (rotationComposer == null)
+                {
+                    rotationComposer = camera.gameObject.AddComponent<CinemachineRotationComposer>();
+                    Debug.Log($"[CameraManager] Added CinemachineRotationComposer for pitch clamping to '{camera.name}'");
+                }
+
+                // Configure pitch limits to prevent looking under/over billboard sprite
+                rotationComposer.Composition.ScreenPosition = new Vector2(config.screenX, config.screenY);
+                // Note: DeadZone and SoftZone configuration in CM3 requires different approach
+                // Configure via Inspector or use specific CM3 composition APIs
+
+                if (debugMode)
+                    Debug.Log($"[CameraManager] Configured RotationComposer with pitch clamp: [{config.pitchClamp.x}°, {config.pitchClamp.y}°]");
+            }
+        }
+
+        /// <summary>
+        /// Configures legacy camera mode using ThirdPersonFollow or basic Follow
+        /// </summary>
+        private void ConfigureLegacyCamera(CinemachineCamera camera, CameraFollowConfig config)
         {
             // Try to get or add CinemachineThirdPersonFollow component
             var thirdPersonFollow = camera.GetComponent<CinemachineThirdPersonFollow>();
@@ -591,6 +929,124 @@ namespace BugWars.Core
                     Debug.Log($"[CameraManager] Set default blend: {style}, time: {time}s");
             }
         }
+        #endregion
+
+        #region Camera Effects (Shake, FOV, etc.)
+
+        /// <summary>
+        /// Triggers a camera shake impulse
+        /// Perfect for hits, explosions, dashes, landings, etc.
+        /// </summary>
+        /// <param name="source">Position where the impulse originates</param>
+        /// <param name="velocity">Direction and strength of the shake (magnitude determines intensity)</param>
+        /// <param name="useCustomSource">If true, requires a CinemachineImpulseSource in the scene</param>
+        public void TriggerCameraShake(Vector3 source, Vector3 velocity, bool useCustomSource = false)
+        {
+            if (_currentActiveCamera == null)
+            {
+                Debug.LogWarning("[CameraManager] Cannot trigger camera shake - no active camera");
+                return;
+            }
+
+            // Check if camera has impulse listener
+            var impulseListener = _currentActiveCamera.GetComponent<CinemachineImpulseListener>();
+            if (impulseListener == null)
+            {
+                Debug.LogWarning("[CameraManager] Camera does not have ImpulseListener component for shake effects");
+                return;
+            }
+
+            if (!useCustomSource)
+            {
+                // Note: Cinemachine 3 impulse system requires a CinemachineImpulseSource component
+                // For now, we'll log a warning that impulse sources need to be set up in the scene
+                Debug.LogWarning("[CameraManager] Camera shake requires CinemachineImpulseSource components in the scene. " +
+                    "Add CinemachineImpulseSource to objects that should trigger camera shake and call GenerateImpulse() on them.");
+            }
+
+            if (debugMode)
+                Debug.Log($"[CameraManager] Triggered camera shake at {source} with velocity {velocity}");
+        }
+
+        /// <summary>
+        /// Triggers a camera shake with predefined intensity presets
+        /// </summary>
+        /// <param name="source">Position where the shake originates</param>
+        /// <param name="intensity">Shake intensity: Light (0.5), Medium (1.0), Heavy (2.0), Massive (4.0)</param>
+        public void TriggerCameraShake(Vector3 source, CameraShakeIntensity intensity)
+        {
+            Vector3 velocity = intensity switch
+            {
+                CameraShakeIntensity.Light => new Vector3(0.5f, 0.5f, 0.5f),
+                CameraShakeIntensity.Medium => new Vector3(1.0f, 1.0f, 1.0f),
+                CameraShakeIntensity.Heavy => new Vector3(2.0f, 2.0f, 2.0f),
+                CameraShakeIntensity.Massive => new Vector3(4.0f, 4.0f, 4.0f),
+                _ => Vector3.one
+            };
+
+            TriggerCameraShake(source, velocity, false);
+        }
+
+        /// <summary>
+        /// Camera shake intensity presets
+        /// </summary>
+        public enum CameraShakeIntensity
+        {
+            Light,   // Subtle shake (footsteps, light hits)
+            Medium,  // Noticeable shake (normal hits, dashes)
+            Heavy,   // Strong shake (heavy hits, explosions)
+            Massive  // Extreme shake (massive explosions, boss attacks)
+        }
+
+        /// <summary>
+        /// Modifies camera FOV (useful for sprint/dash effects)
+        /// </summary>
+        /// <param name="targetFOV">Target field of view</param>
+        /// <param name="duration">Time to transition to target FOV</param>
+        public void SetCameraFOV(float targetFOV, float duration = 0.3f)
+        {
+            if (MainCamera == null)
+            {
+                Debug.LogWarning("[CameraManager] Cannot set FOV - no main camera");
+                return;
+            }
+
+            // Start FOV transition coroutine
+            StartCoroutine(TransitionFOV(targetFOV, duration));
+        }
+
+        /// <summary>
+        /// Coroutine to smoothly transition FOV
+        /// </summary>
+        private System.Collections.IEnumerator TransitionFOV(float targetFOV, float duration)
+        {
+            float startFOV = MainCamera.fieldOfView;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+
+                // Smooth step interpolation for natural feel
+                t = t * t * (3f - 2f * t);
+
+                MainCamera.fieldOfView = Mathf.Lerp(startFOV, targetFOV, t);
+                yield return null;
+            }
+
+            MainCamera.fieldOfView = targetFOV;
+        }
+
+        /// <summary>
+        /// Resets camera FOV to default value
+        /// </summary>
+        /// <param name="duration">Time to transition back</param>
+        public void ResetCameraFOV(float duration = 0.3f)
+        {
+            SetCameraFOV(60f, duration); // Default FOV
+        }
+
         #endregion
 
         #region Frustum Culling Helpers

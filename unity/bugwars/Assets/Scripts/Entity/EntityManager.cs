@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using BugWars.Core;
+using VContainer;
 
 namespace BugWars.Entity
 {
@@ -51,6 +52,15 @@ namespace BugWars.Entity
         public Entity Player => playerEntity;
 
         private bool playerSpawned = false;
+
+        // Dependency Injection
+        private EventManager _eventManager;
+
+        [Inject]
+        public void Construct(EventManager eventManager)
+        {
+            _eventManager = eventManager;
+        }
 
         private void Awake()
         {
@@ -326,11 +336,19 @@ namespace BugWars.Entity
                 return;
             }
 
-            // Create third-person camera configuration
-            var config = Core.CameraFollowConfig.ThirdPerson(playerTransform);
+            if (_eventManager == null)
+            {
+                Debug.LogWarning("[EntityManager] Cannot request camera follow - EventManager is null");
+                return;
+            }
+
+            // Create free-look orbit camera configuration for professional third-person camera
+            // Mouse-driven yaw/pitch with shoulder offset and soft follow
+            // Perfect for billboarded 2D sprites in 3D world (like EthrA pixel-art games)
+            var config = Core.CameraFollowConfig.FreeLookOrbit(playerTransform);
 
             // Fire event for CameraManager to handle
-            Core.CameraEvents.RequestCameraFollow(config);
+            _eventManager.RequestCameraFollow(config);
         }
 
         /// <summary>
@@ -344,8 +362,14 @@ namespace BugWars.Entity
                 return;
             }
 
+            if (_eventManager == null)
+            {
+                Debug.LogWarning("[EntityManager] Cannot set camera follow - EventManager is null");
+                return;
+            }
+
             var config = Core.CameraFollowConfig.ThirdPerson(target, cameraName);
-            Core.CameraEvents.RequestCameraFollow(config);
+            _eventManager.RequestCameraFollow(config);
         }
 
         #endregion
