@@ -28,9 +28,11 @@ namespace BugWars.Terrain
         /// <summary>
         /// Initialize the chunk with generation parameters
         /// </summary>
-        public void Initialize(Vector2Int coord, int terrainSeed, float scale, Material material)
+        public void Initialize(Vector2Int coord, int size, int res, int terrainSeed, float scale, Material material)
         {
             chunkCoord = coord;
+            chunkSize = size;
+            resolution = res;
             seed = terrainSeed;
             noiseScale = scale;
             terrainMaterial = material;

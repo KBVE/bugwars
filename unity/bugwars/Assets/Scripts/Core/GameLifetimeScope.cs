@@ -21,6 +21,10 @@ namespace BugWars.Core
         [SerializeField] [Tooltip("Optional - Will create default runtime PanelSettings if not assigned")]
         private PanelSettings panelSettings;
 
+        [Header("Manager References")]
+        [SerializeField] [Tooltip("Optional - TerrainManager component to register. Will create if not assigned.")]
+        private TerrainManager terrainManager;
+
         protected override void Configure(IContainerBuilder builder)
         {
             Debug.Log("[GameLifetimeScope] Configure called - registering managers");
@@ -52,8 +56,18 @@ namespace BugWars.Core
             RegisterOrCreateManager<GameManager>(builder, "GameManager");
 
             // TerrainManager for procedural terrain generation
-            Debug.Log("[GameLifetimeScope] Registering TerrainManager");
-            RegisterOrCreateManager<TerrainManager>(builder, "TerrainManager");
+            Debug.Log("[GameLifetimeScope] Registering TerrainManager as EntryPoint");
+            if (terrainManager != null)
+            {
+                Debug.Log("[GameLifetimeScope] Using assigned TerrainManager from Inspector");
+                builder.RegisterComponent(terrainManager).AsImplementedInterfaces();
+            }
+            else
+            {
+                Debug.Log("[GameLifetimeScope] Creating new TerrainManager");
+                var registration = builder.RegisterComponentOnNewGameObject<TerrainManager>(Lifetime.Singleton, "TerrainManager");
+                registration.DontDestroyOnLoad().AsImplementedInterfaces();
+            }
 
             Debug.Log("[GameLifetimeScope] Configure complete - all managers registered");
         }

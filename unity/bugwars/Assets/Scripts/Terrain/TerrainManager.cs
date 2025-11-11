@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using VContainer;
 using VContainer.Unity;
@@ -11,7 +12,7 @@ namespace BugWars.Terrain
     /// Generates a 3x3 grid of low-poly terrain chunks around the player
     /// Uses Perlin noise for height generation with configurable seed
     /// </summary>
-    public class TerrainManager : MonoBehaviour, IInitializable
+    public class TerrainManager : MonoBehaviour, IAsyncStartable
     {
         [Header("Terrain Generation Settings")]
         [SerializeField] private int seed = 12345;
@@ -21,7 +22,7 @@ namespace BugWars.Terrain
 
         [Header("Chunk Settings")]
         [SerializeField] private int chunkSize = 20;
-        [SerializeField] private int chunkResolution = 20;
+        [SerializeField] private int chunkResolution = 20; // Vertices per chunk side
 
         [Header("Debug")]
         [SerializeField] private bool showDebugInfo = true;
@@ -36,19 +37,27 @@ namespace BugWars.Terrain
         private bool isInitialized = false;
 
         /// <summary>
-        /// VContainer initialization callback
+        /// VContainer async startup callback
         /// </summary>
-        public void Initialize()
+        public async UniTask StartAsync(CancellationToken cancellation)
         {
-            Debug.Log("[TerrainManager] Initialize called");
+            Debug.Log("[TerrainManager] StartAsync called");
             InitializeTerrainSystem();
+
+            // Generate initial terrain chunks
+            await GenerateInitialChunks();
         }
 
         private void InitializeTerrainSystem()
         {
             // Create container for all chunks
             chunksContainer = new GameObject("TerrainChunks");
-            chunksContainer.transform.SetParent(transform);
+
+            // Only set parent if this component has a valid transform
+            if (this != null && gameObject != null)
+            {
+                chunksContainer.transform.SetParent(transform);
+            }
 
             // Create default material if none assigned
             if (defaultTerrainMaterial == null)
@@ -121,7 +130,7 @@ namespace BugWars.Terrain
 
             // Add and initialize TerrainChunk component
             TerrainChunk chunk = chunkObj.AddComponent<TerrainChunk>();
-            chunk.Initialize(chunkCoord, seed, noiseScale, defaultTerrainMaterial);
+            chunk.Initialize(chunkCoord, chunkSize, chunkResolution, seed, noiseScale, defaultTerrainMaterial);
 
             // Generate mesh asynchronously
             await chunk.GenerateMeshAsync();

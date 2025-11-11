@@ -348,9 +348,10 @@ namespace BugWars.Core
 
             if (_terrainManager != null)
             {
-                Debug.Log("[GameManager] Generating initial terrain...");
-                await _terrainManager.GenerateInitialChunks();
-                Debug.Log("[GameManager] Terrain generation complete!");
+                // Wait for terrain to be ready (TerrainManager's StartAsync handles generation)
+                Debug.Log("[GameManager] Waiting for terrain to be ready...");
+                await UniTask.WaitUntil(() => _terrainManager.IsReady);
+                Debug.Log("[GameManager] Terrain is ready!");
             }
             else
             {
