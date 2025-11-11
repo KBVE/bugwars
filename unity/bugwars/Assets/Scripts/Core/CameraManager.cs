@@ -41,7 +41,7 @@ namespace BugWars.Core
 
         #region Settings
         [Header("Settings")]
-        [SerializeField] private bool debugMode = true;
+        [SerializeField] private bool debugMode = false;
 
         [Header("Auto-Discovery")]
         [SerializeField] [Tooltip("Automatically find virtual cameras on Start")]

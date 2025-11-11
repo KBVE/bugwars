@@ -7,9 +7,32 @@ namespace BugWars.Character
     /// <summary>
     /// Samurai player character
     /// Extends Entity base class and implements frame-based sprite animation using JSON atlas
+    /// Maps universal AnimationState enum to Samurai-specific animations
     /// </summary>
     public class Samurai : Entity.Entity
     {
+        #region Animation State Mapping
+
+        /// <summary>
+        /// Maps universal EntityAnimationState to Samurai-specific animation names
+        /// Hardcoded based on SamuraiAtlas.json structure
+        /// </summary>
+        private static readonly Dictionary<EntityAnimationState, string> AnimationStateMap = new Dictionary<EntityAnimationState, string>
+        {
+            { EntityAnimationState.Idle, "Idle" },
+            { EntityAnimationState.Walk, "Walk" },
+            { EntityAnimationState.Run, "Run" },
+            { EntityAnimationState.Jump, "Jump" },
+            { EntityAnimationState.Attack_1, "Attack_1" },
+            { EntityAnimationState.Attack_2, "Attack_2" },
+            { EntityAnimationState.Attack_3, "Attack_3" },
+            { EntityAnimationState.Hurt, "Hurt" },
+            { EntityAnimationState.Dead, "Dead" },
+            { EntityAnimationState.Shield, "Shield" }
+        };
+
+        #endregion
+
         [Header("Samurai Animation")]
         [SerializeField] private TextAsset atlasJSON;
         [SerializeField] private Material spriteMaterial;
@@ -35,28 +58,41 @@ namespace BugWars.Character
         {
             base.Initialize();
 
+            // Disable Entity's billboard rotation because the shader handles billboarding
+            enableBillboard = false;
+
             LoadAtlasData();
-            PlayAnimation("Idle");
         }
 
         protected override void Start()
         {
             base.Start();
 
-            // Ensure we have a material instance
+            // Convert SpriteRenderer to MeshRenderer + MeshFilter for proper material control
             if (spriteMaterial != null && spriteRenderer != null)
             {
-                spriteRenderer.material = spriteMaterial;
+                // Get the GameObject that has the SpriteRenderer
+                GameObject spriteObject = spriteRenderer.gameObject;
 
-                // Verify the material has the texture assigned
-                if (spriteRenderer.material.GetTexture("_BaseMap") == null)
-                {
-                    Debug.LogError("Samurai: Material does not have _BaseMap texture assigned! Check SamuraiMaterial.");
-                }
-                else
-                {
-                    Debug.Log($"Samurai: Material texture OK: {spriteRenderer.material.GetTexture("_BaseMap").name}");
-                }
+                // Remove SpriteRenderer (it forces sprite texture usage)
+                DestroyImmediate(spriteRenderer);
+                spriteRenderer = null;
+
+                // Add MeshFilter and MeshRenderer
+                MeshFilter meshFilter = spriteObject.AddComponent<MeshFilter>();
+                MeshRenderer meshRenderer = spriteObject.AddComponent<MeshRenderer>();
+
+                // Create a simple quad mesh
+                meshFilter.mesh = CreateQuadMesh();
+
+                // Assign material
+                meshRenderer.material = spriteMaterial;
+
+                // Store reference for MaterialPropertyBlock updates
+                spriteRenderer = null; // We're not using SpriteRenderer anymore
+
+                // Cache the MeshRenderer for later use
+                _meshRenderer = meshRenderer;
             }
             else
             {
@@ -65,6 +101,70 @@ namespace BugWars.Character
                 if (spriteRenderer == null)
                     Debug.LogError("Samurai: spriteRenderer is not assigned!");
             }
+
+            // Start playing idle animation AFTER material is set up
+            SetAnimationState(EntityAnimationState.Idle);
+        }
+
+        private MeshRenderer _meshRenderer;
+
+        /// <summary>
+        /// Override from Entity: Maps universal animation states to Samurai-specific animations
+        /// </summary>
+        protected override void OnAnimationStateChanged(EntityAnimationState previousState, EntityAnimationState newState)
+        {
+            // Map universal state to Samurai animation name
+            if (AnimationStateMap.TryGetValue(newState, out string animationName))
+            {
+                PlayAnimation(animationName);
+            }
+            else
+            {
+                Debug.LogWarning($"[Samurai] No animation mapping for state: {newState}");
+            }
+        }
+
+        /// <summary>
+        /// Creates a simple quad mesh with UVs from (0,0) to (1,1)
+        /// Size is 1x1 unit in world space, centered at origin
+        /// </summary>
+        private Mesh CreateQuadMesh()
+        {
+            Mesh mesh = new Mesh();
+            mesh.name = "SamuraiQuad";
+
+            // Vertices for a 1x1 quad centered at origin
+            Vector3[] vertices = new Vector3[4]
+            {
+                new Vector3(-0.5f, -0.5f, 0),  // Bottom-left
+                new Vector3( 0.5f, -0.5f, 0),  // Bottom-right
+                new Vector3(-0.5f,  0.5f, 0),  // Top-left
+                new Vector3( 0.5f,  0.5f, 0)   // Top-right
+            };
+
+            // UVs from (0,0) to (1,1) - shader will remap these
+            Vector2[] uvs = new Vector2[4]
+            {
+                new Vector2(0, 0),  // Bottom-left
+                new Vector2(1, 0),  // Bottom-right
+                new Vector2(0, 1),  // Top-left
+                new Vector2(1, 1)   // Top-right
+            };
+
+            // Two triangles to form the quad
+            int[] triangles = new int[6]
+            {
+                0, 2, 1,  // First triangle (bottom-left, top-left, bottom-right)
+                2, 3, 1   // Second triangle (top-left, top-right, bottom-right)
+            };
+
+            mesh.vertices = vertices;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            return mesh;
         }
 
         private void Update()
@@ -92,8 +192,6 @@ namespace BugWars.Character
                     Debug.LogError("Samurai: Failed to parse atlas JSON!");
                     return;
                 }
-
-                Debug.Log($"Samurai: Loaded atlas with {atlasData.animations.Count} animations");
             }
             catch (System.Exception e)
             {
@@ -121,11 +219,6 @@ namespace BugWars.Character
             animationTimer = 0f;
 
             SetFrame(0);
-
-            if (debugAnimation)
-            {
-                Debug.Log($"Samurai: Playing animation '{animationName}'");
-            }
         }
 
         /// <summary>
@@ -155,7 +248,7 @@ namespace BugWars.Character
         /// </summary>
         private void SetFrame(int frameIndex)
         {
-            if (atlasData == null || spriteRenderer == null)
+            if (atlasData == null || _meshRenderer == null)
                 return;
 
             if (!atlasData.animations.ContainsKey(currentAnimation))
@@ -183,8 +276,8 @@ namespace BugWars.Character
             propBlock.SetVector(FrameUVMinID, new Vector4(frame.uv.min.x, frame.uv.min.y, 0, 0));
             propBlock.SetVector(FrameUVMaxID, new Vector4(frame.uv.max.x, frame.uv.max.y, 0, 0));
 
-            // Apply all properties (flip + UV) to sprite renderer
-            ApplySpritePropertyBlock();
+            // Apply to mesh renderer instead of sprite renderer
+            _meshRenderer.SetPropertyBlock(propBlock);
 
             if (debugAnimation)
             {
@@ -220,6 +313,7 @@ namespace BugWars.Character
 
         /// <summary>
         /// Example input handling - replace with your actual input system
+        /// Now uses universal EntityAnimationState enum instead of direct animation names
         /// </summary>
         private void HandleInput()
         {
@@ -236,11 +330,11 @@ namespace BugWars.Character
                 // Moving
                 if (Input.GetKey(KeyCode.LeftShift))
                 {
-                    PlayAnimation("Run");
+                    SetAnimationState(EntityAnimationState.Run);
                 }
                 else
                 {
-                    PlayAnimation("Walk");
+                    SetAnimationState(EntityAnimationState.Walk);
                 }
 
                 Move(movement);
@@ -248,25 +342,25 @@ namespace BugWars.Character
             else
             {
                 // Idle
-                PlayAnimation("Idle");
+                SetAnimationState(EntityAnimationState.Idle);
             }
 
             // Attack
             if (Input.GetKeyDown(KeyCode.Mouse0))
             {
-                PlayAnimation("Attack_1");
+                SetAnimationState(EntityAnimationState.Attack_1);
             }
 
             // Jump
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                PlayAnimation("Jump");
+                SetAnimationState(EntityAnimationState.Jump);
             }
 
             // Shield
             if (Input.GetKey(KeyCode.Mouse1))
             {
-                PlayAnimation("Shield");
+                SetAnimationState(EntityAnimationState.Shield);
             }
         }
 

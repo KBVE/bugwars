@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using BugWars.Core;
 
 namespace BugWars.Entity
 {
     /// <summary>
     /// Manages all entities in the game (Players, NPCs, etc.)
     /// Provides centralized access to all entities
+    /// Integrates with CameraManager for player camera tracking
     /// </summary>
     public class EntityManager : MonoBehaviour
     {
@@ -35,10 +37,16 @@ namespace BugWars.Entity
         [Header("Player Configuration")]
         [SerializeField] [Tooltip("Player prefab to spawn at game start")]
         private GameObject playerPrefab;
-        [SerializeField] [Tooltip("Auto-spawn player after initialization")]
-        private bool autoSpawnPlayer = true;
+        [SerializeField] [Tooltip("Auto-spawn player after initialization. Set to false if GameManager controls spawn timing.")]
+        private bool autoSpawnPlayer = false;
         [SerializeField] [Tooltip("Spawn position for the player. If zero, spawns at (0, 2, 0)")]
         private Vector3 playerSpawnPosition = Vector3.zero;
+
+        [Header("Camera Follow Configuration")]
+        [SerializeField] [Tooltip("Automatically set camera to follow player on spawn")]
+        private bool autoCameraFollow = true;
+        [SerializeField] [Tooltip("Name of the virtual camera to use for player follow")]
+        private string playerCameraName = "VirtualCamera";
 
         [Header("Player Reference")]
         [SerializeField] private Entity playerEntity;
@@ -65,13 +73,22 @@ namespace BugWars.Entity
 
         private void Start()
         {
-            Debug.Log($"[EntityManager] Initialized with {allEntities.Count} entities");
-
             // Auto-spawn player if enabled
             if (autoSpawnPlayer && !playerSpawned)
             {
-                SpawnPlayer();
+                // Delay player spawn by one frame to ensure CameraManager has initialized
+                StartCoroutine(SpawnPlayerAfterCameraInit());
             }
+        }
+
+        /// <summary>
+        /// Spawns player after waiting one frame for CameraManager to initialize
+        /// </summary>
+        private System.Collections.IEnumerator SpawnPlayerAfterCameraInit()
+        {
+            // Wait for end of frame to ensure CameraManager.Start() has run
+            yield return new WaitForEndOfFrame();
+            SpawnPlayer();
         }
 
         /// <summary>
@@ -107,9 +124,14 @@ namespace BugWars.Entity
             if (entity != null)
             {
                 // Set as player (will auto-register if not already)
-                SetPlayer(entity, true);
+                SetPlayer(entity, false); // Don't log during spawn
                 playerSpawned = true;
-                Debug.Log($"[EntityManager] Player spawned at {spawnPos}");
+
+                // Set up camera to follow player
+                if (autoCameraFollow)
+                {
+                    SetupCameraFollow(playerObj.transform);
+                }
             }
             else
             {
@@ -145,13 +167,12 @@ namespace BugWars.Entity
             {
                 RegisterEntity(entity, false);
             }
-            Debug.Log($"[EntityManager] Auto-registered {foundEntities.Length} entities from scene");
         }
 
         /// <summary>
         /// Register an entity with the manager
         /// </summary>
-        public void RegisterEntity(Entity entity, bool logRegistration = true)
+        public void RegisterEntity(Entity entity, bool logRegistration = false)
         {
             if (entity == null)
             {
@@ -161,8 +182,7 @@ namespace BugWars.Entity
 
             if (allEntities.Contains(entity))
             {
-                Debug.LogWarning($"[EntityManager] Entity {entity.GetEntityName()} already registered");
-                return;
+                return; // Silently skip already registered entities
             }
 
             allEntities.Add(entity);
@@ -171,11 +191,6 @@ namespace BugWars.Entity
             if (entity.CompareTag("Player") || entity is BugWars.Character.Samurai)
             {
                 SetPlayer(entity, false);
-            }
-
-            if (logRegistration)
-            {
-                Debug.Log($"[EntityManager] Registered entity: {entity.GetEntityName()}");
             }
         }
 
@@ -186,10 +201,7 @@ namespace BugWars.Entity
         {
             if (entity == null) return;
 
-            if (allEntities.Remove(entity))
-            {
-                Debug.Log($"[EntityManager] Unregistered entity: {entity.GetEntityName()}");
-            }
+            allEntities.Remove(entity);
         }
 
         /// <summary>
@@ -302,6 +314,86 @@ namespace BugWars.Entity
             return allEntities.Count(e => e != null);
         }
 
+        #region Camera Integration
+
+        /// <summary>
+        /// Set up camera to follow the player
+        /// </summary>
+        private void SetupCameraFollow(Transform playerTransform)
+        {
+            if (playerTransform == null)
+            {
+                Debug.LogWarning("[EntityManager] Cannot setup camera follow - player transform is null");
+                return;
+            }
+
+            // Get CameraManager instance
+            CameraManager cameraManager = CameraManager.Instance;
+            if (cameraManager == null)
+            {
+                Debug.LogWarning("[EntityManager] CameraManager not found - cannot setup camera follow");
+                return;
+            }
+
+            // Try to find the specified camera or use the first available
+            Unity.Cinemachine.CinemachineCamera virtualCamera = cameraManager.GetVirtualCamera(playerCameraName);
+
+            if (virtualCamera == null && cameraManager.VirtualCameraCount > 0)
+            {
+                // Fallback to first available camera
+                virtualCamera = cameraManager.GetVirtualCameraByIndex(0);
+                Debug.LogWarning($"[EntityManager] Camera '{playerCameraName}' not found. Using '{virtualCamera.name}' instead.");
+            }
+
+            if (virtualCamera != null)
+            {
+                // Set both Follow and LookAt to player
+                virtualCamera.Follow = playerTransform;
+                virtualCamera.LookAt = playerTransform;
+
+                // Configure third-person camera offset if Position Composer exists
+                var positionComposer = virtualCamera.GetComponent<Unity.Cinemachine.CinemachinePositionComposer>();
+                if (positionComposer != null)
+                {
+                    // Set camera offset for third-person view (behind and above player)
+                    positionComposer.CameraDistance = 8f; // Distance from player
+                    positionComposer.TargetOffset = new UnityEngine.Vector3(0, 1.5f, 0); // Look slightly above player center
+                }
+
+                // Activate this camera
+                cameraManager.ActivateCamera(virtualCamera, true);
+            }
+            else
+            {
+                Debug.LogWarning("[EntityManager] No virtual cameras found in scene - cannot setup camera follow");
+            }
+        }
+
+        /// <summary>
+        /// Manually set camera to follow a specific target
+        /// </summary>
+        public void SetCameraFollowTarget(Transform target, string cameraName = null)
+        {
+            if (target == null)
+            {
+                Debug.LogWarning("[EntityManager] Cannot set camera follow - target is null");
+                return;
+            }
+
+            CameraManager cameraManager = CameraManager.Instance;
+            if (cameraManager == null)
+            {
+                Debug.LogWarning("[EntityManager] CameraManager not found");
+                return;
+            }
+
+            string camName = string.IsNullOrEmpty(cameraName) ? playerCameraName : cameraName;
+            cameraManager.SetCameraFollowTarget(camName, target);
+            cameraManager.SetCameraLookAtTarget(camName, target);
+        }
+
+        #endregion
+
         #region Player Management
 
         /// <summary>
@@ -324,11 +416,6 @@ namespace BugWars.Entity
             }
 
             playerEntity = entity;
-
-            if (logChange)
-            {
-                Debug.Log($"[EntityManager] Player entity set: {entity.GetEntityName()}");
-            }
         }
 
         /// <summary>

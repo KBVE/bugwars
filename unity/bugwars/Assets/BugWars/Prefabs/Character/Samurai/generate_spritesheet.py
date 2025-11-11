@@ -23,7 +23,9 @@ class SpriteSheetGenerator:
         """Extract individual frames from sprite strip PNGs"""
         print("Extracting frames from sprite strips...")
 
-        png_files = sorted([f for f in os.listdir(self.input_dir) if f.endswith('.png')])
+        # Get all PNG files except the output atlas
+        png_files = sorted([f for f in os.listdir(self.input_dir)
+                          if f.endswith('.png') and not f.startswith(self.output_name)])
 
         for png_file in png_files:
             filepath = os.path.join(self.input_dir, png_file)
@@ -120,6 +122,10 @@ class SpriteSheetGenerator:
             sprite_sheet.paste(frame_data['image'], (x, y))
 
             # Store frame position in atlas
+            # Unity uses bottom-left origin for UVs, so flip Y coordinate
+            uv_y_min = 1.0 - ((y + self.frame_size) / sheet_height)
+            uv_y_max = 1.0 - (y / sheet_height)
+
             atlas['frames'][frame_data['name']] = {
                 'x': x,
                 'y': y,
@@ -127,10 +133,10 @@ class SpriteSheetGenerator:
                 'h': self.frame_size,
                 'animation': frame_data['animation'],
                 'index': frame_data['index'],
-                # Normalized UV coordinates (0-1 range)
+                # Normalized UV coordinates (0-1 range) - Unity bottom-left origin
                 'uv': {
-                    'min': {'x': x / sheet_width, 'y': y / sheet_height},
-                    'max': {'x': (x + self.frame_size) / sheet_width, 'y': (y + self.frame_size) / sheet_height}
+                    'min': {'x': x / sheet_width, 'y': uv_y_min},
+                    'max': {'x': (x + self.frame_size) / sheet_width, 'y': uv_y_max}
                 }
             }
 

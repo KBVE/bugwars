@@ -12,7 +12,7 @@ namespace BugWars.Editor
     /// </summary>
     public class SamuraiTools : EditorWindow
     {
-        private const string SHADER_NAME = "BugWars/SamuraiAnimatedSprite_Unity6";
+        private const string SHADER_NAME = "BugWars/SamuraiAnimatedSprite_URP3D_Billboard";
         private const string MATERIAL_PATH = "Assets/BugWars/Prefabs/Character/Samurai/SamuraiMaterial.mat";
         private const string TEXTURE_PATH = "Assets/BugWars/Prefabs/Character/Samurai/SamuraiAtlas.png";
         private const string PREFAB_PATH = "Assets/BugWars/Prefabs/Character/Samurai/Samurai.prefab";
@@ -30,14 +30,17 @@ namespace BugWars.Editor
             // Step 2: Fix material texture assignment
             success &= FixMaterialTexture();
 
-            // Step 3: Verify setup
+            // Step 3: Fix prefab SpriteRenderer material
+            success &= FixPrefabMaterial();
+
+            // Step 4: Verify setup
             success &= VerifySetup();
 
             if (success)
             {
                 Debug.Log("✓ SYNC COMPLETE - Samurai is ready!");
                 EditorUtility.DisplayDialog("Sync Samurai",
-                    "Successfully synced Samurai!\n\n• Shader added to Always Included list\n• Material texture assigned\n• Setup verified",
+                    "Successfully synced Samurai!\n\n• Shader added to Always Included list\n• Material texture assigned\n• Prefab SpriteRenderer fixed\n• Setup verified",
                     "OK");
             }
             else
@@ -163,6 +166,42 @@ namespace BugWars.Editor
             return true;
         }
 
+        private static bool FixPrefabMaterial()
+        {
+            Debug.Log("[SamuraiTools] Fixing prefab SpriteRenderer material...");
+
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PREFAB_PATH);
+            if (prefab == null)
+            {
+                Debug.LogError($"[SamuraiTools] ❌ Could not find prefab at {PREFAB_PATH}");
+                return false;
+            }
+
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(MATERIAL_PATH);
+            if (material == null)
+            {
+                Debug.LogError($"[SamuraiTools] ❌ Could not find material at {MATERIAL_PATH}");
+                return false;
+            }
+
+            // Find the SpriteRenderer child
+            SpriteRenderer spriteRenderer = prefab.GetComponentInChildren<SpriteRenderer>();
+            if (spriteRenderer == null)
+            {
+                Debug.LogError("[SamuraiTools] ❌ Could not find SpriteRenderer in prefab");
+                return false;
+            }
+
+            // Assign material to SpriteRenderer
+            spriteRenderer.sharedMaterial = material;
+
+            // Mark prefab as dirty and save
+            PrefabUtility.SavePrefabAsset(prefab);
+
+            Debug.Log($"[SamuraiTools] ✓ Assigned material to prefab SpriteRenderer");
+            return true;
+        }
+
         private static bool VerifySetup()
         {
             Debug.Log("[SamuraiTools] Verifying setup...");
@@ -211,7 +250,7 @@ namespace BugWars.Editor
                 return samurai;
 
             // Try finding by name contains
-            GameObject[] allObjects = FindObjectsOfType<GameObject>();
+            GameObject[] allObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
             foreach (var obj in allObjects)
             {
                 if (obj.name.Contains("Samurai") || obj.name.Contains("samurai"))

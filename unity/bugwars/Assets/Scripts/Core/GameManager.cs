@@ -343,7 +343,18 @@ namespace BugWars.Core
                 if (_entityManager != null && !_entityManager.IsPlayerSpawned())
                 {
                     Vector3 spawnPos = _terrainManager.GetTerrainCenter();
-                    spawnPos.y += 2f; // Spawn slightly above terrain
+                    spawnPos.y = 10f; // Spawn well above terrain (max terrain height ~3f, so 10f is safe)
+
+                    // Raycast down to find actual terrain surface
+                    if (Physics.Raycast(spawnPos, Vector3.down, out RaycastHit hit, 20f))
+                    {
+                        spawnPos.y = hit.point.y + 1.5f; // Spawn 1.5 units above surface
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[GameManager] No terrain found below spawn position, using Y=10");
+                    }
+
                     _entityManager.SpawnPlayerAt(spawnPos);
                 }
             }

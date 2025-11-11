@@ -57,7 +57,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 3db77be94de8c497792a1e94a6bb4a05, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -200,7 +200,7 @@ MonoBehaviour:
   rotationSpeed: 720
   atlasJSON: {fileID: 4900000, guid: f8140aabe7dcb44239b03c4e07719857, type: 3}
   spriteMaterial: {fileID: 2100000, guid: 3db77be94de8c497792a1e94a6bb4a05, type: 2}
-  debugAnimation: 1
+  debugAnimation: 0
 --- !u!114 &7469671944002262493
 MonoBehaviour:
   m_ObjectHideFlags: 0

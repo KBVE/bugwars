@@ -4,6 +4,24 @@ using BugWars.Core;
 namespace BugWars.Entity
 {
     /// <summary>
+    /// Universal animation states for all entities
+    /// Each entity can map these to their specific animations
+    /// </summary>
+    public enum EntityAnimationState
+    {
+        Idle = 0,
+        Walk = 1,
+        Run = 2,
+        Jump = 3,
+        Attack_1 = 4,
+        Attack_2 = 5,
+        Attack_3 = 6,
+        Hurt = 7,
+        Dead = 8,
+        Shield = 9
+    }
+
+    /// <summary>
     /// Base Entity class for all game entities (Players, NPCs, etc.)
     /// Supports billboard 2D sprites in 3D environment
     /// </summary>
@@ -31,6 +49,9 @@ namespace BugWars.Entity
         protected Rigidbody rb;
         protected CapsuleCollider capsuleCollider;
         protected Transform cameraTransform;
+
+        // Animation state
+        protected EntityAnimationState currentAnimationState = EntityAnimationState.Idle;
 
         // Sprite flipping
         protected int facingDirection = 1; // 1 = right, -1 = left
@@ -219,6 +240,36 @@ namespace BugWars.Entity
         public SpriteRenderer GetSpriteRenderer() => spriteRenderer;
         public Rigidbody GetRigidbody() => rb;
         public int GetFacingDirection() => facingDirection;
+        public EntityAnimationState GetAnimationState() => currentAnimationState;
+
+        #region Animation State System
+
+        /// <summary>
+        /// Set the animation state for this entity
+        /// Derived classes should override OnAnimationStateChanged to map to specific animations
+        /// </summary>
+        public virtual void SetAnimationState(EntityAnimationState newState)
+        {
+            if (currentAnimationState == newState)
+                return;
+
+            EntityAnimationState previousState = currentAnimationState;
+            currentAnimationState = newState;
+
+            // Notify derived classes of state change
+            OnAnimationStateChanged(previousState, newState);
+        }
+
+        /// <summary>
+        /// Override this in derived classes to map universal states to specific animations
+        /// Example: EntityAnimationState.Walk -> "Walk" animation in Samurai
+        /// </summary>
+        protected virtual void OnAnimationStateChanged(EntityAnimationState previousState, EntityAnimationState newState)
+        {
+            // Base implementation does nothing - override in derived classes
+        }
+
+        #endregion
 
         #region Sprite Flipping
 
