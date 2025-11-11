@@ -1,0 +1,174 @@
+---
+/**
+ * AstroSubHero
+ * Sub hero Astro component for secondary hero sections
+ * Wraps the React SubHero component
+ */
+
+import { ReactSubHero } from './ReactSubHero';
+import type { SubHeroProps } from './typeSubHero';
+
+export interface Props extends SubHeroProps {
+  /**
+   * Enable client-side hydration (default: true)
+   */
+  enableHydration?: boolean;
+
+  /**
+   * Hydration strategy (default: 'visible')
+   */
+  hydrationStrategy?: 'load' | 'idle' | 'visible';
+}
+
+const {
+  title,
+  subtitle,
+  description,
+  ctaText,
+  ctaUrl,
+  backgroundImage,
+  backgroundGradient,
+  backgroundColor = '#f8f9fa',
+  textColor = '#333',
+  height,
+  className = '',
+  showDecorative = false,
+  overlayOpacity = 0.3,
+  alignment = 'center',
+  size = 'medium',
+  enableAnimation = true,
+  enableHydration = true,
+  hydrationStrategy = 'visible'
+} = Astro.props;
+
+// Build props object
+const heroProps: SubHeroProps = {
+  title,
+  subtitle,
+  description,
+  ctaText,
+  ctaUrl,
+  backgroundImage,
+  backgroundGradient,
+  backgroundColor,
+  textColor,
+  height,
+  className,
+  showDecorative,
+  overlayOpacity,
+  alignment,
+  size,
+  enableAnimation
+};
+---
+
+<div class="astro-sub-hero-wrapper">
+  {enableHydration && hydrationStrategy === 'load' && (
+    <ReactSubHero client:load {...heroProps} />
+  )}
+  {enableHydration && hydrationStrategy === 'idle' && (
+    <ReactSubHero client:idle {...heroProps} />
+  )}
+  {enableHydration && hydrationStrategy === 'visible' && (
+    <ReactSubHero client:visible {...heroProps} />
+  )}
+  {!enableHydration && (
+    <ReactSubHero client:only="react" {...heroProps} />
+  )}
+</div>
+
+<style>
+  .astro-sub-hero-wrapper {
+    width: 100%;
+    position: relative;
+  }
+
+  /* Ensure consistent spacing */
+  .astro-sub-hero-wrapper :global(.sub-hero) {
+    margin: 0;
+  }
+
+  /* Smooth transitions */
+  .astro-sub-hero-wrapper :global(*) {
+    box-sizing: border-box;
+  }
+
+  /* Accessibility - Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    .astro-sub-hero-wrapper :global(*) {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Print styles */
+  @media print {
+    .astro-sub-hero-wrapper :global(.sub-hero) {
+      min-height: auto;
+      page-break-inside: avoid;
+    }
+
+    .astro-sub-hero-wrapper :global(.decorative-element) {
+      display: none;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .astro-sub-hero-wrapper :global(.hero-cta-button) {
+      border: 2px solid currentColor !important;
+    }
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .astro-sub-hero-wrapper :global(.sub-hero) {
+      min-height: 200px;
+    }
+  }
+</style>
+
+<script>
+  /**
+   * Client-side hydration script
+   * Handles sub hero-specific interactions and optimizations
+   */
+
+  // Preload background images for better performance
+  const heroWrapper = document.querySelector('.astro-sub-hero-wrapper');
+  if (heroWrapper) {
+    const hero = heroWrapper.querySelector('.sub-hero') as HTMLElement;
+    if (hero) {
+      const bgImage = hero.style.backgroundImage;
+      if (bgImage) {
+        const imageUrl = bgImage.match(/url\(['"]?(.+?)['"]?\)/)?.[1];
+        if (imageUrl) {
+          const img = new Image();
+          img.src = imageUrl;
+        }
+      }
+    }
+  }
+
+  // Handle CTA button clicks with smooth scroll
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('hero-cta-button')) {
+      const href = target.getAttribute('href');
+      if (href?.startsWith('#')) {
+        e.preventDefault();
+        const element = document.querySelector(href);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+  });
+
+  // Log sub hero load time (development only)
+  if (import.meta.env.DEV) {
+    console.log('Sub Hero component loaded');
+    performance.mark('sub-hero-loaded');
+  }
+</script>

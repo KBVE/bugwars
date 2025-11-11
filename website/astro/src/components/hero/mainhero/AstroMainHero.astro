@@ -1,0 +1,201 @@
+---
+/**
+ * AstroMainHero
+ * Main Astro component for hero sections
+ * Wraps the React MainHero component
+ */
+
+import { ReactMainHero } from './ReactMainHero';
+import type { MainHeroProps } from './typeMainHero';
+
+export interface Props extends MainHeroProps {
+  /**
+   * Enable client-side hydration (default: true)
+   */
+  enableHydration?: boolean;
+
+  /**
+   * Hydration strategy (default: 'load')
+   */
+  hydrationStrategy?: 'load' | 'idle' | 'visible';
+}
+
+const {
+  title,
+  subtitle,
+  description,
+  ctaText,
+  ctaUrl,
+  secondaryCtaText,
+  secondaryCtaUrl,
+  backgroundImage,
+  backgroundVideo,
+  backgroundGradient,
+  backgroundColor = 'transparent',
+  textColor = 'white',
+  height = '100vh',
+  className = '',
+  enableParallax = false,
+  showScrollIndicator = true,
+  overlayOpacity = 0.5,
+  alignment = 'center',
+  verticalAlignment = 'center',
+  enableHydration = true,
+  hydrationStrategy = 'load'
+} = Astro.props;
+
+// Build props object
+const heroProps: MainHeroProps = {
+  title,
+  subtitle,
+  description,
+  ctaText,
+  ctaUrl,
+  secondaryCtaText,
+  secondaryCtaUrl,
+  backgroundImage,
+  backgroundVideo,
+  backgroundGradient,
+  backgroundColor,
+  textColor,
+  height,
+  className,
+  enableParallax,
+  showScrollIndicator,
+  overlayOpacity,
+  alignment,
+  verticalAlignment
+};
+---
+
+<div class="astro-main-hero-wrapper">
+  {enableHydration && hydrationStrategy === 'load' && (
+    <ReactMainHero client:load {...heroProps} />
+  )}
+  {enableHydration && hydrationStrategy === 'idle' && (
+    <ReactMainHero client:idle {...heroProps} />
+  )}
+  {enableHydration && hydrationStrategy === 'visible' && (
+    <ReactMainHero client:visible {...heroProps} />
+  )}
+  {!enableHydration && (
+    <ReactMainHero client:only="react" {...heroProps} />
+  )}
+</div>
+
+<style>
+  .astro-main-hero-wrapper {
+    width: 100%;
+    position: relative;
+  }
+
+  /* Ensure hero takes full viewport */
+  .astro-main-hero-wrapper :global(.main-hero) {
+    min-height: 100vh;
+  }
+
+  /* Smooth scrolling for anchor links */
+  :global(html) {
+    scroll-behavior: smooth;
+  }
+
+  /* Accessibility - Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    :global(html) {
+      scroll-behavior: auto;
+    }
+
+    .astro-main-hero-wrapper :global(*) {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Print styles */
+  @media print {
+    .astro-main-hero-wrapper :global(.scroll-indicator) {
+      display: none;
+    }
+
+    .astro-main-hero-wrapper :global(.main-hero) {
+      min-height: auto;
+      page-break-after: always;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .astro-main-hero-wrapper :global(.hero-cta a) {
+      border: 3px solid currentColor !important;
+    }
+  }
+</style>
+
+<script>
+  /**
+   * Client-side hydration script
+   * Handles hero-specific interactions and optimizations
+   */
+
+  // Preload background images for better performance
+  const heroWrapper = document.querySelector('.astro-main-hero-wrapper');
+  if (heroWrapper) {
+    const hero = heroWrapper.querySelector('.main-hero') as HTMLElement;
+    if (hero) {
+      const bgImage = hero.style.backgroundImage;
+      if (bgImage) {
+        const imageUrl = bgImage.match(/url\(['"]?(.+?)['"]?\)/)?.[1];
+        if (imageUrl) {
+          const img = new Image();
+          img.src = imageUrl;
+        }
+      }
+    }
+  }
+
+  // Handle intersection observer for scroll indicator
+  if ('IntersectionObserver' in window) {
+    const scrollIndicator = document.querySelector('.scroll-indicator');
+    if (scrollIndicator) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) {
+              (scrollIndicator as HTMLElement).style.opacity = '0';
+            } else {
+              (scrollIndicator as HTMLElement).style.opacity = '1';
+            }
+          });
+        },
+        { threshold: 0.5 }
+      );
+
+      const hero = document.querySelector('.main-hero');
+      if (hero) {
+        observer.observe(hero);
+      }
+    }
+  }
+
+  // Smooth scroll for CTA buttons with anchor links
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'A') {
+      const href = target.getAttribute('href');
+      if (href?.startsWith('#')) {
+        e.preventDefault();
+        const element = document.querySelector(href);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+  });
+
+  // Log hero load time (development only)
+  if (import.meta.env.DEV) {
+    console.log('Main Hero component loaded');
+    performance.mark('hero-loaded');
+  }
+</script>
