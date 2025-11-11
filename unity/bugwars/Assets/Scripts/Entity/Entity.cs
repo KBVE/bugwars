@@ -135,8 +135,8 @@ namespace BugWars.Entity
             if (rb == null || !isAlive) return;
 
             Vector3 movement = direction.normalized * moveSpeed;
-            movement.y = rb.velocity.y; // Preserve vertical velocity for gravity
-            rb.velocity = movement;
+            movement.y = rb.linearVelocity.y; // Preserve vertical velocity for gravity
+            rb.linearVelocity = movement;
         }
 
         /// <summary>

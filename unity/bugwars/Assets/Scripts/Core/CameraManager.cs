@@ -41,11 +41,11 @@ namespace BugWars.Core
         private CinemachineBrain _cinemachineBrain;
 
         // Cached virtual cameras
-        private Dictionary<string, CinemachineVirtualCamera> _virtualCamerasByName = new Dictionary<string, CinemachineVirtualCamera>();
-        private List<CinemachineVirtualCamera> _allVirtualCameras = new List<CinemachineVirtualCamera>();
+        private Dictionary<string, CinemachineCamera> _virtualCamerasByName = new Dictionary<string, CinemachineCamera>();
+        private List<CinemachineCamera> _allVirtualCameras = new List<CinemachineCamera>();
 
         // Active camera tracking
-        private CinemachineVirtualCamera _currentActiveCamera;
+        private CinemachineCamera _currentActiveCamera;
         private int _defaultPriority = 10;
         private int _activePriority = 100;
 
@@ -90,12 +90,12 @@ namespace BugWars.Core
         /// <summary>
         /// Gets the currently active virtual camera
         /// </summary>
-        public CinemachineVirtualCamera ActiveVirtualCamera => _currentActiveCamera;
+        public CinemachineCamera ActiveVirtualCamera => _currentActiveCamera;
 
         /// <summary>
         /// Gets all discovered virtual cameras (read-only)
         /// </summary>
-        public IReadOnlyList<CinemachineVirtualCamera> AllVirtualCameras => _allVirtualCameras.AsReadOnly();
+        public IReadOnlyList<CinemachineCamera> AllVirtualCameras => _allVirtualCameras.AsReadOnly();
 
         /// <summary>
         /// Gets the total number of discovered virtual cameras
@@ -207,10 +207,10 @@ namespace BugWars.Core
         {
             ClearCameraCache();
 
-            // Find all CinemachineVirtualCamera components in the scene
-            CinemachineVirtualCamera[] foundCameras = includeInactiveCameras
-                ? FindObjectsByType<CinemachineVirtualCamera>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                : FindObjectsByType<CinemachineVirtualCamera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            // Find all CinemachineCamera components in the scene
+            CinemachineCamera[] foundCameras = includeInactiveCameras
+                ? FindObjectsByType<CinemachineCamera>(FindObjectsInactive.Include, FindObjectsSortMode.None)
+                : FindObjectsByType<CinemachineCamera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
 
             foreach (var vcam in foundCameras)
             {
@@ -283,7 +283,7 @@ namespace BugWars.Core
         /// </summary>
         /// <param name="cameraName">The name of the virtual camera GameObject</param>
         /// <returns>The virtual camera if found, null otherwise</returns>
-        public CinemachineVirtualCamera GetVirtualCamera(string cameraName)
+        public CinemachineCamera GetVirtualCamera(string cameraName)
         {
             if (_virtualCamerasByName.TryGetValue(cameraName, out var camera))
             {
@@ -300,7 +300,7 @@ namespace BugWars.Core
         /// </summary>
         /// <param name="index">The index in the camera list</param>
         /// <returns>The virtual camera if index is valid, null otherwise</returns>
-        public CinemachineVirtualCamera GetVirtualCameraByIndex(int index)
+        public CinemachineCamera GetVirtualCameraByIndex(int index)
         {
             if (index >= 0 && index < _allVirtualCameras.Count)
             {
@@ -351,7 +351,7 @@ namespace BugWars.Core
         /// </summary>
         /// <param name="camera">The camera to activate</param>
         /// <param name="resetOthers">If true, sets all other cameras to default priority</param>
-        public void ActivateCamera(CinemachineVirtualCamera camera, bool resetOthers = true)
+        public void ActivateCamera(CinemachineCamera camera, bool resetOthers = true)
         {
             if (camera == null)
             {

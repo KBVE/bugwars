@@ -4,6 +4,7 @@ using VContainer;
 using VContainer.Unity;
 using BugWars.UI;
 using BugWars.Terrain;
+using BugWars.Entity;
 
 namespace BugWars.Core
 {
@@ -30,6 +31,10 @@ namespace BugWars.Core
         private GameManager gameManager;
         [SerializeField] [Tooltip("Optional - TerrainManager component to register. Will create if not assigned.")]
         private TerrainManager terrainManager;
+        [SerializeField] [Tooltip("Optional - CameraManager component to register. Will create if not assigned.")]
+        private CameraManager cameraManager;
+        [SerializeField] [Tooltip("Optional - EntityManager component to register. Will create if not assigned.")]
+        private EntityManager entityManager;
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -84,6 +89,26 @@ namespace BugWars.Core
             {
                 var registration = builder.RegisterComponentOnNewGameObject<TerrainManager>(Lifetime.Singleton, "TerrainManager");
                 registration.DontDestroyOnLoad().AsImplementedInterfaces();
+            }
+
+            // CameraManager for camera control using Cinemachine
+            if (cameraManager != null)
+            {
+                builder.RegisterComponent(cameraManager);
+            }
+            else
+            {
+                RegisterOrCreateManager<CameraManager>(builder, "CameraManager");
+            }
+
+            // EntityManager for entity tracking and management
+            if (entityManager != null)
+            {
+                builder.RegisterComponent(entityManager);
+            }
+            else
+            {
+                RegisterOrCreateManager<EntityManager>(builder, "EntityManager");
             }
         }
 

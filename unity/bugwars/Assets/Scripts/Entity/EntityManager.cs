@@ -17,7 +17,7 @@ namespace BugWars.Entity
             {
                 if (instance == null)
                 {
-                    instance = FindObjectOfType<EntityManager>();
+                    instance = FindFirstObjectByType<EntityManager>();
                     if (instance == null)
                     {
                         GameObject go = new GameObject("EntityManager");
@@ -59,7 +59,7 @@ namespace BugWars.Entity
         /// </summary>
         public void RegisterAllEntitiesInScene()
         {
-            Entity[] foundEntities = FindObjectsOfType<Entity>();
+            Entity[] foundEntities = FindObjectsByType<Entity>(FindObjectsSortMode.None);
             foreach (Entity entity in foundEntities)
             {
                 RegisterEntity(entity, false);
