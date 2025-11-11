@@ -22,6 +22,12 @@ namespace BugWars.Core
         private PanelSettings panelSettings;
 
         [Header("Manager References")]
+        [SerializeField] [Tooltip("Optional - EventManager component to register. Will create if not assigned.")]
+        private EventManager eventManager;
+        [SerializeField] [Tooltip("Optional - InputManager component to register. Will create if not assigned.")]
+        private InputManager inputManager;
+        [SerializeField] [Tooltip("Optional - GameManager component to register. Will create if not assigned.")]
+        private GameManager gameManager;
         [SerializeField] [Tooltip("Optional - TerrainManager component to register. Will create if not assigned.")]
         private TerrainManager terrainManager;
 
@@ -32,11 +38,27 @@ namespace BugWars.Core
             // Register core managers in dependency order
             // EventManager has no dependencies - register first
             Debug.Log("[GameLifetimeScope] Registering EventManager");
-            RegisterOrCreateManager<EventManager>(builder, "EventManager");
+            if (eventManager != null)
+            {
+                Debug.Log("[GameLifetimeScope] Using assigned EventManager from Inspector");
+                builder.RegisterComponent(eventManager);
+            }
+            else
+            {
+                RegisterOrCreateManager<EventManager>(builder, "EventManager");
+            }
 
             // InputManager depends on EventManager
             Debug.Log("[GameLifetimeScope] Registering InputManager");
-            RegisterOrCreateManager<InputManager>(builder, "InputManager");
+            if (inputManager != null)
+            {
+                Debug.Log("[GameLifetimeScope] Using assigned InputManager from Inspector");
+                builder.RegisterComponent(inputManager);
+            }
+            else
+            {
+                RegisterOrCreateManager<InputManager>(builder, "InputManager");
+            }
 
             // Create and configure MainMenuManager with UIDocument properly set up
             Debug.Log("[GameLifetimeScope] Creating MainMenuManager");
@@ -53,7 +75,15 @@ namespace BugWars.Core
 
             // GameManager depends on EventManager and MainMenuManager - register last
             Debug.Log("[GameLifetimeScope] Registering GameManager");
-            RegisterOrCreateManager<GameManager>(builder, "GameManager");
+            if (gameManager != null)
+            {
+                Debug.Log("[GameLifetimeScope] Using assigned GameManager from Inspector");
+                builder.RegisterComponent(gameManager);
+            }
+            else
+            {
+                RegisterOrCreateManager<GameManager>(builder, "GameManager");
+            }
 
             // TerrainManager for procedural terrain generation
             Debug.Log("[GameLifetimeScope] Registering TerrainManager as EntryPoint");
