@@ -24,14 +24,15 @@ COPY website/astro/public ./public
 # Build Astro site
 RUN pnpm run build
 
+# TODO: Uncomment after Unity WebGL build is complete and webgl.zip is available
 # Copy and extract Unity WebGL game into dist
-COPY webgl.zip /tmp/webgl.zip
-RUN apk add --no-cache unzip && \
-    mkdir -p /app/astro/dist/assets/game && \
-    unzip -q /tmp/webgl.zip -d /app/astro/dist/assets/game && \
-    rm /tmp/webgl.zip && \
-    echo "Unity WebGL extracted to /app/astro/dist/assets/game" && \
-    ls -lah /app/astro/dist/assets/game
+# COPY webgl.zip /tmp/webgl.zip
+# RUN apk add --no-cache unzip && \
+#     mkdir -p /app/astro/dist/assets/game && \
+#     unzip -q /tmp/webgl.zip -d /app/astro/dist/assets/game && \
+#     rm /tmp/webgl.zip && \
+#     echo "Unity WebGL extracted to /app/astro/dist/assets/game" && \
+#     ls -lah /app/astro/dist/assets/game
 
 # Precompress all static assets with gzip -9 and remove originals
 # We keep Askama templates uncompressed (they're used for server-side rendering)
