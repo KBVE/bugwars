@@ -1,26 +1,16 @@
 using UnityEngine;
 using UnityEngine.UIElements;
-using BugWars.Core;
-using VContainer;
 
 namespace BugWars.UI
 {
     /// <summary>
     /// Main Menu Manager - Managed by VContainer
     /// Manages the main menu UI including visibility and button interactions
+    /// Controlled by GameManager for escape key toggle functionality
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public class MainMenuManager : MonoBehaviour
     {
-        #region Dependencies
-        private EventManager _eventManager;
-
-        [Inject]
-        public void Construct(EventManager eventManager)
-        {
-            _eventManager = eventManager;
-        }
-        #endregion
 
         #region Fields
         private UIDocument _uiDocument;
@@ -49,25 +39,13 @@ namespace BugWars.UI
             // Initialize UI after VContainer has configured the UIDocument
             InitializeUI();
 
-            // Subscribe to Escape key event from EventManager
-            if (_eventManager != null)
-            {
-                _eventManager.OnEscapePressed.AddListener(ToggleMenu);
-            }
-            else
-            {
-                Debug.LogWarning("[MainMenuManager] EventManager reference is null, cannot subscribe to events!");
-            }
+            // Note: Escape key handling is managed by GameManager
+            // GameManager subscribes to OnEscapePressed and calls ToggleMenu()
+            // This avoids double-toggling from duplicate event subscriptions
         }
 
         private void OnDestroy()
         {
-            // Unsubscribe from EventManager
-            if (_eventManager != null)
-            {
-                _eventManager.OnEscapePressed.RemoveListener(ToggleMenu);
-            }
-
             // Unregister button callbacks
             if (_settingsButton != null)
             {
