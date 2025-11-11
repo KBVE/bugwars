@@ -1,9 +1,11 @@
 /**
  * ReactSubHero Component
  * Smaller, secondary hero section component
+ * Uses Starlight theme variables and Tailwind CSS
  */
 
 import { useEffect, useState, useRef, type FC } from 'react';
+import { cn } from '@/lib/utils';
 import type { SubHeroProps, SubHeroSizeConfig } from './typeSubHero';
 
 /**
@@ -12,24 +14,24 @@ import type { SubHeroProps, SubHeroSizeConfig } from './typeSubHero';
 const sizeConfigs: Record<'small' | 'medium' | 'large', SubHeroSizeConfig> = {
   small: {
     height: '30vh',
-    titleSize: 'clamp(1.75rem, 3vw, 2.5rem)',
-    subtitleSize: '0.875rem',
-    descriptionSize: '1rem',
-    padding: '2rem'
+    titleSize: 'text-3xl md:text-4xl',
+    subtitleSize: 'text-sm',
+    descriptionSize: 'text-base',
+    padding: 'px-8 py-8'
   },
   medium: {
     height: '50vh',
-    titleSize: 'clamp(2rem, 4vw, 3rem)',
-    subtitleSize: '1rem',
-    descriptionSize: '1.125rem',
-    padding: '3rem'
+    titleSize: 'text-4xl md:text-5xl',
+    subtitleSize: 'text-base',
+    descriptionSize: 'text-lg',
+    padding: 'px-8 py-12 md:px-16'
   },
   large: {
     height: '70vh',
-    titleSize: 'clamp(2.5rem, 5vw, 3.5rem)',
-    subtitleSize: '1.125rem',
-    descriptionSize: '1.25rem',
-    padding: '4rem'
+    titleSize: 'text-5xl md:text-6xl',
+    subtitleSize: 'text-lg',
+    descriptionSize: 'text-xl',
+    padding: 'px-8 py-16 md:px-16'
   }
 };
 
@@ -44,31 +46,58 @@ export const ReactSubHero: FC<SubHeroProps> = ({
   ctaUrl,
   backgroundImage,
   backgroundGradient,
-  backgroundColor = '#f8f9fa',
-  textColor = '#333',
+  backgroundColor,
+  textColor,
   height,
   className = '',
   showDecorative = false,
   overlayOpacity = 0.3,
   alignment = 'center',
   size = 'medium',
-  enableAnimation = true
+  enableAnimation = true,
+  ariaLabel
 }) => {
   const [isVisible, setIsVisible] = useState(!enableAnimation);
+  const [mounted, setMounted] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
+  const isFirstRender = useRef(true);
 
   // Get size config
   const sizeConfig = sizeConfigs[size];
   const effectiveHeight = height || sizeConfig.height;
 
-  // Fade in animation on mount or when visible
+  // Hydration and visibility animation
   useEffect(() => {
-    if (!enableAnimation) return;
+    setMounted(true);
+
+    // Fade out skeleton and show content
+    const timer = setTimeout(() => {
+      // Hide skeleton
+      const skeleton = document.querySelector('[data-x-kbve="sub-hero-skeleton"]') as HTMLElement;
+      if (skeleton) {
+        skeleton.style.opacity = '0';
+        skeleton.style.pointerEvents = 'none';
+        setTimeout(() => {
+          skeleton.style.display = 'none';
+        }, 300);
+      }
+
+      // Show content
+      setIsVisible(true);
+      isFirstRender.current = false;
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Intersection observer for fade-in animation
+  useEffect(() => {
+    if (!enableAnimation || !mounted) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
+          if (entry.isIntersecting && !isVisible) {
             setIsVisible(true);
             observer.disconnect();
           }
@@ -82,140 +111,105 @@ export const ReactSubHero: FC<SubHeroProps> = ({
     }
 
     return () => observer.disconnect();
-  }, [enableAnimation]);
+  }, [enableAnimation, mounted, isVisible]);
 
-  // Determine background style
-  const getBackgroundStyle = (): React.CSSProperties => {
-    const baseStyle: React.CSSProperties = {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      zIndex: -1
-    };
-
-    if (backgroundImage) {
-      return {
-        ...baseStyle,
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      };
-    }
-
-    if (backgroundGradient) {
-      return {
-        ...baseStyle,
-        background: backgroundGradient
-      };
-    }
-
-    return {
-      ...baseStyle,
-      backgroundColor
-    };
+  // Alignment classes for tailwind
+  const alignmentClasses = {
+    left: 'items-start text-left',
+    center: 'items-center text-center',
+    right: 'items-end text-right'
   };
 
-  // Get text alignment
-  const getTextAlignment = (): string => {
-    return alignment;
+  const ctaAlignmentClasses = {
+    left: 'justify-start',
+    center: 'justify-center',
+    right: 'justify-end'
   };
 
-  // Get content alignment styles
-  const getAlignmentStyles = (): React.CSSProperties => {
-    const alignmentMap = {
-      left: 'flex-start',
-      center: 'center',
-      right: 'flex-end'
-    };
-
-    return {
-      alignItems: alignmentMap[alignment]
-    };
-  };
+  if (!mounted) return null;
 
   return (
     <div
       ref={heroRef}
-      className={`sub-hero ${className}`}
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: effectiveHeight,
-        minHeight: '250px',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        ...getAlignmentStyles()
-      }}
+      data-x-kbve="sub-hero-content"
+      className={cn(
+        'relative w-full min-h-[250px] overflow-hidden flex flex-col justify-center',
+        alignmentClasses[alignment],
+        className
+      )}
+      style={{ height: effectiveHeight }}
+      role="region"
+      aria-label={ariaLabel || title}
     >
       {/* Background */}
-      <div style={getBackgroundStyle()} />
+      {backgroundImage && (
+        <div
+          className="absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${backgroundImage})` }}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Gradient Background */}
+      {!backgroundImage && backgroundGradient && (
+        <div
+          className="absolute inset-0 -z-10"
+          style={{ background: backgroundGradient }}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Color Background */}
+      {!backgroundImage && !backgroundGradient && (
+        <div
+          className="absolute inset-0 -z-10"
+          style={{
+            backgroundColor: backgroundColor || 'var(--sl-color-bg-accent)'
+          }}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Overlay */}
       {(backgroundImage || backgroundGradient) && (
         <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: `rgba(0, 0, 0, ${overlayOpacity})`,
-            zIndex: 0
-          }}
+          className="absolute inset-0 z-0"
+          style={{ backgroundColor: `rgba(0, 0, 0, ${overlayOpacity})` }}
+          aria-hidden="true"
         />
       )}
 
       {/* Decorative Element */}
       {showDecorative && (
         <div
-          className="decorative-element"
+          className="absolute top-0 right-0 w-48 h-48 md:w-64 md:h-64 rounded-full translate-x-1/2 -translate-y-1/2 z-0 opacity-10"
           style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            width: '200px',
-            height: '200px',
-            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-            borderRadius: '50%',
-            transform: 'translate(50%, -50%)',
-            zIndex: 0
+            background: 'linear-gradient(135deg, var(--sl-color-accent-low) 0%, var(--sl-color-accent) 100%)'
           }}
+          aria-hidden="true"
         />
       )}
 
       {/* Content */}
       <div
-        className="hero-content"
+        className={cn(
+          'relative z-10 max-w-screen-xl w-full',
+          sizeConfig.padding,
+          'transition-all duration-600 ease-out',
+          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+        )}
         style={{
-          position: 'relative',
-          zIndex: 1,
-          padding: sizeConfig.padding,
-          maxWidth: '1200px',
-          width: '100%',
-          textAlign: getTextAlignment(),
-          color: textColor,
-          opacity: isVisible ? 1 : 0,
-          transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
-          transition: enableAnimation ? 'opacity 0.6s ease-out, transform 0.6s ease-out' : 'none'
+          color: textColor || 'var(--sl-color-text)'
         }}
       >
         {/* Subtitle */}
         {subtitle && (
           <div
-            className="hero-subtitle"
-            style={{
-              fontSize: sizeConfig.subtitleSize,
-              fontWeight: 500,
-              marginBottom: '0.75rem',
-              opacity: 0.8,
-              letterSpacing: '0.05em',
-              textTransform: 'uppercase'
-            }}
+            className={cn(
+              sizeConfig.subtitleSize,
+              'font-medium mb-3 opacity-80 tracking-wider uppercase'
+            )}
+            style={{ color: 'var(--sl-color-text-accent)' }}
           >
             {subtitle}
           </div>
@@ -223,13 +217,10 @@ export const ReactSubHero: FC<SubHeroProps> = ({
 
         {/* Title */}
         <h2
-          className="hero-title"
-          style={{
-            fontSize: sizeConfig.titleSize,
-            fontWeight: 700,
-            marginBottom: '1rem',
-            lineHeight: 1.2
-          }}
+          className={cn(
+            sizeConfig.titleSize,
+            'font-bold mb-4 leading-tight'
+          )}
         >
           {title}
         </h2>
@@ -237,15 +228,11 @@ export const ReactSubHero: FC<SubHeroProps> = ({
         {/* Description */}
         {description && (
           <p
-            className="hero-description"
-            style={{
-              fontSize: sizeConfig.descriptionSize,
-              marginBottom: '1.5rem',
-              maxWidth: '700px',
-              margin: alignment === 'center' ? '0 auto 1.5rem' : '0 0 1.5rem 0',
-              opacity: 0.85,
-              lineHeight: 1.6
-            }}
+            className={cn(
+              sizeConfig.descriptionSize,
+              'mb-6 opacity-85 leading-relaxed max-w-3xl',
+              alignment === 'center' && 'mx-auto'
+            )}
           >
             {description}
           </p>
@@ -254,66 +241,31 @@ export const ReactSubHero: FC<SubHeroProps> = ({
         {/* CTA Button */}
         {ctaText && ctaUrl && (
           <div
-            className="hero-cta"
-            style={{
-              display: 'flex',
-              justifyContent: alignment === 'center' ? 'center' : alignment === 'right' ? 'flex-end' : 'flex-start'
-            }}
+            className={cn(
+              'flex',
+              ctaAlignmentClasses[alignment]
+            )}
           >
             <a
               href={ctaUrl}
-              className="hero-cta-button"
+              className={cn(
+                'inline-block px-6 py-3 text-base font-semibold rounded-md',
+                'transition-all duration-200 ease-in-out',
+                'focus-ring',
+                'hover:-translate-y-0.5 hover:shadow-md',
+                'text-white'
+              )}
               style={{
-                display: 'inline-block',
-                padding: '0.75rem 1.5rem',
-                fontSize: '1rem',
-                fontWeight: 600,
-                color: '#fff',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                cursor: 'pointer'
+                background: 'linear-gradient(135deg, var(--sl-color-accent) 0%, var(--sl-color-accent-high) 100%)',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
-              }}
+              aria-label={`${ctaText} - Call to action`}
             >
               {ctaText}
             </a>
           </div>
         )}
       </div>
-
-      <style>{`
-        .sub-hero {
-          -webkit-font-smoothing: antialiased;
-          -moz-osx-font-smoothing: grayscale;
-        }
-
-        @media (max-width: 768px) {
-          .hero-content {
-            padding: 1.5rem !important;
-          }
-
-          .hero-cta-button {
-            width: 100%;
-            text-align: center;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .hero-content {
-            padding: 1rem !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

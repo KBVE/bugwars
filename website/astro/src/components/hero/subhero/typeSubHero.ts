@@ -86,6 +86,11 @@ export interface SubHeroProps {
    * Enable fade-in animation (optional, default: true)
    */
   enableAnimation?: boolean;
+
+  /**
+   * ARIA label for accessibility (optional, defaults to title)
+   */
+  ariaLabel?: string;
 }
 
 /**

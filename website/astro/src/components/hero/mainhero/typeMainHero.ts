@@ -101,6 +101,11 @@ export interface MainHeroProps {
    * Vertical alignment (optional, default: 'center')
    */
   verticalAlignment?: 'top' | 'center' | 'bottom';
+
+  /**
+   * ARIA label for accessibility (optional, defaults to title)
+   */
+  ariaLabel?: string;
 }
 
 /**

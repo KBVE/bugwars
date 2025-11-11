@@ -2,7 +2,7 @@
 /**
  * AstroSubHero
  * Sub hero Astro component for secondary hero sections
- * Wraps the React SubHero component
+ * Wraps the React SubHero component with skeleton loader
  */
 
 import { ReactSubHero } from './ReactSubHero';
@@ -28,8 +28,8 @@ const {
   ctaUrl,
   backgroundImage,
   backgroundGradient,
-  backgroundColor = '#f8f9fa',
-  textColor = '#333',
+  backgroundColor,
+  textColor,
   height,
   className = '',
   showDecorative = false,
@@ -37,6 +37,7 @@ const {
   alignment = 'center',
   size = 'medium',
   enableAnimation = true,
+  ariaLabel,
   enableHydration = true,
   hydrationStrategy = 'visible'
 } = Astro.props;
@@ -58,34 +59,133 @@ const heroProps: SubHeroProps = {
   overlayOpacity,
   alignment,
   size,
-  enableAnimation
+  enableAnimation,
+  ariaLabel
+};
+
+// Size configurations for skeleton
+const sizeClasses = {
+  small: { height: 'min-h-[30vh]', padding: 'px-8 py-8', titleHeight: 'h-8', buttonHeight: 'h-10' },
+  medium: { height: 'min-h-[50vh]', padding: 'px-8 py-12 md:px-16', titleHeight: 'h-10 md:h-12', buttonHeight: 'h-12' },
+  large: { height: 'min-h-[70vh]', padding: 'px-8 py-16 md:px-16', titleHeight: 'h-12 md:h-14', buttonHeight: 'h-14' }
+};
+
+const sizeConfig = sizeClasses[size];
+
+// Alignment classes for skeleton
+const alignmentClasses = {
+  left: 'items-start text-left',
+  center: 'items-center text-center',
+  right: 'items-end text-right'
 };
 ---
 
-<div class="astro-sub-hero-wrapper">
-  {enableHydration && hydrationStrategy === 'load' && (
-    <ReactSubHero client:load {...heroProps} />
-  )}
-  {enableHydration && hydrationStrategy === 'idle' && (
-    <ReactSubHero client:idle {...heroProps} />
-  )}
-  {enableHydration && hydrationStrategy === 'visible' && (
-    <ReactSubHero client:visible {...heroProps} />
-  )}
-  {!enableHydration && (
-    <ReactSubHero client:only="react" {...heroProps} />
-  )}
+<div class="astro-sub-hero-wrapper relative" style={height ? `height: ${height};` : ''}>
+  <!-- Skeleton Shell (Higher z-index, fades out when React hydrates) -->
+  <div
+    data-x-kbve="sub-hero-skeleton"
+    class={`absolute inset-0 z-20 flex flex-col justify-center overflow-hidden transition-opacity duration-300 ${sizeConfig.height} ${alignmentClasses[alignment]}`}
+    role="region"
+    aria-label={ariaLabel || title}
+    aria-busy="true"
+  >
+    <!-- Background Skeleton -->
+    {backgroundImage && (
+      <div
+        class="absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat animate-pulse"
+        style={`background-image: url(${backgroundImage}); filter: blur(10px);`}
+        aria-hidden="true"
+      />
+    )}
+
+    {!backgroundImage && backgroundGradient && (
+      <div
+        class="absolute inset-0 -z-10 opacity-50"
+        style={`background: ${backgroundGradient};`}
+        aria-hidden="true"
+      />
+    )}
+
+    {!backgroundImage && !backgroundGradient && (
+      <div
+        class="absolute inset-0 -z-10 opacity-50"
+        style={`background-color: ${backgroundColor || 'var(--sl-color-bg-accent)'};`}
+        aria-hidden="true"
+      />
+    )}
+
+    <!-- Overlay -->
+    {(backgroundImage || backgroundGradient) && (
+      <div
+        class="absolute inset-0 z-0"
+        style={`background-color: rgba(0, 0, 0, ${overlayOpacity});`}
+        aria-hidden="true"
+      />
+    )}
+
+    <!-- Decorative Element Skeleton -->
+    {showDecorative && (
+      <div
+        class="absolute top-0 right-0 w-48 h-48 md:w-64 md:h-64 rounded-full translate-x-1/2 -translate-y-1/2 z-0 opacity-5 animate-pulse"
+        style="background: linear-gradient(135deg, var(--sl-color-accent-low) 0%, var(--sl-color-accent) 100%);"
+        aria-hidden="true"
+      />
+    )}
+
+    <!-- Content Skeleton -->
+    <div class={`relative z-10 max-w-screen-xl w-full ${sizeConfig.padding}`} style={`color: ${textColor || 'var(--sl-color-text)'};`}>
+      <!-- Subtitle Skeleton -->
+      {subtitle && (
+        <div class="mb-3">
+          <div class="h-5 w-32 bg-gray-300/30 dark:bg-gray-700/30 rounded animate-pulse"></div>
+        </div>
+      )}
+
+      <!-- Title Skeleton -->
+      <div class="mb-4 space-y-2">
+        <div class={`${sizeConfig.titleHeight} w-full max-w-lg bg-gray-300/40 dark:bg-gray-700/40 rounded animate-pulse`}></div>
+        <div class={`${sizeConfig.titleHeight} w-3/4 max-w-md bg-gray-300/40 dark:bg-gray-700/40 rounded animate-pulse`}></div>
+      </div>
+
+      <!-- Description Skeleton -->
+      {description && (
+        <div class="mb-6 space-y-2 max-w-3xl">
+          <div class="h-5 w-full bg-gray-300/30 dark:bg-gray-700/30 rounded animate-pulse"></div>
+          <div class="h-5 w-5/6 bg-gray-300/30 dark:bg-gray-700/30 rounded animate-pulse"></div>
+        </div>
+      )}
+
+      <!-- CTA Button Skeleton -->
+      {ctaText && (
+        <div>
+          <div class={`${sizeConfig.buttonHeight} w-32 bg-lime-500/30 rounded-md animate-pulse`}></div>
+        </div>
+      )}
+    </div>
+  </div>
+
+  <!-- React Content Shell (Lower z-index, React fills this in) -->
+  <div class="absolute inset-0 z-10">
+    {enableHydration && hydrationStrategy === 'load' && (
+      <ReactSubHero client:load {...heroProps} />
+    )}
+    {enableHydration && hydrationStrategy === 'idle' && (
+      <ReactSubHero client:idle {...heroProps} />
+    )}
+    {enableHydration && hydrationStrategy === 'visible' && (
+      <ReactSubHero client:visible {...heroProps} />
+    )}
+    {!enableHydration && (
+      <ReactSubHero client:only="react" {...heroProps} />
+    )}
+  </div>
 </div>
 
 <style>
   .astro-sub-hero-wrapper {
     width: 100%;
     position: relative;
-  }
-
-  /* Ensure consistent spacing */
-  .astro-sub-hero-wrapper :global(.sub-hero) {
-    margin: 0;
+    isolation: isolate;
   }
 
   /* Smooth transitions */
@@ -100,30 +200,40 @@ const heroProps: SubHeroProps = {
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+
+    [data-x-kbve="sub-hero-skeleton"] {
+      animation: none !important;
+    }
+
+    [data-x-kbve="sub-hero-skeleton"] :global(.animate-pulse) {
+      animation: none !important;
+    }
   }
 
   /* Print styles */
   @media print {
-    .astro-sub-hero-wrapper :global(.sub-hero) {
-      min-height: auto;
+    .astro-sub-hero-wrapper {
+      height: auto !important;
       page-break-inside: avoid;
     }
 
+    [data-x-kbve="sub-hero-skeleton"],
     .astro-sub-hero-wrapper :global(.decorative-element) {
-      display: none;
+      display: none !important;
     }
   }
 
   /* High contrast mode support */
   @media (prefers-contrast: high) {
-    .astro-sub-hero-wrapper :global(.hero-cta-button) {
+    .astro-sub-hero-wrapper :global(.hero-cta-button),
+    .astro-sub-hero-wrapper :global(a[href]) {
       border: 2px solid currentColor !important;
     }
   }
 
   /* Responsive adjustments */
   @media (max-width: 768px) {
-    .astro-sub-hero-wrapper :global(.sub-hero) {
+    .astro-sub-hero-wrapper {
       min-height: 200px;
     }
   }
@@ -131,16 +241,16 @@ const heroProps: SubHeroProps = {
 
 <script>
   /**
-   * Client-side hydration script
-   * Handles sub hero-specific interactions and optimizations
+   * Client-side script
+   * Handles preloading and optimizations
    */
 
   // Preload background images for better performance
   const heroWrapper = document.querySelector('.astro-sub-hero-wrapper');
   if (heroWrapper) {
-    const hero = heroWrapper.querySelector('.sub-hero') as HTMLElement;
-    if (hero) {
-      const bgImage = hero.style.backgroundImage;
+    const skeleton = heroWrapper.querySelector('[data-x-kbve="sub-hero-skeleton"]') as HTMLElement;
+    if (skeleton) {
+      const bgImage = skeleton.style.backgroundImage;
       if (bgImage) {
         const imageUrl = bgImage.match(/url\(['"]?(.+?)['"]?\)/)?.[1];
         if (imageUrl) {
@@ -151,24 +261,9 @@ const heroProps: SubHeroProps = {
     }
   }
 
-  // Handle CTA button clicks with smooth scroll
-  document.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement;
-    if (target.classList.contains('hero-cta-button')) {
-      const href = target.getAttribute('href');
-      if (href?.startsWith('#')) {
-        e.preventDefault();
-        const element = document.querySelector(href);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
-    }
-  });
-
   // Log sub hero load time (development only)
   if (import.meta.env.DEV) {
-    console.log('Sub Hero component loaded');
+    console.log('[SubHero] Component initialized');
     performance.mark('sub-hero-loaded');
   }
 </script>
