@@ -32,12 +32,10 @@ namespace BugWars.Core
         private void Awake()
         {
             // Component initialized
-            Debug.Log("[InputManager] Awake called - InputManager initialized");
         }
 
         private void Start()
         {
-            Debug.Log($"[InputManager] Start called - EventManager reference: {(_eventManager != null ? "available" : "NULL")}");
             if (_eventManager == null)
             {
                 Debug.LogError("[InputManager] EventManager was not injected! Input events will not work!");
@@ -75,9 +73,6 @@ namespace BugWars.Core
             // Escape key - Main menu toggle
             if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
-                if (debugMode)
-                    Debug.Log("[InputManager] Escape key pressed - firing event");
-
                 _eventManager.TriggerEscapePressed();
             }
 
@@ -85,9 +80,6 @@ namespace BugWars.Core
             if (Keyboard.current.pKey.wasPressedThisFrame ||
                 Keyboard.current.pauseKey.wasPressedThisFrame)
             {
-                if (debugMode)
-                    Debug.Log("[InputManager] Pause key pressed - firing event");
-
                 _eventManager.TriggerPausePressed();
             }
 
@@ -106,7 +98,6 @@ namespace BugWars.Core
         public void SetDebugMode(bool enabled)
         {
             debugMode = enabled;
-            Debug.Log($"[InputManager] Debug mode {(enabled ? "enabled" : "disabled")}");
         }
 
         /// <summary>

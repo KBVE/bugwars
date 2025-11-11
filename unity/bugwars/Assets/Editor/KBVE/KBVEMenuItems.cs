@@ -16,15 +16,12 @@ namespace KBVE.Editor
             var type = assembly.GetType("UnityEditor.LogEntries");
             var method = type.GetMethod("Clear");
             method.Invoke(new object(), null);
-
-            Debug.Log("[KBVE] Console cleared");
         }
 
         [MenuItem("KBVE/Quick Actions/Refresh Assets _F5", false, 2)]
         public static void RefreshAssets()
         {
             AssetDatabase.Refresh();
-            Debug.Log("[KBVE] Assets refreshed");
         }
 
         [MenuItem("KBVE/Quick Actions/Reimport All Assets", false, 3)]
@@ -36,7 +33,6 @@ namespace KBVE.Editor
                 "Yes", "No"))
             {
                 AssetDatabase.ImportAsset("Assets", ImportAssetOptions.ImportRecursive);
-                Debug.Log("[KBVE] All assets reimported");
             }
         }
 
@@ -50,7 +46,6 @@ namespace KBVE.Editor
             {
                 PlayerPrefs.DeleteAll();
                 PlayerPrefs.Save();
-                Debug.Log("[KBVE] PlayerPrefs deleted");
             }
         }
 
@@ -58,7 +53,6 @@ namespace KBVE.Editor
         public static void SaveScene()
         {
             UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
-            Debug.Log("[KBVE] Scene saved");
         }
 
         [MenuItem("KBVE/Scene Management/New Scene", false, 101)]
@@ -67,19 +61,12 @@ namespace KBVE.Editor
             UnityEditor.SceneManagement.EditorSceneManager.NewScene(
                 UnityEditor.SceneManagement.NewSceneSetup.DefaultGameObjects,
                 UnityEditor.SceneManagement.NewSceneMode.Single);
-            Debug.Log("[KBVE] New scene created");
         }
 
         [MenuItem("KBVE/Debug/Log System Info", false, 200)]
         public static void LogSystemInfo()
         {
-            Debug.Log("=== KBVE System Info ===");
-            Debug.Log($"Unity Version: {Application.unityVersion}");
-            Debug.Log($"Platform: {Application.platform}");
-            Debug.Log($"Graphics Device: {SystemInfo.graphicsDeviceName}");
-            Debug.Log($"Processor: {SystemInfo.processorType} ({SystemInfo.processorCount} cores)");
-            Debug.Log($"RAM: {SystemInfo.systemMemorySize}MB");
-            Debug.Log($"Screen Resolution: {Screen.currentResolution}");
+            // Debug logging removed - use defensive logging only
         }
     }
 }

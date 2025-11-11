@@ -132,7 +132,6 @@ namespace BugWars.Core
         #region Unity Lifecycle
         private void Awake()
         {
-            Debug.Log("[GameManager] Awake called");
             // Initialize current scene reference
             CurrentScene = SceneManager.GetActiveScene();
 
@@ -142,8 +141,6 @@ namespace BugWars.Core
 
         private void Start()
         {
-            Debug.Log($"[GameManager] Start called - EventManager: {(_eventManager != null ? "available" : "NULL")}, MainMenuManager: {(_mainMenuManager != null ? "available" : "NULL")}, TerrainManager: {(_terrainManager != null ? "available" : "NULL")}");
-
             // Subscribe to EventManager events (after injection)
             if (_eventManager != null)
             {
@@ -169,8 +166,6 @@ namespace BugWars.Core
 
             // Initialize terrain generation
             InitializeWorld().Forget();
-
-            Debug.Log("[GameManager] Start complete");
         }
 
         /// <summary>
@@ -179,17 +174,10 @@ namespace BugWars.Core
         private void SubscribeToEvents()
         {
             // Input events
-            Debug.Log("[GameManager] Subscribing to OnEscapePressed event");
             Events.OnEscapePressed.AddListener(OnEscapePressed);
-            Debug.Log("[GameManager] Subscribing to OnPausePressed event");
             Events.OnPausePressed.AddListener(OnPausePressed);
 
             // You can subscribe to more events here as needed
-            Debug.Log("[GameManager] Event subscriptions complete");
-
-            // Note: GetPersistentEventCount() only returns Inspector-assigned listeners, not runtime ones
-            // We've added runtime listeners, so this will show 0 but that's expected
-            Debug.Log($"[GameManager] Persistent listener count: {Events.OnEscapePressed.GetPersistentEventCount()} (runtime listeners not included in this count)");
         }
 
         /// <summary>
@@ -291,10 +279,8 @@ namespace BugWars.Core
         /// </summary>
         public void ToggleMainMenu()
         {
-            Debug.Log($"[GameManager] ToggleMainMenu called - MainMenuManager is {(_mainMenuManager != null ? "available" : "NULL")}");
             if (_mainMenuManager != null)
             {
-                Debug.Log($"[GameManager] Current menu state before toggle: {_mainMenuManager.IsMenuVisible}");
                 _mainMenuManager.ToggleMenu();
                 // Note: Trigger events in MainMenuManager instead, to know actual state
             }
@@ -344,21 +330,15 @@ namespace BugWars.Core
         /// </summary>
         private async UniTask InitializeWorld()
         {
-            Debug.Log("[GameManager] Initializing game world...");
-
             if (_terrainManager != null)
             {
                 // Wait for terrain to be ready (TerrainManager's StartAsync handles generation)
-                Debug.Log("[GameManager] Waiting for terrain to be ready...");
                 await UniTask.WaitUntil(() => _terrainManager.IsReady);
-                Debug.Log("[GameManager] Terrain is ready!");
             }
             else
             {
                 Debug.LogError("[GameManager] Cannot initialize terrain - TerrainManager is null!");
             }
-
-            Debug.Log("[GameManager] World initialization complete");
         }
         #endregion
 
@@ -379,7 +359,6 @@ namespace BugWars.Core
         /// </summary>
         private void OnEscapePressed()
         {
-            Debug.Log("[GameManager] OnEscapePressed event received - calling ToggleMainMenu()");
             ToggleMainMenu();
         }
 

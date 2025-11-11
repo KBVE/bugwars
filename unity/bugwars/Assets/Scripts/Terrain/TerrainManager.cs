@@ -41,7 +41,6 @@ namespace BugWars.Terrain
         /// </summary>
         public async UniTask StartAsync(CancellationToken cancellation)
         {
-            Debug.Log("[TerrainManager] StartAsync called");
             InitializeTerrainSystem();
 
             // Generate initial terrain chunks
@@ -66,7 +65,6 @@ namespace BugWars.Terrain
             }
 
             isInitialized = true;
-            Debug.Log($"[TerrainManager] Initialized with seed: {seed}. Ready for terrain generation.");
         }
 
         /// <summary>
@@ -85,7 +83,6 @@ namespace BugWars.Terrain
             }
 
             isGenerating = true;
-            Debug.Log("[TerrainManager] Starting initial chunk generation...");
 
             int halfGrid = chunkGridSize / 2;
             List<UniTask> generationTasks = new List<UniTask>();
@@ -104,7 +101,6 @@ namespace BugWars.Terrain
             await UniTask.WhenAll(generationTasks);
 
             isGenerating = false;
-            Debug.Log($"[TerrainManager] Generated {activeChunks.Count} chunks successfully");
 
             if (showDebugInfo)
             {
@@ -137,8 +133,6 @@ namespace BugWars.Terrain
 
             // Add to active chunks dictionary
             activeChunks[chunkCoord] = chunk;
-
-            Debug.Log($"[TerrainManager] Chunk {chunkCoord} generated");
         }
 
         /// <summary>
@@ -151,7 +145,6 @@ namespace BugWars.Terrain
                 chunk.Unload();
                 Destroy(chunk.gameObject);
                 activeChunks.Remove(chunkCoord);
-                Debug.Log($"[TerrainManager] Chunk {chunkCoord} unloaded");
             }
         }
 
@@ -169,7 +162,6 @@ namespace BugWars.Terrain
                 return;
 
             currentPlayerChunkCoord = playerChunk;
-            Debug.Log($"[TerrainManager] Player moved to chunk {playerChunk}");
 
             // TODO: Implement chunk loading/unloading based on distance
             // For now, this is a placeholder for future expansion
@@ -201,7 +193,6 @@ namespace BugWars.Terrain
             material.SetFloat("_Smoothness", 0.2f);
             material.SetFloat("_Metallic", 0f);
 
-            Debug.Log("[TerrainManager] Created default grassland material");
             return material;
         }
 
@@ -220,7 +211,6 @@ namespace BugWars.Terrain
 
             // Update seed and regenerate
             seed = newSeed;
-            Debug.Log($"[TerrainManager] Regenerating terrain with seed: {seed}");
             await GenerateInitialChunks();
         }
 
@@ -229,11 +219,7 @@ namespace BugWars.Terrain
         /// </summary>
         private void LogChunkGrid()
         {
-            Debug.Log("=== Terrain Chunk Grid ===");
-            Debug.Log($"A(-1,1)  B(0,1)  C(1,1)");
-            Debug.Log($"D(-1,0)  E(0,0)  F(1,0)  <- Player at E(0,0)");
-            Debug.Log($"G(-1,-1) H(0,-1) I(1,-1)");
-            Debug.Log($"Total chunks: {activeChunks.Count}");
+            // Debug logging removed - use defensive logging only
         }
 
         /// <summary>
