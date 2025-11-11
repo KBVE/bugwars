@@ -46,7 +46,6 @@ namespace BugWars.Entity.Player
         {
             base.OnDeath();
             // Player-specific death behavior
-            Debug.Log("Player has died!");
             // TODO: Trigger game over, respawn, etc.
         }
 

@@ -60,8 +60,6 @@ namespace KBVE.Editor
             // Select the created asset
             EditorUtility.FocusProjectWindow();
             Selection.activeObject = panelSettings;
-
-            Debug.Log($"[KBVE Editor] Created PanelSettings at {assetPath}");
         }
 
         [MenuItem("KBVE/UI Toolkit/Create Main Menu Panel Settings")]
@@ -99,8 +97,6 @@ namespace KBVE.Editor
             // Select the created asset
             EditorUtility.FocusProjectWindow();
             Selection.activeObject = panelSettings;
-
-            Debug.Log($"[KBVE Editor] Created Main Menu PanelSettings at {path}");
         }
     }
 }

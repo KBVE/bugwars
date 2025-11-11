@@ -69,7 +69,6 @@ namespace BugWars.Entity.NPC
         {
             base.OnDeath();
             // NPC-specific death behavior
-            Debug.Log($"{entityName} has been defeated!");
             // TODO: Drop loot, play death animation, etc.
         }
 
