@@ -418,6 +418,15 @@ jobs:
         name: Deploy WebGL to GitHub Pages
         needs: unity-build
         runs-on: ubuntu-latest
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        concurrency:
+            group: "pages"
+            cancel-in-progress: false
         steps:
             - name: Download WebGL Build
               uses: actions/download-artifact@v4
@@ -430,32 +439,34 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                   name: webgl-zip
-                  path: .
+                  path: webgl-zip-download
 
-            - name: Copy WebGL files
+            - name: Prepare GitHub Pages content
               run: |
-                  mkdir -p dist/apps/webapp/
-                  cp -R build/WebGL/WebGL/* dist/apps/webapp/
+                  mkdir -p _site
+                  # Copy WebGL build files
+                  cp -R build/WebGL/WebGL/* _site/
 
-                  # Copy webgl.zip to the webapp directory
-                  cp webgl.zip dist/apps/webapp/
+                  # Copy webgl.zip to root of site
+                  cp webgl-zip-download/webgl.zip _site/
 
-            - name: Create .nojekyll and CNAME files
-              run: |
-                  touch dist/apps/webapp/.nojekyll
-                  echo "unity-bw.kbve.com" > dist/apps/webapp/CNAME
+                  # Create .nojekyll to prevent Jekyll processing
+                  touch _site/.nojekyll
+
+                  # Create CNAME for custom domain
+                  echo "unity-bw.kbve.com" > _site/CNAME
+
+                  # List contents for verification
+                  echo "Contents of _site directory:"
+                  ls -lah _site/
+                  echo "webgl.zip info:"
+                  ls -lh _site/webgl.zip
+
+            - name: Upload GitHub Pages artifact
+              uses: actions/upload-pages-artifact@v3
+              with:
+                  path: _site
 
             - name: Deploy to GitHub Pages
-              uses: dobbelina/copy_file_to_another_repo_action@main
-              env:
-                  API_TOKEN_GITHUB: ${{ secrets.UNITY_PAT }}
-              with:
-                  source_file: 'dist/apps/webapp/'
-                  destination_repo: 'KBVE/bugwars'
-                  destination_folder: '/'
-                  destination_branch: 'gh-pages'
-                  destination_branch_create: 'ghpages-deploy-${{ github.run_id }}'
-                  user_email: 'h0lybyte@users.noreply.github.com'
-                  user_name: 'h0lybyte'
-                  commit_message: 'Deploy Unity WebGL to GH Pages from CI'
-                  rsync_option: '-avrh --delete'
+              id: deployment
+              uses: actions/deploy-pages@v4
