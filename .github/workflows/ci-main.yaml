@@ -408,7 +408,7 @@ jobs:
             - name: Deploy to Itch.io
               uses: KikimoraGames/itch-publish@v0.0.3
               with:
-                  butlerApiKey: ${{ secrets.BUTLER_API }}
+                  butlerApiKey: ${{ secrets.ITCH_API }}
                   gameData: ${{ steps.download.outputs.download-path }}
                   itchUsername: kbve
                   itchGameId: bugwars
@@ -448,7 +448,7 @@ jobs:
             - name: Deploy to GitHub Pages
               uses: dobbelina/copy_file_to_another_repo_action@main
               env:
-                  API_TOKEN_GITHUB: ${{ secrets.GH_PAGES_PAT }}
+                  API_TOKEN_GITHUB: ${{ secrets.UNITY_PAT }}
               with:
                   source_file: 'dist/apps/webapp/'
                   destination_repo: 'KBVE/kbve.com'
