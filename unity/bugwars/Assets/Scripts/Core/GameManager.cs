@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
 using BugWars.UI;
+using BugWars.Terrain;
 using VContainer;
 
 namespace BugWars.Core
@@ -15,12 +16,14 @@ namespace BugWars.Core
         #region Dependencies
         private EventManager _eventManager;
         private MainMenuManager _mainMenuManager;
+        private TerrainManager _terrainManager;
 
         [Inject]
-        public void Construct(EventManager eventManager, MainMenuManager mainMenuManager)
+        public void Construct(EventManager eventManager, MainMenuManager mainMenuManager, TerrainManager terrainManager)
         {
             _eventManager = eventManager;
             _mainMenuManager = mainMenuManager;
+            _terrainManager = terrainManager;
         }
         #endregion
 
@@ -46,6 +49,13 @@ namespace BugWars.Core
         /// Reference to the EventManager for event triggering
         /// </summary>
         public EventManager Events => _eventManager;
+        #endregion
+
+        #region Terrain Management
+        /// <summary>
+        /// Reference to the TerrainManager for terrain operations
+        /// </summary>
+        public TerrainManager Terrain => _terrainManager;
         #endregion
 
         #region Camera Management
@@ -132,7 +142,7 @@ namespace BugWars.Core
 
         private void Start()
         {
-            Debug.Log($"[GameManager] Start called - EventManager: {(_eventManager != null ? "available" : "NULL")}, MainMenuManager: {(_mainMenuManager != null ? "available" : "NULL")}");
+            Debug.Log($"[GameManager] Start called - EventManager: {(_eventManager != null ? "available" : "NULL")}, MainMenuManager: {(_mainMenuManager != null ? "available" : "NULL")}, TerrainManager: {(_terrainManager != null ? "available" : "NULL")}");
 
             // Subscribe to EventManager events (after injection)
             if (_eventManager != null)
@@ -149,8 +159,16 @@ namespace BugWars.Core
                 Debug.LogError("[GameManager] MainMenuManager reference is null!");
             }
 
+            if (_terrainManager == null)
+            {
+                Debug.LogError("[GameManager] TerrainManager reference is null!");
+            }
+
             // Subscribe to Unity scene loaded event
             SceneManager.sceneLoaded += OnSceneLoaded;
+
+            // Initialize terrain generation
+            InitializeWorld().Forget();
 
             Debug.Log("[GameManager] Start complete");
         }
@@ -316,6 +334,30 @@ namespace BugWars.Core
             {
                 Debug.LogWarning("[GameManager] MainMenuManager reference not available!");
             }
+        }
+        #endregion
+
+        #region World Initialization
+        /// <summary>
+        /// Initialize the game world including terrain generation
+        /// Called after all managers are injected and ready
+        /// </summary>
+        private async UniTask InitializeWorld()
+        {
+            Debug.Log("[GameManager] Initializing game world...");
+
+            if (_terrainManager != null)
+            {
+                Debug.Log("[GameManager] Generating initial terrain...");
+                await _terrainManager.GenerateInitialChunks();
+                Debug.Log("[GameManager] Terrain generation complete!");
+            }
+            else
+            {
+                Debug.LogError("[GameManager] Cannot initialize terrain - TerrainManager is null!");
+            }
+
+            Debug.Log("[GameManager] World initialization complete");
         }
         #endregion
 

@@ -24,7 +24,6 @@ namespace BugWars.Terrain
         [SerializeField] private int chunkResolution = 20;
 
         [Header("Debug")]
-        [SerializeField] private bool generateOnStart = true;
         [SerializeField] private bool showDebugInfo = true;
 
         // Chunk management
@@ -58,13 +57,7 @@ namespace BugWars.Terrain
             }
 
             isInitialized = true;
-            Debug.Log($"[TerrainManager] Initialized with seed: {seed}");
-
-            if (generateOnStart)
-            {
-                // Generate initial chunks asynchronously
-                GenerateInitialChunks().Forget();
-            }
+            Debug.Log($"[TerrainManager] Initialized with seed: {seed}. Ready for terrain generation.");
         }
 
         /// <summary>
