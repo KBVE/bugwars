@@ -1,10 +1,18 @@
 /**
  * Unity WebGL Types
  * Defines all TypeScript types for Unity WebGL integration
+ * Uses react-unity-webgl library types where applicable
  */
 
+import type { UnityConfig as ReactUnityWebGLConfig } from 'react-unity-webgl';
+
 /**
- * Unity Instance interface representing the loaded Unity game
+ * Re-export Unity Configuration from react-unity-webgl
+ */
+export type UnityConfig = ReactUnityWebGLConfig;
+
+/**
+ * Unity Instance interface (extended from react-unity-webgl)
  */
 export interface UnityInstance {
   /**
@@ -13,63 +21,27 @@ export interface UnityInstance {
    * @param methodName - The method name to call
    * @param value - The value to pass (optional)
    */
-  SendMessage(objectName: string, methodName: string, value?: string | number): void;
+  sendMessage(objectName: string, methodName: string, value?: string | number): void;
 
   /**
-   * Set the Unity instance to fullscreen mode
-   * @param fullscreen - Whether to enable fullscreen
+   * Request fullscreen mode
    */
-  SetFullscreen(fullscreen: boolean): void;
+  requestFullscreen(): void;
 
   /**
-   * Quit the Unity instance
+   * Take a screenshot
    */
-  Quit(): Promise<void>;
-}
-
-/**
- * Unity Configuration for initializing the Unity WebGL build
- */
-export interface UnityConfig {
-  /**
-   * Path to the Unity loader file
-   */
-  loaderUrl: string;
+  takeScreenshot(dataType?: string, quality?: number): string | null;
 
   /**
-   * Path to the Unity data file
+   * Request pointer lock
    */
-  dataUrl: string;
+  requestPointerLock(): void;
 
   /**
-   * Path to the Unity framework file
+   * Unload the Unity instance
    */
-  frameworkUrl: string;
-
-  /**
-   * Path to the Unity WebAssembly file
-   */
-  codeUrl: string;
-
-  /**
-   * Streaming assets URL (optional)
-   */
-  streamingAssetsUrl?: string;
-
-  /**
-   * Company name from Unity Player Settings
-   */
-  companyName?: string;
-
-  /**
-   * Product name from Unity Player Settings
-   */
-  productName?: string;
-
-  /**
-   * Product version from Unity Player Settings
-   */
-  productVersion?: string;
+  unload(): Promise<void>;
 }
 
 /**

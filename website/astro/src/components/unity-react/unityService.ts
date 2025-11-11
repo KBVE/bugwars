@@ -1,16 +1,12 @@
 /**
  * Unity Service - Singleton
- * Manages Unity WebGL instance and communication with Supabase
+ * Manages Unity WebGL communication with Supabase and event handling
+ * Works with react-unity-webgl library
  */
 
 import type {
-  UnityInstance,
-  UnityConfig,
   UnityEvent,
-  UnityProgress,
-  UnityServiceEventHandlers,
   WebToUnityMessage,
-  UnityToWebMessage,
   SupabasePayload,
   PlayerData,
   GameState
@@ -19,22 +15,25 @@ import { UnityEventType } from './typeUnity';
 import { getSupa } from '@/lib/supa';
 
 /**
+ * Unity Context interface from react-unity-webgl
+ */
+interface UnityContext {
+  sendMessage: (gameObjectName: string, methodName: string, parameter?: string | number) => void;
+  requestFullscreen: (fullscreen: boolean) => void;
+  unload: () => Promise<void>;
+}
+
+/**
  * UnityService - Singleton class for managing Unity WebGL integration
  */
 class UnityService {
   private static instance: UnityService | null = null;
-  private unityInstance: UnityInstance | null = null;
+  private unityContext: UnityContext | null = null;
   private eventHandlers: Map<string, Set<(event: UnityEvent) => void>> = new Map();
-  private isInitialized = false;
-  private isLoading = false;
-  private loadingProgress = 0;
 
   // Private constructor to enforce singleton pattern
   private constructor() {
-    // Set up global listener for Unity messages
-    if (typeof window !== 'undefined') {
-      (window as any).receiveUnityMessage = this.handleUnityMessage.bind(this);
-    }
+    // Reserved for future initialization
   }
 
   /**
@@ -48,120 +47,24 @@ class UnityService {
   }
 
   /**
-   * Initialize Unity WebGL instance
+   * Set Unity context from react-unity-webgl hook
    */
-  public async initialize(
-    canvasElement: HTMLCanvasElement,
-    config: UnityConfig,
-    handlers?: UnityServiceEventHandlers
-  ): Promise<UnityInstance> {
-    if (this.isInitialized && this.unityInstance) {
-      console.warn('Unity is already initialized');
-      return this.unityInstance;
-    }
-
-    if (this.isLoading) {
-      throw new Error('Unity is already loading');
-    }
-
-    this.isLoading = true;
-
-    try {
-      // Register event handlers if provided
-      if (handlers) {
-        if (handlers.onProgress) {
-          this.on('progress', (event) => {
-            handlers.onProgress!(event.data as UnityProgress);
-          });
-        }
-        if (handlers.onGameLoaded) {
-          this.on(UnityEventType.GAME_LOADED, handlers.onGameLoaded);
-        }
-        if (handlers.onGameReady) {
-          this.on(UnityEventType.GAME_READY, handlers.onGameReady);
-        }
-        if (handlers.onError) {
-          this.on(UnityEventType.ERROR, (event) => {
-            handlers.onError!(event.data as Error);
-          });
-        }
-        if (handlers.onUnityEvent) {
-          this.on('*', handlers.onUnityEvent);
-        }
-      }
-
-      // Load Unity loader script
-      const unityLoader = await this.loadUnityLoader(config.loaderUrl);
-
-      // Create Unity instance
-      this.unityInstance = await unityLoader.createUnityInstance(canvasElement, config, (progress: number) => {
-        this.loadingProgress = progress;
-        this.emit({
-          type: 'progress',
-          data: { progress },
-          timestamp: Date.now()
-        });
-      });
-
-      this.isInitialized = true;
-      this.isLoading = false;
-
-      // Emit game loaded event
-      this.emit({
-        type: UnityEventType.GAME_LOADED,
-        timestamp: Date.now()
-      });
-
-      return this.unityInstance;
-    } catch (error) {
-      this.isLoading = false;
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.emit({
-        type: UnityEventType.ERROR,
-        data: errorObj,
-        timestamp: Date.now()
-      });
-      throw errorObj;
-    }
+  public setUnityContext(context: UnityContext): void {
+    this.unityContext = context;
   }
 
-  /**
-   * Load Unity loader script dynamically
-   */
-  private loadUnityLoader(loaderUrl: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      // Check if already loaded
-      if ((window as any).createUnityInstance) {
-        resolve({ createUnityInstance: (window as any).createUnityInstance });
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = loaderUrl;
-      script.async = true;
-      script.onload = () => {
-        if ((window as any).createUnityInstance) {
-          resolve({ createUnityInstance: (window as any).createUnityInstance });
-        } else {
-          reject(new Error('Unity loader failed to expose createUnityInstance'));
-        }
-      };
-      script.onerror = () => reject(new Error(`Failed to load Unity loader from ${loaderUrl}`));
-      document.body.appendChild(script);
-    });
-  }
 
   /**
    * Send message to Unity
    */
   public sendToUnity(message: WebToUnityMessage): void {
-    if (!this.unityInstance) {
-      console.error('Unity instance not initialized');
+    if (!this.unityContext) {
+      console.warn('Unity context not set. Make sure Unity is loaded.');
       return;
     }
 
     try {
-      this.unityInstance.SendMessage(
+      this.unityContext.sendMessage(
         message.gameObject,
         message.method,
         message.parameter
@@ -173,23 +76,6 @@ class UnityService {
         data: error instanceof Error ? error : new Error(String(error)),
         timestamp: Date.now()
       });
-    }
-  }
-
-  /**
-   * Handle messages received from Unity
-   */
-  private handleUnityMessage(message: string): void {
-    try {
-      const parsed: UnityToWebMessage = JSON.parse(message);
-      const event: UnityEvent = {
-        type: parsed.messageType,
-        data: parsed.payload,
-        timestamp: Date.now()
-      };
-      this.emit(event);
-    } catch (error) {
-      console.error('Error parsing Unity message:', error, message);
     }
   }
 
@@ -217,7 +103,7 @@ class UnityService {
   /**
    * Emit event to all subscribers
    */
-  private emit(event: UnityEvent): void {
+  public emit(event: UnityEvent): void {
     // Emit to specific event type handlers
     const handlers = this.eventHandlers.get(event.type);
     if (handlers) {
@@ -350,48 +236,26 @@ class UnityService {
    * Set fullscreen mode
    */
   public setFullscreen(fullscreen: boolean): void {
-    if (this.unityInstance) {
-      this.unityInstance.SetFullscreen(fullscreen);
+    if (this.unityContext) {
+      this.unityContext.requestFullscreen(fullscreen);
     }
   }
 
   /**
-   * Quit Unity instance
+   * Unload Unity instance
    */
-  public async quit(): Promise<void> {
-    if (this.unityInstance) {
-      await this.unityInstance.Quit();
-      this.unityInstance = null;
-      this.isInitialized = false;
+  public async unload(): Promise<void> {
+    if (this.unityContext) {
+      await this.unityContext.unload();
+      this.unityContext = null;
     }
   }
 
   /**
-   * Get current Unity instance
+   * Check if Unity context is set
    */
-  public getUnityInstance(): UnityInstance | null {
-    return this.unityInstance;
-  }
-
-  /**
-   * Check if Unity is initialized
-   */
-  public getIsInitialized(): boolean {
-    return this.isInitialized;
-  }
-
-  /**
-   * Check if Unity is loading
-   */
-  public getIsLoading(): boolean {
-    return this.isLoading;
-  }
-
-  /**
-   * Get current loading progress
-   */
-  public getLoadingProgress(): number {
-    return this.loadingProgress;
+  public isReady(): boolean {
+    return this.unityContext !== null;
   }
 }
 

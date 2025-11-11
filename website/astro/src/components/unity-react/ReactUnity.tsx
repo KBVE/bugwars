@@ -1,18 +1,17 @@
 /**
  * ReactUnity Component
  * Main React component for Unity WebGL integration
+ * Uses react-unity-webgl library
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { FC } from 'react';
+import { Unity, useUnityContext } from 'react-unity-webgl';
 import { unityService } from './unityService';
 import { useSession } from '@/components/providers/SupaProvider';
 import type {
   UnityConfig,
-  UnityContainerProps,
-  UnityEvent,
-  UnityProgress,
-  UnityInstance
+  UnityEvent
 } from './typeUnity';
 import { UnityEventType } from './typeUnity';
 
@@ -53,7 +52,7 @@ export interface ReactUnityProps {
   /**
    * Callback when Unity is ready
    */
-  onReady?: (instance: UnityInstance) => void;
+  onReady?: () => void;
 
   /**
    * Callback for Unity events
@@ -63,7 +62,17 @@ export interface ReactUnityProps {
   /**
    * Callback for errors
    */
-  onError?: (error: Error) => void;
+  onError?: (error: string) => void;
+
+  /**
+   * Device pixel ratio (default: window.devicePixelRatio)
+   */
+  devicePixelRatio?: number;
+
+  /**
+   * Tab index (default: 1)
+   */
+  tabIndex?: number;
 }
 
 /**
@@ -96,143 +105,104 @@ export const ReactUnity: FC<ReactUnityProps> = ({
   loadingComponent,
   onReady,
   onUnityEvent,
-  onError
+  onError,
+  devicePixelRatio,
+  tabIndex = 1
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [error, setError] = useState<Error | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const { session, ready: sessionReady } = useSession();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Use the react-unity-webgl hook
+  const {
+    unityProvider,
+    isLoaded,
+    loadingProgression,
+    requestFullscreen,
+    unload,
+    sendMessage,
+    addEventListener,
+    removeEventListener
+  } = useUnityContext(config);
 
   /**
-   * Initialize Unity
+   * Register Unity instance with singleton service
    */
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (isLoaded) {
+      unityService.setUnityContext({ sendMessage, requestFullscreen, unload });
+      onReady?.();
 
-    let isMounted = true;
-    const canvas = canvasRef.current;
+      // Emit loaded event
+      const event: UnityEvent = {
+        type: UnityEventType.GAME_LOADED,
+        timestamp: Date.now()
+      };
+      unityService.emit(event);
+      onUnityEvent?.(event);
 
-    const initUnity = async () => {
+      // Request fullscreen if configured
+      if (startFullscreen) {
+        requestFullscreen(true);
+      }
+    }
+  }, [isLoaded, sendMessage, requestFullscreen, unload, onReady, startFullscreen, onUnityEvent]);
+
+  /**
+   * Send session info to Unity when loaded and session is available
+   */
+  useEffect(() => {
+    if (isLoaded && sessionReady && session) {
+      sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({
+        userId: session.user?.id,
+        email: session.user?.email
+      }));
+    }
+  }, [isLoaded, sessionReady, session, sendMessage]);
+
+  /**
+   * Listen for custom Unity events
+   */
+  useEffect(() => {
+    const handleCustomEvent = (eventType: string, data: string) => {
       try {
-        setIsLoading(true);
-        setError(null);
-
-        // Subscribe to events
-        const unsubscribers = [
-          unityService.on('progress', (event) => {
-            const progress = (event.data as UnityProgress).progress;
-            if (isMounted) {
-              setLoadingProgress(progress);
-            }
-          }),
-
-          unityService.on(UnityEventType.GAME_LOADED, () => {
-            if (isMounted) {
-              setIsLoading(false);
-            }
-          }),
-
-          unityService.on(UnityEventType.GAME_READY, () => {
-            console.log('Unity game is ready');
-          }),
-
-          unityService.on(UnityEventType.ERROR, (event) => {
-            const err = event.data as Error;
-            if (isMounted) {
-              setError(err);
-              setIsLoading(false);
-            }
-            onError?.(err);
-          })
-        ];
-
-        // Subscribe to all events if handler provided
-        if (onUnityEvent) {
-          unsubscribers.push(unityService.on('*', onUnityEvent));
-        }
-
-        // Initialize Unity instance
-        const instance = await unityService.initialize(canvas, config, {
-          onGameLoaded: () => {
-            console.log('Unity loaded successfully');
-          },
-          onGameReady: () => {
-            console.log('Unity ready');
-            if (startFullscreen) {
-              unityService.setFullscreen(true);
-              setIsFullscreen(true);
-            }
-          },
-          onError: (err) => {
-            console.error('Unity error:', err);
-          }
-        });
-
-        if (isMounted && onReady) {
-          onReady(instance);
-        }
-
-        // Send session info to Unity if available
-        if (sessionReady && session) {
-          unityService.sendToUnity({
-            gameObject: 'WebGLBridge',
-            method: 'OnSessionUpdate',
-            parameter: JSON.stringify({
-              userId: session.user?.id,
-              email: session.user?.email
-            })
-          });
-        }
-
-        // Cleanup
-        return () => {
-          unsubscribers.forEach(unsub => unsub());
+        const parsedData = JSON.parse(data);
+        const event: UnityEvent = {
+          type: eventType,
+          data: parsedData,
+          timestamp: Date.now()
         };
-      } catch (err) {
-        console.error('Failed to initialize Unity:', err);
-        if (isMounted) {
-          const error = err instanceof Error ? err : new Error(String(err));
-          setError(error);
-          setIsLoading(false);
-          onError?.(error);
-        }
+        unityService.emit(event);
+        onUnityEvent?.(event);
+      } catch (error) {
+        console.error('Error parsing Unity event data:', error);
       }
     };
 
-    initUnity();
+    // Listen for common Unity events
+    addEventListener('GameReady', () => handleCustomEvent(UnityEventType.GAME_READY, '{}'));
+    addEventListener('PlayerSpawned', (data) => handleCustomEvent(UnityEventType.PLAYER_SPAWNED, data));
+    addEventListener('GameOver', (data) => handleCustomEvent(UnityEventType.GAME_OVER, data));
+    addEventListener('ScoreUpdated', (data) => handleCustomEvent(UnityEventType.SCORE_UPDATED, data));
+    addEventListener('LevelCompleted', (data) => handleCustomEvent(UnityEventType.LEVEL_COMPLETED, data));
+    addEventListener('CustomEvent', (data) => handleCustomEvent(UnityEventType.CUSTOM, data));
 
     return () => {
-      isMounted = false;
+      removeEventListener('GameReady', () => {});
+      removeEventListener('PlayerSpawned', () => {});
+      removeEventListener('GameOver', () => {});
+      removeEventListener('ScoreUpdated', () => {});
+      removeEventListener('LevelCompleted', () => {});
+      removeEventListener('CustomEvent', () => {});
     };
-  }, [config, canvasId, startFullscreen, onReady, onUnityEvent, onError]);
-
-  /**
-   * Update Unity when session changes
-   */
-  useEffect(() => {
-    if (sessionReady && session && !isLoading) {
-      unityService.sendToUnity({
-        gameObject: 'WebGLBridge',
-        method: 'OnSessionUpdate',
-        parameter: JSON.stringify({
-          userId: session.user?.id,
-          email: session.user?.email
-        })
-      });
-    }
-  }, [session, sessionReady, isLoading]);
+  }, [addEventListener, removeEventListener, onUnityEvent]);
 
   /**
    * Toggle fullscreen
    */
   const handleFullscreenToggle = useCallback(() => {
-    const newFullscreenState = !isFullscreen;
-    unityService.setFullscreen(newFullscreenState);
-    setIsFullscreen(newFullscreenState);
-  }, [isFullscreen]);
+    requestFullscreen(!isFullscreen);
+    setIsFullscreen(!isFullscreen);
+  }, [isFullscreen, requestFullscreen]);
 
   /**
    * Handle fullscreen change events
@@ -263,7 +233,6 @@ export const ReactUnity: FC<ReactUnityProps> = ({
 
   return (
     <div
-      ref={containerRef}
       className={`unity-container ${className}`}
       style={{
         position: 'relative',
@@ -272,21 +241,23 @@ export const ReactUnity: FC<ReactUnityProps> = ({
         overflow: 'hidden'
       }}
     >
-      {/* Canvas */}
-      <canvas
-        ref={canvasRef}
+      {/* Unity Component from react-unity-webgl */}
+      <Unity
+        unityProvider={unityProvider}
         id={canvasId}
         className="unity-canvas"
         style={{
           width: '100%',
           height: '100%',
-          display: isLoading ? 'none' : 'block',
+          visibility: isLoaded ? 'visible' : 'hidden',
           background: '#000'
         }}
+        devicePixelRatio={devicePixelRatio}
+        tabIndex={tabIndex}
       />
 
       {/* Loading Overlay */}
-      {isLoading && !error && (
+      {!isLoaded && (
         <div
           className="unity-loading-overlay"
           style={{
@@ -302,51 +273,12 @@ export const ReactUnity: FC<ReactUnityProps> = ({
             zIndex: 10
           }}
         >
-          {loadingComponent || <DefaultLoading progress={loadingProgress} />}
-        </div>
-      )}
-
-      {/* Error Display */}
-      {error && (
-        <div
-          className="unity-error"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#000',
-            color: '#fff',
-            padding: '2rem',
-            zIndex: 10
-          }}
-        >
-          <div className="unity-error-content">
-            <h2 style={{ color: '#ff4444', marginBottom: '1rem' }}>Error Loading Unity</h2>
-            <p style={{ marginBottom: '1rem' }}>{error.message}</p>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Reload Page
-            </button>
-          </div>
+          {loadingComponent || <DefaultLoading progress={loadingProgression} />}
         </div>
       )}
 
       {/* Fullscreen Button */}
-      {showFullscreenButton && !isLoading && !error && (
+      {showFullscreenButton && isLoaded && (
         <button
           onClick={handleFullscreenToggle}
           className="unity-fullscreen-button"
