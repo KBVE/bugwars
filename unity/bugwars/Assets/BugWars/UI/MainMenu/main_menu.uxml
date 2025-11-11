@@ -3,9 +3,12 @@
 
     <ui:VisualElement name="MainMenuContainer" class="main-menu-container">
         <ui:VisualElement name="MenuPanel" class="menu-panel">
-            <ui:Label text="Bug Wars" name="Title" class="menu-title" />
+            <ui:VisualElement name="LogoContainer" class="logo-container">
+                <ui:VisualElement name="Logo" class="menu-logo" style="background-image: url('project://database/Assets/BugWars/UI/MainMenu/Images/BugWarsText.png?fileID=2800000')" />
+            </ui:VisualElement>
 
             <ui:VisualElement name="ButtonContainer" class="button-container">
+                <ui:Button text="Play" name="PlayButton" class="menu-button play-button" />
                 <ui:Button text="Settings" name="SettingsButton" class="menu-button" />
                 <ui:Button text="Exit" name="ExitButton" class="menu-button exit-button" />
             </ui:VisualElement>
