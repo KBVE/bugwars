@@ -586,6 +586,23 @@ namespace BugWars.Core
             framingTransposer.Lookahead.Smoothing = config.lookaheadSmoothing;
             framingTransposer.Lookahead.IgnoreY = true; // Don't lookahead vertically for billboard sprites
 
+            // === ROTATION LOCK: Lock camera to fixed angle for 2D sprites ===
+            // Add LockedCameraRotation extension to prevent yaw rotation
+            // Critical for 2-directional sprite characters that only face left/right
+            var rotationLock = camera.GetComponent<LockedCameraRotation>();
+            if (rotationLock == null)
+            {
+                rotationLock = camera.gameObject.AddComponent<LockedCameraRotation>();
+                Debug.Log($"[CameraManager] Added LockedCameraRotation for fixed viewing angle to '{camera.name}'");
+            }
+
+            // Configure rotation lock: 25° downward pitch, no yaw rotation
+            // This matches Octopath Traveler / Triangle Strategy HD-2D camera style
+            rotationLock.lockedRotation = new Vector3(25f, 0f, 0f);  // 25° down, straight ahead
+            rotationLock.lockPitch = true;   // Lock pitch to 25°
+            rotationLock.lockYaw = true;     // Lock yaw to 0° (CRITICAL for 2-directional sprites)
+            rotationLock.lockRoll = true;    // Lock roll to 0°
+
             if (debugMode)
             {
                 Debug.Log($"[CameraManager] Configured AutoFollow Camera (FramingTransposer):");
@@ -597,29 +614,7 @@ namespace BugWars.Core
                 Debug.Log($"  - SoftZone: {config.softZoneWidth}x{config.softZoneHeight}");
                 Debug.Log($"  - Lookahead: Time={config.lookaheadTime}s, Smoothing={config.lookaheadSmoothing}");
                 Debug.Log($"  - PitchClamp: [{config.pitchClamp.x}°, {config.pitchClamp.y}°]");
-            }
-
-            // === AIM COMPONENT: CinemachineRotationComposer ===
-            // Note: For billboard sprites, we typically want "Same As Follow Target" aim behavior
-            // However, if we need pitch clamping, we can use CinemachineRotationComposer
-            var rotationComposer = camera.GetComponent<CinemachineRotationComposer>();
-
-            // Only add rotation composer if pitch clamping is needed
-            if (Mathf.Abs(config.pitchClamp.x) > 0.01f || Mathf.Abs(config.pitchClamp.y - 360f) > 0.01f)
-            {
-                if (rotationComposer == null)
-                {
-                    rotationComposer = camera.gameObject.AddComponent<CinemachineRotationComposer>();
-                    Debug.Log($"[CameraManager] Added CinemachineRotationComposer for pitch clamping to '{camera.name}'");
-                }
-
-                // Configure pitch limits to prevent looking under/over billboard sprite
-                rotationComposer.Composition.ScreenPosition = new Vector2(config.screenX, config.screenY);
-                // Note: DeadZone and SoftZone configuration in CM3 requires different approach
-                // Configure via Inspector or use specific CM3 composition APIs
-
-                if (debugMode)
-                    Debug.Log($"[CameraManager] Configured RotationComposer with pitch clamp: [{config.pitchClamp.x}°, {config.pitchClamp.y}°]");
+                Debug.Log($"  - Rotation Lock: (25°, 0°, 0°) - HD-2D style fixed angle");
             }
         }
 

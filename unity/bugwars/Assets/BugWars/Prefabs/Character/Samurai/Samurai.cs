@@ -109,8 +109,72 @@ namespace BugWars.Character
                     Debug.LogError("Samurai: spriteRenderer is not assigned!");
             }
 
+            // Setup camera to follow this player with optimal 2D sprite viewing angle
+            SetupCameraFollow();
+
             // Start playing idle animation AFTER material is set up
             SetAnimationState(EntityAnimationState.Idle);
+        }
+
+        /// <summary>
+        /// Configures camera to follow the player with optimal settings for 2D billboard sprites
+        /// Uses CinematicFollow preset with locked rotation for side-view perspective
+        /// </summary>
+        private void SetupCameraFollow()
+        {
+            // Wait one frame to ensure EntityManager and EventManager are initialized
+            StartCoroutine(SetupCameraFollowCoroutine());
+        }
+
+        private System.Collections.IEnumerator SetupCameraFollowCoroutine()
+        {
+            yield return new WaitForEndOfFrame();
+
+            // Verify managers are available
+            if (EntityManager.Instance == null)
+            {
+                Debug.LogError("[Samurai] Cannot setup camera - EntityManager not found");
+                yield break;
+            }
+
+            // Find EventManager through EntityManager's dependency injection
+            var eventManagerField = typeof(EntityManager).GetField("_eventManager",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (eventManagerField == null)
+            {
+                Debug.LogError("[Samurai] Cannot access EventManager from EntityManager");
+                yield break;
+            }
+
+            var eventManager = eventManagerField.GetValue(EntityManager.Instance) as Core.EventManager;
+
+            if (eventManager == null)
+            {
+                Debug.LogError("[Samurai] EventManager is null");
+                yield break;
+            }
+
+            // Create CinematicFollow configuration optimized for 2D sprites
+            // This provides:
+            // - Smooth camera follow with damping
+            // - Lookahead for anticipating movement
+            // - Fixed 25° downward viewing angle (HD-2D style)
+            // - Locked rotation (no yaw changes) for consistent sprite visibility
+            var config = Core.CameraFollowConfig.CinematicFollow(
+                target: transform,
+                cameraName: "VirtualCamera",
+                immediate: false  // Smooth blend to new camera
+            );
+
+            // Override camera distance and shoulder offset for optimal 2D sprite viewing
+            config.cameraDistance = 7f;  // Good balance between view area and sprite size
+            config.shoulderOffset = new Vector3(0, 1.2f, 0);  // Look at head level
+
+            // Request camera to follow this player
+            eventManager.RequestCameraFollow(config);
+
+            Debug.Log("[Samurai] Camera follow configured with CinematicFollow preset (7 units back, 25° angle)");
         }
 
         private MeshRenderer _meshRenderer;
