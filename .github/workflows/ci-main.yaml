@@ -443,7 +443,7 @@ jobs:
             - name: Create .nojekyll and CNAME files
               run: |
                   touch dist/apps/webapp/.nojekyll
-                  echo "bugwars.kbve.com" > dist/apps/webapp/CNAME
+                  echo "unity-bw.kbve.com" > dist/apps/webapp/CNAME
 
             - name: Deploy to GitHub Pages
               uses: dobbelina/copy_file_to_another_repo_action@main
@@ -451,7 +451,7 @@ jobs:
                   API_TOKEN_GITHUB: ${{ secrets.UNITY_PAT }}
               with:
                   source_file: 'dist/apps/webapp/'
-                  destination_repo: 'KBVE/kbve.com'
+                  destination_repo: 'KBVE/bugwars'
                   destination_folder: '/'
                   destination_branch: 'gh-pages'
                   destination_branch_create: 'ghpages-deploy-${{ github.run_id }}'
