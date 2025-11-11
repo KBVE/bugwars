@@ -1,7 +1,7 @@
 /**
  * Unity Service - Singleton
  * Manages Unity WebGL communication with Supabase and event handling
- * Works with react-unity-webgl library
+ * Works with react-unity-webgl library and WebGLBridge.jslib
  */
 
 import type {
@@ -9,7 +9,11 @@ import type {
   WebToUnityMessage,
   SupabasePayload,
   PlayerData,
-  GameState
+  GameState,
+  UnityArrayDataEvent,
+  UnityMessageEvent,
+  UnityErrorEvent,
+  SessionData
 } from './typeUnity';
 import { UnityEventType } from './typeUnity';
 import { getSupa } from '@/lib/supa';
@@ -24,16 +28,24 @@ interface UnityContext {
 }
 
 /**
+ * Binary data handler callback
+ */
+type ArrayDataHandler = (event: UnityArrayDataEvent) => void;
+
+/**
  * UnityService - Singleton class for managing Unity WebGL integration
  */
 class UnityService {
   private static instance: UnityService | null = null;
   private unityContext: UnityContext | null = null;
   private eventHandlers: Map<string, Set<(event: UnityEvent) => void>> = new Map();
+  private arrayDataHandlers: Map<string, Set<ArrayDataHandler>> = new Map();
+  private windowListenersInitialized = false;
 
   // Private constructor to enforce singleton pattern
   private constructor() {
-    // Reserved for future initialization
+    // Initialize window event listeners for WebGLBridge.jslib
+    this.initializeWindowListeners();
   }
 
   /**
@@ -53,6 +65,88 @@ class UnityService {
     this.unityContext = context;
   }
 
+  /**
+   * Initialize window event listeners for WebGLBridge.jslib custom events
+   * These listen for CustomEvent dispatched by the .jslib plugin
+   */
+  private initializeWindowListeners(): void {
+    if (this.windowListenersInitialized || typeof window === 'undefined') {
+      return;
+    }
+
+    // Listen for UnityMessage events (JSON messages from Unity)
+    window.addEventListener('UnityMessage', ((event: CustomEvent<UnityMessageEvent>) => {
+      const { type, data, timestamp } = event.detail;
+      console.log('[UnityService] Received UnityMessage:', type, data);
+
+      this.emit({
+        type: type,
+        data: data,
+        timestamp: new Date(timestamp).getTime()
+      });
+    }) as EventListener);
+
+    // Listen for UnityArrayData events (typed arrays from Unity)
+    window.addEventListener('UnityArrayData', ((event: CustomEvent<UnityArrayDataEvent>) => {
+      const arrayEvent = event.detail;
+      console.log('[UnityService] Received UnityArrayData:', arrayEvent.type, arrayEvent.dataType, arrayEvent.length);
+
+      // Emit to array data handlers
+      const handlers = this.arrayDataHandlers.get(arrayEvent.type);
+      if (handlers) {
+        handlers.forEach(handler => {
+          try {
+            handler(arrayEvent);
+          } catch (error) {
+            console.error(`Error in array data handler for ${arrayEvent.type}:`, error);
+          }
+        });
+      }
+
+      // Also emit as regular event for convenience
+      this.emit({
+        type: arrayEvent.type,
+        data: arrayEvent,
+        timestamp: new Date(arrayEvent.timestamp).getTime()
+      });
+    }) as EventListener);
+
+    // Listen for UnityError events
+    window.addEventListener('UnityError', ((event: CustomEvent<UnityErrorEvent>) => {
+      const { message, timestamp } = event.detail;
+      console.error('[UnityService] Unity Error:', message);
+
+      this.emit({
+        type: UnityEventType.ERROR,
+        data: new Error(message),
+        timestamp: new Date(timestamp).getTime()
+      });
+    }) as EventListener);
+
+    this.windowListenersInitialized = true;
+    console.log('[UnityService] Window event listeners initialized');
+  }
+
+  /**
+   * Subscribe to typed array data from Unity
+   */
+  public onArrayData(eventType: string, handler: ArrayDataHandler): () => void {
+    if (!this.arrayDataHandlers.has(eventType)) {
+      this.arrayDataHandlers.set(eventType, new Set());
+    }
+    this.arrayDataHandlers.get(eventType)!.add(handler);
+
+    // Return unsubscribe function
+    return () => {
+      const handlers = this.arrayDataHandlers.get(eventType);
+      if (handlers) {
+        handlers.delete(handler);
+        if (handlers.size === 0) {
+          this.arrayDataHandlers.delete(eventType);
+        }
+      }
+    };
+  }
 
   /**
    * Send message to Unity
@@ -257,7 +351,126 @@ class UnityService {
   public isReady(): boolean {
     return this.unityContext !== null;
   }
+
+  /**
+   * Send session data to Unity
+   */
+  public sendSessionData(sessionData: SessionData): void {
+    this.sendToUnity({
+      gameObject: 'WebGLBridge',
+      method: 'OnSessionUpdate',
+      parameter: JSON.stringify(sessionData)
+    });
+  }
+
+  /**
+   * Send a command to Unity
+   */
+  public sendCommand(command: string, args: string[] = [], userId: string = ''): void {
+    this.sendToUnity({
+      gameObject: 'WebGLBridge',
+      method: 'OnMessage',
+      parameter: JSON.stringify({
+        type: command,
+        payload: JSON.stringify({ command, args, userId })
+      })
+    });
+  }
+
+  /**
+   * Send binary data to Unity (as base64)
+   */
+  public sendBinaryData(data: Uint8Array | ArrayBuffer): void {
+    const bytes = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+    const base64 = btoa(String.fromCharCode(...bytes));
+
+    this.sendToUnity({
+      gameObject: 'WebGLBridge',
+      method: 'OnBinaryData',
+      parameter: base64
+    });
+  }
+
+  /**
+   * Send array data to Unity (as JSON)
+   */
+  public sendArrayData(data: number[]): void {
+    this.sendToUnity({
+      gameObject: 'WebGLBridge',
+      method: 'OnArrayData',
+      parameter: JSON.stringify({ data })
+    });
+  }
+
+  /**
+   * Send Float32Array to Unity
+   */
+  public sendFloat32Array(data: Float32Array): void {
+    // Convert to regular array for JSON serialization
+    this.sendArrayData(Array.from(data));
+  }
+
+  /**
+   * Send generic message to Unity
+   */
+  public sendMessage(gameObject: string, method: string, parameter?: string | number): void {
+    this.sendToUnity({ gameObject, method, parameter });
+  }
+
+  /**
+   * Request data load from Unity/Supabase
+   */
+  public requestDataLoad(table: string, filters?: string): void {
+    this.sendToUnity({
+      gameObject: 'WebGLBridge',
+      method: 'OnMessage',
+      parameter: JSON.stringify({
+        type: 'DataLoadRequest',
+        payload: JSON.stringify({ table, filters })
+      })
+    });
+  }
 }
 
 // Export singleton instance
 export const unityService = UnityService.getInstance();
+
+/**
+ * Helper functions for common operations
+ */
+
+/**
+ * Convert typed array to base64 string
+ */
+export function typedArrayToBase64(array: Float32Array | Int32Array | Uint8Array): string {
+  const bytes = new Uint8Array(array.buffer);
+  return btoa(String.fromCharCode(...bytes));
+}
+
+/**
+ * Convert base64 string to Uint8Array
+ */
+export function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/**
+ * Convert base64 string to Float32Array
+ */
+export function base64ToFloat32Array(base64: string): Float32Array {
+  const bytes = base64ToUint8Array(base64);
+  return new Float32Array(bytes.buffer);
+}
+
+/**
+ * Convert base64 string to Int32Array
+ */
+export function base64ToInt32Array(base64: string): Int32Array {
+  const bytes = base64ToUint8Array(base64);
+  return new Int32Array(bytes.buffer);
+}
