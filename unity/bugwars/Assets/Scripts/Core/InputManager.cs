@@ -25,7 +25,7 @@ namespace BugWars.Core
         #region Settings
         [Header("Input Settings")]
         [Tooltip("Enable debug logging for input events")]
-        [SerializeField] private bool debugMode = false;
+        [SerializeField] private bool debugMode = true; // Enabled for debugging
         #endregion
 
         #region Unity Lifecycle

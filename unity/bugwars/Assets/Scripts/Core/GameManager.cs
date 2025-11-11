@@ -151,10 +151,12 @@ namespace BugWars.Core
         private void SubscribeToEvents()
         {
             // Input events
+            Debug.Log("[GameManager] Subscribing to OnEscapePressed event");
             Events.OnEscapePressed.AddListener(OnEscapePressed);
             Events.OnPausePressed.AddListener(OnPausePressed);
 
             // You can subscribe to more events here as needed
+            Debug.Log($"[GameManager] Event subscriptions complete. OnEscapePressed listener count: {Events.OnEscapePressed.GetPersistentEventCount()}");
         }
 
         /// <summary>
@@ -256,8 +258,10 @@ namespace BugWars.Core
         /// </summary>
         public void ToggleMainMenu()
         {
+            Debug.Log($"[GameManager] ToggleMainMenu called - MainMenuManager is {(_mainMenuManager != null ? "available" : "NULL")}");
             if (_mainMenuManager != null)
             {
+                Debug.Log($"[GameManager] Current menu state before toggle: {_mainMenuManager.IsMenuVisible}");
                 _mainMenuManager.ToggleMenu();
                 // Note: Trigger events in MainMenuManager instead, to know actual state
             }
@@ -317,6 +321,7 @@ namespace BugWars.Core
         /// </summary>
         private void OnEscapePressed()
         {
+            Debug.Log("[GameManager] OnEscapePressed event received - calling ToggleMainMenu()");
             ToggleMainMenu();
         }
 

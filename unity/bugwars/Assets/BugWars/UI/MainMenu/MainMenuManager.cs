@@ -36,12 +36,14 @@ namespace BugWars.UI
 
         private void Start()
         {
+            Debug.Log("[MainMenuManager] Start called");
             // Initialize UI after VContainer has configured the UIDocument
             InitializeUI();
 
             // Note: Escape key handling is managed by GameManager
             // GameManager subscribes to OnEscapePressed and calls ToggleMenu()
             // This avoids double-toggling from duplicate event subscriptions
+            Debug.Log("[MainMenuManager] Start complete");
         }
 
         private void OnDestroy()
@@ -65,6 +67,7 @@ namespace BugWars.UI
         /// </summary>
         private void InitializeUI()
         {
+            Debug.Log("[MainMenuManager] InitializeUI called");
             _uiDocument = GetComponent<UIDocument>();
 
             if (_uiDocument == null)
@@ -73,7 +76,10 @@ namespace BugWars.UI
                 return;
             }
 
+            Debug.Log($"[MainMenuManager] UIDocument found: {_uiDocument.name}");
             _root = _uiDocument.rootVisualElement;
+            Debug.Log($"[MainMenuManager] Root element: {(_root != null ? "found" : "NULL")}");
+
             _mainMenuContainer = _root.Q<VisualElement>("MainMenuContainer");
 
             if (_mainMenuContainer == null)
@@ -81,6 +87,8 @@ namespace BugWars.UI
                 Debug.LogError("[MainMenuManager] MainMenuContainer not found in UXML!");
                 return;
             }
+
+            Debug.Log("[MainMenuManager] MainMenuContainer found successfully");
 
             // Get button references
             _settingsButton = _root.Q<Button>("SettingsButton");
@@ -116,10 +124,16 @@ namespace BugWars.UI
         /// </summary>
         public void ShowMenu()
         {
+            Debug.Log($"[MainMenuManager] ShowMenu called - _mainMenuContainer is {(_mainMenuContainer != null ? "available" : "NULL")}");
             if (_mainMenuContainer != null)
             {
                 _mainMenuContainer.style.display = DisplayStyle.Flex;
                 _isMenuVisible = true;
+                Debug.Log("[MainMenuManager] Menu shown successfully - DisplayStyle set to Flex");
+            }
+            else
+            {
+                Debug.LogError("[MainMenuManager] Cannot show menu - _mainMenuContainer is null!");
             }
         }
 
@@ -128,10 +142,16 @@ namespace BugWars.UI
         /// </summary>
         public void HideMenu()
         {
+            Debug.Log($"[MainMenuManager] HideMenu called - _mainMenuContainer is {(_mainMenuContainer != null ? "available" : "NULL")}");
             if (_mainMenuContainer != null)
             {
                 _mainMenuContainer.style.display = DisplayStyle.None;
                 _isMenuVisible = false;
+                Debug.Log("[MainMenuManager] Menu hidden successfully - DisplayStyle set to None");
+            }
+            else
+            {
+                Debug.LogError("[MainMenuManager] Cannot hide menu - _mainMenuContainer is null!");
             }
         }
 
@@ -140,12 +160,15 @@ namespace BugWars.UI
         /// </summary>
         public void ToggleMenu()
         {
+            Debug.Log($"[MainMenuManager] ToggleMenu called - current state: {_isMenuVisible}");
             if (_isMenuVisible)
             {
+                Debug.Log("[MainMenuManager] Menu is visible, hiding...");
                 HideMenu();
             }
             else
             {
+                Debug.Log("[MainMenuManager] Menu is hidden, showing...");
                 ShowMenu();
             }
         }
