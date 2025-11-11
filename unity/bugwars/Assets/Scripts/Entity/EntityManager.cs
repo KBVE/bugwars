@@ -55,12 +55,23 @@ namespace BugWars.Entity
 
         // Dependency Injection
         private EventManager _eventManager;
+        private BugWars.Terrain.TerrainManager _terrainManager;
 
         [Inject]
-        public void Construct(EventManager eventManager)
+        public void Construct(EventManager eventManager, BugWars.Terrain.TerrainManager terrainManager)
         {
             _eventManager = eventManager;
+            _terrainManager = terrainManager;
         }
+
+        // Terrain streaming
+        [Header("Terrain Streaming")]
+        [SerializeField] [Tooltip("Update terrain chunks as player moves")]
+        private bool enableTerrainStreaming = true;
+        [SerializeField] [Tooltip("Check player position every N seconds")]
+        private float terrainStreamingInterval = 1.0f;
+        private Vector3 lastPlayerChunkCheckPosition = Vector3.zero;
+        private float terrainStreamingTimer = 0f;
 
         private void Awake()
         {
@@ -86,6 +97,31 @@ namespace BugWars.Entity
             {
                 // Delay player spawn by one frame to ensure CameraManager has initialized
                 StartCoroutine(SpawnPlayerAfterCameraInit());
+            }
+        }
+
+        private void Update()
+        {
+            // Update terrain chunks based on player movement
+            if (enableTerrainStreaming && playerEntity != null && _terrainManager != null)
+            {
+                terrainStreamingTimer += Time.deltaTime;
+
+                if (terrainStreamingTimer >= terrainStreamingInterval)
+                {
+                    terrainStreamingTimer = 0f;
+
+                    Vector3 playerPos = playerEntity.transform.position;
+                    float distanceMoved = Vector3.Distance(playerPos, lastPlayerChunkCheckPosition);
+
+                    // Only update if player moved a significant distance (20 units = 1/4 chunk)
+                    if (distanceMoved > 20f || lastPlayerChunkCheckPosition == Vector3.zero)
+                    {
+                        lastPlayerChunkCheckPosition = playerPos;
+                        // Fire and forget - don't await (async streaming)
+                        _ = _terrainManager.UpdateChunksAroundPosition(playerPos);
+                    }
+                }
             }
         }
 

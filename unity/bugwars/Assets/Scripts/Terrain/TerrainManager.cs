@@ -19,7 +19,7 @@ namespace BugWars.Terrain
         [Header("Terrain Generation Settings")]
         [SerializeField] private int seed = 12345;
         [SerializeField] private float noiseScale = 0.05f;
-        [SerializeField] private int chunkGridSize = 3; // 3x3 grid
+        [SerializeField] private int chunkGridSize = 7; // 7x7 grid (49 initial chunks)
         [SerializeField] private Material defaultTerrainMaterial;
 
         [Header("Chunk Settings")]
@@ -27,8 +27,8 @@ namespace BugWars.Terrain
         [SerializeField] private int chunkResolution = 20; // Vertices per chunk side
 
         [Header("Chunk Loading/Unloading")]
-        [SerializeField] private int chunkLoadDistance = 2; // Load chunks within this distance (in chunk units)
-        [SerializeField] private int chunkUnloadDistance = 3; // Unload chunks beyond this distance
+        [SerializeField] private int chunkLoadDistance = 4; // Load chunks within this distance (in chunk units)
+        [SerializeField] private int chunkUnloadDistance = 6; // Unload chunks beyond this distance
         [SerializeField] private bool enableDynamicLoading = true; // Enable async chunk streaming
         [SerializeField] private bool enableFrustumCulling = true; // Enable camera frustum culling
         [SerializeField] private float cullingUpdateInterval = 0.5f; // How often to update culling (seconds)
@@ -105,11 +105,10 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Generates the initial 3x3 grid of chunks centered at (0,0)
-        /// Layout:
-        /// A(-1,1)  B(0,1)  C(1,1)
-        /// D(-1,0)  E(0,0)  F(1,0)  <- Player starts at E(0,0)
-        /// G(-1,-1) H(0,-1) I(1,-1)
+        /// Generates the initial 7x7 grid of chunks centered at (0,0)
+        /// Creates 49 terrain chunks for a large explorable world
+        /// Player starts at center chunk (0,0)
+        /// Total world size: 560x560 units (7 chunks * 80 units each)
         /// </summary>
         public async UniTask GenerateInitialChunks()
         {

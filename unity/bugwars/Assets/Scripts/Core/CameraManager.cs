@@ -7,6 +7,163 @@ using System.Linq;
 namespace BugWars.Core
 {
     /// <summary>
+    /// Creates a "smart" pivot that runs ahead of the player based on velocity,
+    /// adds shoulder bias, and vertical head-room. Cinemachine follows this pivot.
+    /// Makes direction immediately obvious for both orthographic and perspective cameras.
+    /// </summary>
+    public class CameraLeadPivot : MonoBehaviour
+    {
+        [Header("Targets")]
+        public Transform player;              // required
+        public Rigidbody playerRb;            // optional (better velocity)
+        public CharacterController cc;        // optional (fallback speed)
+
+        [Header("Look-ahead")]
+        [Tooltip("How far ahead (in meters) at max speed.")]
+        public float maxLeadDistance = 3.5f;
+        [Tooltip("Speed (m/s) considered 'max' for lead computation.")]
+        public float maxSpeedForLead = 8f;
+        [Tooltip("How quickly the pivot chases its target position.")]
+        public float chaseResponsiveness = 12f; // higher = snappier
+
+        [Header("Bias / Readability")]
+        public Vector3 headRoom = new Vector3(0f, 1.1f, 0f);   // small Y up
+        public float shoulderRight = 0.35f;                     // +X (right bias)
+        public float shoulderBlend = 0.25f;                     // 0..1 toward move dir side
+
+        [Header("Smoothing")]
+        [Tooltip("Extra smoothing to kill micro jitter.")]
+        public float extraSmoothing = 0.08f;
+
+        Vector3 _vel;
+        Vector3 _pivotVel;
+        Vector3 _smoothedVel;
+
+        public void TeleportToPlayer()
+        {
+            if (!player) return;
+            transform.position = player.position + headRoom;
+        }
+
+        void LateUpdate()
+        {
+            if (!player) return;
+
+            // Velocity source
+            Vector3 v = Vector3.zero;
+            if (playerRb) v = playerRb.linearVelocity;
+            else if (cc && cc.enabled) v = cc.velocity;
+            else v = (player.position - _vel) / Mathf.Max(Time.deltaTime, 0.0001f); // fallback diff
+
+            _vel = player.position;
+
+            // Smooth velocity for stable heading
+            _smoothedVel = Vector3.Lerp(_smoothedVel, v, 1f - Mathf.Exp(-8f * Time.deltaTime));
+            Vector3 moveDir = _smoothedVel.sqrMagnitude > 0.0004f ? _smoothedVel.normalized : Vector3.zero;
+
+            // Lead distance by speed
+            float speed = _smoothedVel.magnitude;
+            float t = Mathf.Clamp01(speed / Mathf.Max(0.0001f, maxSpeedForLead));
+            float lead = Mathf.Lerp(0f, maxLeadDistance, t);
+
+            // Shoulder side: prefer right side, but bleed toward movement side
+            Vector3 shoulder = Vector3.right * shoulderRight;
+            if (moveDir != Vector3.zero)
+            {
+                // pick side perpendicular to moveDir on XZ plane
+                Vector3 rightOnGround = Vector3.Cross(Vector3.up, moveDir).normalized;
+                shoulder = Vector3.Lerp(shoulder, rightOnGround * shoulderRight, shoulderBlend);
+            }
+
+            // Desired pivot position
+            Vector3 desired = player.position + headRoom + shoulder + (moveDir * lead);
+
+            // Chase with critically damped feel
+            transform.position = Vector3.SmoothDamp(transform.position, desired, ref _pivotVel, extraSmoothing,
+                                                     Mathf.Infinity, Time.deltaTime);
+
+            // Keep pivot upright (helps if you read its forward elsewhere)
+            transform.rotation = Quaternion.identity;
+        }
+    }
+
+    /// <summary>
+    /// Cinemachine extension that locks camera rotation to a fixed angle
+    /// Perfect for 2D billboard sprites in 3D world (HD-2D style like Octopath Traveler)
+    /// Prevents camera yaw rotation while maintaining optimal downward viewing angle
+    /// </summary>
+    [SaveDuringPlay]
+    public class LockedCameraRotation : CinemachineExtension
+    {
+        [Header("Rotation Lock Settings")]
+        [Tooltip("Fixed rotation angles (pitch, yaw, roll). For orthographic top-down: (45, 0, 0) recommended")]
+        public Vector3 lockedRotation = new Vector3(45f, 0f, 0f);
+
+        [Tooltip("Lock pitch (X rotation)")]
+        public bool lockPitch = true;
+
+        [Tooltip("Lock yaw (Y rotation) - CRITICAL for 2-directional sprites")]
+        public bool lockYaw = true;
+
+        [Tooltip("Lock roll (Z rotation)")]
+        public bool lockRoll = true;
+
+        [Header("Optional Offset")]
+        [Tooltip("Additional rotation offset relative to locked angles")]
+        public Vector3 rotationOffset = Vector3.zero;
+
+        protected override void PostPipelineStageCallback(
+            CinemachineVirtualCameraBase vcam,
+            CinemachineCore.Stage stage,
+            ref CameraState state,
+            float deltaTime)
+        {
+            // Apply rotation lock at the Finalize stage (after all other calculations)
+            if (stage == CinemachineCore.Stage.Finalize)
+            {
+                // Get current camera rotation
+                Vector3 currentEuler = state.RawOrientation.eulerAngles;
+
+                // Build locked rotation based on settings
+                Vector3 finalRotation = new Vector3(
+                    lockPitch ? lockedRotation.x + rotationOffset.x : currentEuler.x,
+                    lockYaw ? lockedRotation.y + rotationOffset.y : currentEuler.y,
+                    lockRoll ? lockedRotation.z + rotationOffset.z : currentEuler.z
+                );
+
+                // Apply locked rotation
+                state.RawOrientation = Quaternion.Euler(finalRotation);
+            }
+        }
+
+        /// <summary>
+        /// Set the locked rotation at runtime
+        /// </summary>
+        public void SetLockedRotation(Vector3 rotation)
+        {
+            lockedRotation = rotation;
+        }
+
+        /// <summary>
+        /// Set individual rotation axes at runtime
+        /// </summary>
+        public void SetLockedPitch(float pitch)
+        {
+            lockedRotation.x = pitch;
+        }
+
+        public void SetLockedYaw(float yaw)
+        {
+            lockedRotation.y = yaw;
+        }
+
+        public void SetLockedRoll(float roll)
+        {
+            lockedRotation.z = roll;
+        }
+    }
+
+    /// <summary>
     /// Camera follow configuration for event-based camera control
     /// Supports cinematic camera parameters for professional feel
     /// </summary>
@@ -161,6 +318,8 @@ namespace BugWars.Core
         #region Settings
         [Header("Settings")]
         [SerializeField] private bool debugMode = false;
+        [SerializeField] [Tooltip("Use orthographic projection (better readability) or perspective (depth)")]
+        private bool preferOrthographic = true;
 
         [Header("Auto-Discovery")]
         [SerializeField] [Tooltip("Automatically find virtual cameras on Start")]
@@ -375,18 +534,21 @@ namespace BugWars.Core
 
             if (virtualCamera != null)
             {
-                // Set Follow and LookAt targets
-                virtualCamera.Follow = config.target;
-                virtualCamera.LookAt = config.target;
-
-                // Configure third-person follow component
-                ConfigureThirdPersonFollow(virtualCamera, config);
+                // Use lead pivot system for better readability
+                if (preferOrthographic)
+                {
+                    BuildOrthoRig(virtualCamera, config.target, teleport: !config.immediate);
+                }
+                else
+                {
+                    BuildPerspectiveLiteRig(virtualCamera, config.target, teleport: !config.immediate);
+                }
 
                 // Activate this camera
                 ActivateCamera(virtualCamera, true);
 
                 if (debugMode)
-                    Debug.Log($"[CameraManager] Camera '{virtualCamera.name}' now following '{config.target.name}'");
+                    Debug.Log($"[CameraManager] Camera '{virtualCamera.name}' now following '{config.target.name}' via lead pivot ({(preferOrthographic ? "Ortho" : "Perspective")})");
             }
             else
             {
@@ -596,16 +758,26 @@ namespace BugWars.Core
                 Debug.Log($"[CameraManager] Added LockedCameraRotation for fixed viewing angle to '{camera.name}'");
             }
 
-            // Configure rotation lock: 25° downward pitch, no yaw rotation
-            // This matches Octopath Traveler / Triangle Strategy HD-2D camera style
-            rotationLock.lockedRotation = new Vector3(25f, 0f, 0f);  // 25° down, straight ahead
-            rotationLock.lockPitch = true;   // Lock pitch to 25°
+            // Configure rotation lock: 45° downward pitch for orthographic top-down view
+            // Provides good visibility ahead while maintaining 3D depth illusion
+            rotationLock.lockedRotation = new Vector3(45f, 0f, 0f);  // 45° down for top-down orthographic
+            rotationLock.lockPitch = true;   // Lock pitch to 45°
             rotationLock.lockYaw = true;     // Lock yaw to 0° (CRITICAL for 2-directional sprites)
             rotationLock.lockRoll = true;    // Lock roll to 0°
+
+            // === ORTHOGRAPHIC PROJECTION: Set camera to orthographic for top-down view ===
+            // Orthographic provides better forward visibility and cleaner 2D sprite integration
+            if (MainCamera != null && !MainCamera.orthographic)
+            {
+                MainCamera.orthographic = true;
+                MainCamera.orthographicSize = 8f; // Good balance for visibility
+                Debug.Log($"[CameraManager] Set Main Camera to orthographic (size: 8)");
+            }
 
             if (debugMode)
             {
                 Debug.Log($"[CameraManager] Configured AutoFollow Camera (FramingTransposer):");
+                Debug.Log($"  - Projection: Orthographic (size: 8)");
                 Debug.Log($"  - Damping: {config.positionDamping}");
                 Debug.Log($"  - CameraDistance: {config.cameraDistance}");
                 Debug.Log($"  - TrackedOffset: {config.shoulderOffset}");
@@ -614,7 +786,7 @@ namespace BugWars.Core
                 Debug.Log($"  - SoftZone: {config.softZoneWidth}x{config.softZoneHeight}");
                 Debug.Log($"  - Lookahead: Time={config.lookaheadTime}s, Smoothing={config.lookaheadSmoothing}");
                 Debug.Log($"  - PitchClamp: [{config.pitchClamp.x}°, {config.pitchClamp.y}°]");
-                Debug.Log($"  - Rotation Lock: (25°, 0°, 0°) - HD-2D style fixed angle");
+                Debug.Log($"  - Rotation Lock: (45°, 0°, 0°) - Orthographic top-down view");
             }
         }
 
@@ -1040,6 +1212,180 @@ namespace BugWars.Core
         public void ResetCameraFOV(float duration = 0.3f)
         {
             SetCameraFOV(60f, duration); // Default FOV
+        }
+
+        #endregion
+
+        #region Camera Rig Builders
+        /// <summary>
+        /// Builds orthographic camera rig with lead pivot for excellent readability
+        /// Perfect for 2D sprites in 3D world
+        /// </summary>
+        private void BuildOrthoRig(CinemachineCamera vcam, Transform playerTransform, bool teleport = true)
+        {
+            if (vcam == null || playerTransform == null || MainCamera == null) return;
+
+            // Main camera orthographic settings
+            MainCamera.orthographic = true;
+            MainCamera.orthographicSize = 8f;
+
+            // Create/get lead pivot
+            CameraLeadPivot pivot = GetOrCreateLeadPivot(playerTransform);
+            pivot.maxLeadDistance = 3.2f;
+            pivot.maxSpeedForLead = 7.5f;
+            pivot.shoulderRight = 0.35f;
+            pivot.headRoom = new Vector3(0, 1.05f, 0);
+            if (teleport) pivot.TeleportToPlayer();
+
+            // Body: PositionComposer (Framing Transposer)
+            var posComp = vcam.GetComponent<CinemachinePositionComposer>();
+            if (posComp == null)
+            {
+                posComp = vcam.gameObject.AddComponent<CinemachinePositionComposer>();
+                Debug.Log($"[CameraManager] Added PositionComposer for ortho rig to '{vcam.name}'");
+            }
+
+            posComp.Damping = new Vector3(0.45f, 0.45f, 0.65f);
+            posComp.CameraDistance = 10f;
+            posComp.TargetOffset = Vector3.zero; // pivot already has headRoom/shoulder
+            posComp.Composition.ScreenPosition = new Vector2(0.53f, 0.48f); // push view slightly forward
+
+            // Aim: fixed rotation
+            var lockRot = vcam.GetComponent<LockedCameraRotation>();
+            if (lockRot == null)
+            {
+                lockRot = vcam.gameObject.AddComponent<LockedCameraRotation>();
+                Debug.Log($"[CameraManager] Added LockedCameraRotation to '{vcam.name}'");
+            }
+
+            lockRot.lockedRotation = new Vector3(35f, 0f, 0f); // gentle down angle for better ground visibility
+            lockRot.lockPitch = true;
+            lockRot.lockYaw = true;
+            lockRot.lockRoll = true;
+
+            // Follow/LookAt the pivot
+            vcam.Follow = pivot.transform;
+            vcam.LookAt = pivot.transform;
+
+            if (debugMode)
+            {
+                Debug.Log($"[CameraManager] Built Ortho Rig:");
+                Debug.Log($"  - Orthographic Size: 8");
+                Debug.Log($"  - Lead Distance: {pivot.maxLeadDistance}m");
+                Debug.Log($"  - Camera Angle: 35° down");
+                Debug.Log($"  - Following: Lead Pivot");
+            }
+        }
+
+        /// <summary>
+        /// Builds perspective camera rig with lead pivot (low FOV for depth)
+        /// Alternative to orthographic with more depth perception
+        /// </summary>
+        private void BuildPerspectiveLiteRig(CinemachineCamera vcam, Transform playerTransform, bool teleport = true)
+        {
+            if (vcam == null || playerTransform == null || MainCamera == null) return;
+
+            // Main camera perspective settings
+            MainCamera.orthographic = false;
+            MainCamera.fieldOfView = 48f;
+
+            // Create/get lead pivot
+            CameraLeadPivot pivot = GetOrCreateLeadPivot(playerTransform);
+            pivot.maxLeadDistance = 3.0f;
+            pivot.maxSpeedForLead = 7.5f;
+            pivot.shoulderRight = 0.3f;
+            pivot.headRoom = new Vector3(0, 1.1f, 0);
+            if (teleport) pivot.TeleportToPlayer();
+
+            // Body: ThirdPersonFollow
+            var tpf = vcam.GetComponent<CinemachineThirdPersonFollow>();
+            if (tpf == null)
+            {
+                tpf = vcam.gameObject.AddComponent<CinemachineThirdPersonFollow>();
+                Debug.Log($"[CameraManager] Added ThirdPersonFollow for perspective rig to '{vcam.name}'");
+            }
+
+            tpf.CameraDistance = 6.2f;
+            tpf.ShoulderOffset = Vector3.zero; // pivot handles offsets
+            tpf.VerticalArmLength = 0f;
+            tpf.CameraSide = 0.5f;
+            tpf.Damping = new Vector3(0.35f, 0.35f, 0.55f);
+
+            // Collision detection
+            var deoc = vcam.GetComponent<CinemachineDeoccluder>();
+            if (deoc == null)
+            {
+                deoc = vcam.gameObject.AddComponent<CinemachineDeoccluder>();
+                Debug.Log($"[CameraManager] Added Deoccluder for collision to '{vcam.name}'");
+            }
+
+            deoc.CollideAgainst = LayerMask.GetMask("Default", "Environment", "Terrain");
+            deoc.MinimumDistanceFromTarget = 0.8f;
+            deoc.AvoidObstacles.Enabled = true;
+            deoc.AvoidObstacles.CameraRadius = 0.2f;
+
+            // Aim: fixed rotation
+            var lockRot = vcam.GetComponent<LockedCameraRotation>();
+            if (lockRot == null)
+            {
+                lockRot = vcam.gameObject.AddComponent<LockedCameraRotation>();
+                Debug.Log($"[CameraManager] Added LockedCameraRotation to '{vcam.name}'");
+            }
+
+            lockRot.lockedRotation = new Vector3(20f, 0f, 0f); // shallower angle in perspective
+            lockRot.lockPitch = true;
+            lockRot.lockYaw = true;
+            lockRot.lockRoll = true;
+
+            // Follow/LookAt the pivot
+            vcam.Follow = pivot.transform;
+            vcam.LookAt = pivot.transform;
+
+            if (debugMode)
+            {
+                Debug.Log($"[CameraManager] Built Perspective Lite Rig:");
+                Debug.Log($"  - FOV: 48°");
+                Debug.Log($"  - Lead Distance: {pivot.maxLeadDistance}m");
+                Debug.Log($"  - Camera Angle: 20° down");
+                Debug.Log($"  - Following: Lead Pivot");
+            }
+        }
+
+        /// <summary>
+        /// Gets or creates a lead pivot for the player
+        /// </summary>
+        private CameraLeadPivot GetOrCreateLeadPivot(Transform playerTransform)
+        {
+            // Check if pivot already exists
+            string pivotName = $"CamLeadPivot_{playerTransform.name}";
+            GameObject pivotGo = GameObject.Find(pivotName);
+
+            if (pivotGo != null)
+            {
+                var existingPivot = pivotGo.GetComponent<CameraLeadPivot>();
+                if (existingPivot != null)
+                {
+                    existingPivot.player = playerTransform;
+
+                    // Try to find Rigidbody
+                    var rb = playerTransform.GetComponent<Rigidbody>();
+                    if (rb != null) existingPivot.playerRb = rb;
+
+                    return existingPivot;
+                }
+            }
+
+            // Create new pivot
+            pivotGo = new GameObject(pivotName);
+            var pivot = pivotGo.AddComponent<CameraLeadPivot>();
+            pivot.player = playerTransform;
+
+            // Try to find Rigidbody
+            var playerRb = playerTransform.GetComponent<Rigidbody>();
+            if (playerRb != null) pivot.playerRb = playerRb;
+
+            Debug.Log($"[CameraManager] Created new lead pivot: {pivotName}");
+            return pivot;
         }
 
         #endregion
