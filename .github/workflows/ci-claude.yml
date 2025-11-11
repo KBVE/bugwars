@@ -1,9 +1,7 @@
 name: CI - Claude User Verification
 
 on:
-    push:
-        branches:
-            - 'claude/**'
+    workflow_dispatch:
 
 jobs:
     verify-user:
