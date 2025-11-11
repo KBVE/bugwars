@@ -195,32 +195,139 @@ namespace BugWars.Core
         #region Event Management
         private void SubscribeToEvents()
         {
-            // Subscribe to relevant events from EventManager
-            // Example: _eventManager.OnSceneLoadCompleted.AddListener(OnSceneLoaded);
-            // Example: _eventManager.OnPlayerDied.AddListener(OnPlayerDied);
+            // Subscribe to camera control events
+            CameraEvents.OnCameraFollowRequested += HandleCameraFollowRequest;
+            CameraEvents.OnCameraStopFollowRequested += HandleCameraStopFollowRequest;
 
             if (debugMode)
-                Debug.Log("[CameraManager] Subscribed to EventManager events");
+                Debug.Log("[CameraManager] Subscribed to CameraEvents");
         }
 
         private void UnsubscribeFromEvents()
         {
-            if (_eventManager != null)
+            // Unsubscribe from camera control events
+            CameraEvents.OnCameraFollowRequested -= HandleCameraFollowRequest;
+            CameraEvents.OnCameraStopFollowRequested -= HandleCameraStopFollowRequest;
+
+            if (debugMode)
+                Debug.Log("[CameraManager] Unsubscribed from CameraEvents");
+        }
+
+        /// <summary>
+        /// Handles camera follow request from event system
+        /// </summary>
+        private void HandleCameraFollowRequest(CameraFollowConfig config)
+        {
+            if (config.target == null)
             {
-                // Unsubscribe from all events
-                // Example: _eventManager.OnSceneLoadCompleted.RemoveListener(OnSceneLoaded);
-                // Example: _eventManager.OnPlayerDied.RemoveListener(OnPlayerDied);
+                Debug.LogWarning("[CameraManager] Cannot setup camera follow - target is null");
+                return;
+            }
+
+            // Get the target camera (or use first available)
+            string cameraName = string.IsNullOrEmpty(config.cameraName) ?
+                (_allVirtualCameras.Count > 0 ? _allVirtualCameras[0].name : null) :
+                config.cameraName;
+
+            if (string.IsNullOrEmpty(cameraName))
+            {
+                Debug.LogWarning("[CameraManager] No cameras available for follow setup");
+                return;
+            }
+
+            CinemachineCamera virtualCamera = GetVirtualCamera(cameraName);
+
+            if (virtualCamera == null && _allVirtualCameras.Count > 0)
+            {
+                // Fallback to first available camera
+                virtualCamera = _allVirtualCameras[0];
+                Debug.LogWarning($"[CameraManager] Camera '{cameraName}' not found. Using '{virtualCamera.name}' instead.");
+            }
+
+            if (virtualCamera != null)
+            {
+                // Set Follow and LookAt targets
+                virtualCamera.Follow = config.target;
+                virtualCamera.LookAt = config.target;
+
+                // Configure third-person follow component
+                ConfigureThirdPersonFollow(virtualCamera, config);
+
+                // Activate this camera
+                ActivateCamera(virtualCamera, true);
 
                 if (debugMode)
-                    Debug.Log("[CameraManager] Unsubscribed from EventManager events");
+                    Debug.Log($"[CameraManager] Camera '{virtualCamera.name}' now following '{config.target.name}'");
+            }
+            else
+            {
+                Debug.LogWarning("[CameraManager] No virtual cameras found in scene");
             }
         }
 
-        // Example event handlers
-        private void OnSceneLoaded(string sceneName)
+        /// <summary>
+        /// Handles camera stop follow request
+        /// </summary>
+        private void HandleCameraStopFollowRequest(string cameraName)
         {
-            // Re-discover cameras when scene loads
-            DiscoverVirtualCameras();
+            CinemachineCamera camera = string.IsNullOrEmpty(cameraName) ?
+                _currentActiveCamera :
+                GetVirtualCamera(cameraName);
+
+            if (camera != null)
+            {
+                camera.Follow = null;
+                camera.LookAt = null;
+
+                if (debugMode)
+                    Debug.Log($"[CameraManager] Camera '{camera.name}' stopped following");
+            }
+        }
+
+        /// <summary>
+        /// Configures Cinemachine 3 third-person follow component with offset settings
+        /// Automatically adds missing components at runtime
+        /// </summary>
+        private void ConfigureThirdPersonFollow(CinemachineCamera camera, CameraFollowConfig config)
+        {
+            // Try to get or add CinemachineThirdPersonFollow component
+            var thirdPersonFollow = camera.GetComponent<CinemachineThirdPersonFollow>();
+
+            if (thirdPersonFollow != null)
+            {
+                // Configure third-person follow settings
+                thirdPersonFollow.ShoulderOffset = config.shoulderOffset;
+                thirdPersonFollow.VerticalArmLength = config.verticalArmLength;
+                thirdPersonFollow.CameraDistance = config.cameraDistance;
+                thirdPersonFollow.CameraSide = 0.5f; // Center
+                thirdPersonFollow.Damping = new Vector3(0.1f, 0.1f, 0.1f); // Smooth damping
+
+                if (debugMode)
+                    Debug.Log($"[CameraManager] Configured ThirdPersonFollow: ShoulderOffset={config.shoulderOffset}, " +
+                        $"VerticalArmLength={config.verticalArmLength}, CameraDistance={config.cameraDistance}");
+            }
+            else
+            {
+                // Try CinemachineFollow as fallback
+                var follow = camera.GetComponent<CinemachineFollow>();
+                if (follow == null)
+                {
+                    // Add CinemachineFollow component at runtime
+                    follow = camera.gameObject.AddComponent<CinemachineFollow>();
+                    Debug.Log($"[CameraManager] Added CinemachineFollow component to '{camera.name}' at runtime");
+                }
+
+                // Configure follow offset (behind and above target)
+                follow.FollowOffset = new Vector3(0, config.shoulderOffset.y, -config.cameraDistance);
+
+                // Configure damping for smooth movement
+                follow.TrackerSettings.BindingMode = Unity.Cinemachine.TargetTracking.BindingMode.WorldSpace;
+                follow.TrackerSettings.PositionDamping = new Vector3(0.1f, 0.1f, 0.1f);
+                follow.TrackerSettings.RotationDamping = Vector3.zero; // No rotation damping needed
+
+                if (debugMode)
+                    Debug.Log($"[CameraManager] Configured CinemachineFollow: FollowOffset={follow.FollowOffset}");
+            }
         }
         #endregion
 

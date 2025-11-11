@@ -45,8 +45,6 @@ namespace BugWars.Entity
         [Header("Camera Follow Configuration")]
         [SerializeField] [Tooltip("Automatically set camera to follow player on spawn")]
         private bool autoCameraFollow = true;
-        [SerializeField] [Tooltip("Name of the virtual camera to use for player follow")]
-        private string playerCameraName = "VirtualCamera";
 
         [Header("Player Reference")]
         [SerializeField] private Entity playerEntity;
@@ -127,10 +125,10 @@ namespace BugWars.Entity
                 SetPlayer(entity, false); // Don't log during spawn
                 playerSpawned = true;
 
-                // Set up camera to follow player
+                // Set up camera to follow player using event system
                 if (autoCameraFollow)
                 {
-                    SetupCameraFollow(playerObj.transform);
+                    RequestCameraFollow(playerObj.transform);
                 }
             }
             else
@@ -317,60 +315,26 @@ namespace BugWars.Entity
         #region Camera Integration
 
         /// <summary>
-        /// Set up camera to follow the player
+        /// Request camera to follow player using event system
+        /// Decouples EntityManager from CameraManager
         /// </summary>
-        private void SetupCameraFollow(Transform playerTransform)
+        private void RequestCameraFollow(Transform playerTransform)
         {
             if (playerTransform == null)
             {
-                Debug.LogWarning("[EntityManager] Cannot setup camera follow - player transform is null");
+                Debug.LogWarning("[EntityManager] Cannot request camera follow - player transform is null");
                 return;
             }
 
-            // Get CameraManager instance
-            CameraManager cameraManager = CameraManager.Instance;
-            if (cameraManager == null)
-            {
-                Debug.LogWarning("[EntityManager] CameraManager not found - cannot setup camera follow");
-                return;
-            }
+            // Create third-person camera configuration
+            var config = Core.CameraFollowConfig.ThirdPerson(playerTransform);
 
-            // Try to find the specified camera or use the first available
-            Unity.Cinemachine.CinemachineCamera virtualCamera = cameraManager.GetVirtualCamera(playerCameraName);
-
-            if (virtualCamera == null && cameraManager.VirtualCameraCount > 0)
-            {
-                // Fallback to first available camera
-                virtualCamera = cameraManager.GetVirtualCameraByIndex(0);
-                Debug.LogWarning($"[EntityManager] Camera '{playerCameraName}' not found. Using '{virtualCamera.name}' instead.");
-            }
-
-            if (virtualCamera != null)
-            {
-                // Set both Follow and LookAt to player
-                virtualCamera.Follow = playerTransform;
-                virtualCamera.LookAt = playerTransform;
-
-                // Configure third-person camera offset if Position Composer exists
-                var positionComposer = virtualCamera.GetComponent<Unity.Cinemachine.CinemachinePositionComposer>();
-                if (positionComposer != null)
-                {
-                    // Set camera offset for third-person view (behind and above player)
-                    positionComposer.CameraDistance = 8f; // Distance from player
-                    positionComposer.TargetOffset = new UnityEngine.Vector3(0, 1.5f, 0); // Look slightly above player center
-                }
-
-                // Activate this camera
-                cameraManager.ActivateCamera(virtualCamera, true);
-            }
-            else
-            {
-                Debug.LogWarning("[EntityManager] No virtual cameras found in scene - cannot setup camera follow");
-            }
+            // Fire event for CameraManager to handle
+            Core.CameraEvents.RequestCameraFollow(config);
         }
 
         /// <summary>
-        /// Manually set camera to follow a specific target
+        /// Manually request camera to follow a specific target
         /// </summary>
         public void SetCameraFollowTarget(Transform target, string cameraName = null)
         {
@@ -380,16 +344,8 @@ namespace BugWars.Entity
                 return;
             }
 
-            CameraManager cameraManager = CameraManager.Instance;
-            if (cameraManager == null)
-            {
-                Debug.LogWarning("[EntityManager] CameraManager not found");
-                return;
-            }
-
-            string camName = string.IsNullOrEmpty(cameraName) ? playerCameraName : cameraName;
-            cameraManager.SetCameraFollowTarget(camName, target);
-            cameraManager.SetCameraLookAtTarget(camName, target);
+            var config = Core.CameraFollowConfig.ThirdPerson(target, cameraName);
+            Core.CameraEvents.RequestCameraFollow(config);
         }
 
         #endregion
