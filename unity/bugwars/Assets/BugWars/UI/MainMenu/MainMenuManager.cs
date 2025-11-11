@@ -13,6 +13,9 @@ namespace BugWars.UI
     {
 
         #region Fields
+        [Header("Settings Panel")]
+        [SerializeField] private SettingsPanelManager _settingsPanelManager;
+
         private UIDocument _uiDocument;
         private VisualElement _root;
         private VisualElement _mainMenuContainer;
@@ -191,7 +194,16 @@ namespace BugWars.UI
         /// </summary>
         private void OnSettingsButtonClicked()
         {
-            // TODO: Implement settings panel
+            Debug.Log("[MainMenuManager] Settings button clicked");
+
+            if (_settingsPanelManager != null)
+            {
+                _settingsPanelManager.ShowPanel();
+            }
+            else
+            {
+                Debug.LogWarning("[MainMenuManager] SettingsPanelManager reference not set!");
+            }
         }
 
         /// <summary>
