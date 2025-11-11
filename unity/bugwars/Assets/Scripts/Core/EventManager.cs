@@ -37,6 +37,13 @@ namespace BugWars.Core
         private void Awake()
         {
             // Component initialized
+            Debug.Log("[EventManager] Awake called - EventManager initialized");
+        }
+
+        private void Start()
+        {
+            Debug.Log("[EventManager] Start called - EventManager ready");
+            Debug.Log($"[EventManager] OnEscapePressed listener count: {OnEscapePressed.GetPersistentEventCount()}");
         }
 
         private void OnDestroy()
@@ -61,6 +68,7 @@ namespace BugWars.Core
         /// </summary>
         public void TriggerEscapePressed()
         {
+            Debug.Log($"[EventManager] TriggerEscapePressed called - listener count: {OnEscapePressed.GetPersistentEventCount()}");
             OnEscapePressed?.Invoke();
         }
 

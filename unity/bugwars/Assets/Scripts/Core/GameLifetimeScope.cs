@@ -22,17 +22,23 @@ namespace BugWars.Core
 
         protected override void Configure(IContainerBuilder builder)
         {
+            Debug.Log("[GameLifetimeScope] Configure called - registering managers");
+
             // Register core managers in dependency order
             // EventManager has no dependencies - register first
+            Debug.Log("[GameLifetimeScope] Registering EventManager");
             RegisterOrCreateManager<EventManager>(builder, "EventManager");
 
             // InputManager depends on EventManager
+            Debug.Log("[GameLifetimeScope] Registering InputManager");
             RegisterOrCreateManager<InputManager>(builder, "InputManager");
 
             // Create and configure MainMenuManager with UIDocument properly set up
+            Debug.Log("[GameLifetimeScope] Creating MainMenuManager");
             var mainMenuManagerInstance = CreateMainMenuManager();
             if (mainMenuManagerInstance != null)
             {
+                Debug.Log("[GameLifetimeScope] MainMenuManager created successfully, registering component");
                 builder.RegisterComponent(mainMenuManagerInstance);
             }
             else
@@ -41,7 +47,10 @@ namespace BugWars.Core
             }
 
             // GameManager depends on EventManager and MainMenuManager - register last
+            Debug.Log("[GameLifetimeScope] Registering GameManager");
             RegisterOrCreateManager<GameManager>(builder, "GameManager");
+
+            Debug.Log("[GameLifetimeScope] Configure complete - all managers registered");
         }
 
         /// <summary>
@@ -129,12 +138,14 @@ namespace BugWars.Core
             if (existingManager != null)
             {
                 // Manager already exists in scene, register it for injection
+                Debug.Log($"[GameLifetimeScope] Found existing {typeof(T).Name} in scene, registering it");
                 builder.RegisterComponent(existingManager);
             }
             else
             {
                 // Create new manager GameObject and register component as root object
                 // VContainer will handle injection into this component
+                Debug.Log($"[GameLifetimeScope] Creating new {typeof(T).Name} GameObject");
                 builder.RegisterComponentOnNewGameObject<T>(Lifetime.Singleton, managerName)
                     .DontDestroyOnLoad();
             }

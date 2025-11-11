@@ -32,6 +32,16 @@ namespace BugWars.Core
         private void Awake()
         {
             // Component initialized
+            Debug.Log("[InputManager] Awake called - InputManager initialized");
+        }
+
+        private void Start()
+        {
+            Debug.Log($"[InputManager] Start called - EventManager reference: {(_eventManager != null ? "available" : "NULL")}");
+            if (_eventManager == null)
+            {
+                Debug.LogError("[InputManager] EventManager was not injected! Input events will not work!");
+            }
         }
 
         private void Update()
@@ -48,7 +58,19 @@ namespace BugWars.Core
         /// </summary>
         private void HandleGlobalInputs()
         {
-            if (Keyboard.current == null || _eventManager == null) return;
+            if (Keyboard.current == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[InputManager] Keyboard.current is NULL - Input System may not be initialized");
+                return;
+            }
+
+            if (_eventManager == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[InputManager] EventManager is NULL - cannot fire events");
+                return;
+            }
 
             // Escape key - Main menu toggle
             if (Keyboard.current.escapeKey.wasPressedThisFrame)
