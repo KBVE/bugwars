@@ -1,6 +1,6 @@
 using UnityEngine;
 using VContainer;
-using Cinemachine;
+using Unity.Cinemachine;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -449,11 +449,11 @@ namespace BugWars.Core
         /// <summary>
         /// Sets the default blend style for camera transitions
         /// </summary>
-        public void SetDefaultBlend(CinemachineBlendDefinition.Style style, float time)
+        public void SetDefaultBlend(CinemachineBlendDefinition.Styles style, float time)
         {
             if (CinemachineBrain != null)
             {
-                CinemachineBrain.m_DefaultBlend = new CinemachineBlendDefinition(style, time);
+                CinemachineBrain.DefaultBlend = new CinemachineBlendDefinition(style, time);
 
                 if (debugMode)
                     Debug.Log($"[CameraManager] Set default blend: {style}, time: {time}s");
