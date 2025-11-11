@@ -32,6 +32,10 @@ namespace BugWars.Entity
         [SerializeField] private List<Entity> allEntities = new List<Entity>();
         [SerializeField] private bool autoRegisterEntities = true;
 
+        [Header("Player Reference")]
+        [SerializeField] private Entity playerEntity;
+        public Entity Player => playerEntity;
+
         private void Awake()
         {
             if (instance != null && instance != this)
@@ -85,6 +89,13 @@ namespace BugWars.Entity
             }
 
             allEntities.Add(entity);
+
+            // Check if this is the player entity
+            if (entity.CompareTag("Player") || entity is BugWars.Character.Samurai)
+            {
+                SetPlayer(entity, false);
+            }
+
             if (logRegistration)
             {
                 Debug.Log($"[EntityManager] Registered entity: {entity.GetEntityName()}");
@@ -214,6 +225,65 @@ namespace BugWars.Entity
             return allEntities.Count(e => e != null);
         }
 
+        #region Player Management
+
+        /// <summary>
+        /// Set the player entity reference
+        /// </summary>
+        public void SetPlayer(Entity entity, bool logChange = true)
+        {
+            if (entity == null)
+            {
+                Debug.LogWarning("[EntityManager] Attempted to set null player entity");
+                return;
+            }
+
+            if (playerEntity != null && playerEntity != entity)
+            {
+                if (logChange)
+                {
+                    Debug.LogWarning($"[EntityManager] Replacing existing player {playerEntity.GetEntityName()} with {entity.GetEntityName()}");
+                }
+            }
+
+            playerEntity = entity;
+
+            if (logChange)
+            {
+                Debug.Log($"[EntityManager] Player entity set: {entity.GetEntityName()}");
+            }
+        }
+
+        /// <summary>
+        /// Get the player entity
+        /// </summary>
+        public Entity GetPlayer()
+        {
+            return playerEntity;
+        }
+
+        /// <summary>
+        /// Check if player entity exists and is alive
+        /// </summary>
+        public bool IsPlayerAlive()
+        {
+            return playerEntity != null && playerEntity.IsAlive();
+        }
+
+        /// <summary>
+        /// Get player position (safe accessor)
+        /// </summary>
+        public Vector3 GetPlayerPosition()
+        {
+            if (playerEntity != null)
+            {
+                return playerEntity.transform.position;
+            }
+            return Vector3.zero;
+        }
+
+        #endregion
+
         private void OnDestroy()
         {
             if (instance == this)
@@ -231,8 +301,17 @@ namespace BugWars.Entity
             {
                 if (entity == null) continue;
 
-                Gizmos.color = entity.IsAlive() ? Color.green : Color.red;
-                Gizmos.DrawWireSphere(entity.transform.position, 0.5f);
+                // Highlight player entity in blue
+                if (entity == playerEntity)
+                {
+                    Gizmos.color = entity.IsAlive() ? Color.cyan : Color.magenta;
+                    Gizmos.DrawWireSphere(entity.transform.position, 0.75f);
+                }
+                else
+                {
+                    Gizmos.color = entity.IsAlive() ? Color.green : Color.red;
+                    Gizmos.DrawWireSphere(entity.transform.position, 0.5f);
+                }
             }
         }
     }

@@ -90,29 +90,73 @@ Select the Samurai GameObject and configure in Inspector:
 - Entity Name: "Samurai"
 - Health: 100
 - Max Health: 100
-- Move Speed: 5
-- Rotation Speed: 720
+- Auto Register With Manager: ✓ (automatically registers with EntityManager)
 
 **Billboard Sprite:**
 - Sprite Renderer: Drag the child SpriteRenderer
 - Enable Billboard: ✓
 - Sprite Offset: (0, 0.5, 0)
+- Auto Flip Sprite: ✓ (automatically flips sprite based on movement)
 
 **Physics:**
-- (Auto-configured, but can adjust if needed)
+- Move Speed: 5
+- Rotation Speed: 720
+- (Other physics properties auto-configured)
 
 **Samurai Animation:**
 - **Atlas JSON**: Drag `SamuraiAtlas.json`
 - **Sprite Material**: Drag `SamuraiMaterial`
 - Debug Animation: ☐ (enable for debugging)
 
-### 7. Test in Scene
+### 7. EntityManager Integration
+
+The Samurai character **automatically registers** with the EntityManager on startup:
+
+**Automatic Registration:**
+- Entity.cs base class auto-registers all entities on Initialize()
+- EntityManager automatically detects Samurai as the player entity
+- Player reference is stored in `EntityManager.Instance.Player`
+- No manual setup required!
+
+**Accessing the Player:**
+```csharp
+// Get player entity from anywhere
+Entity player = EntityManager.Instance.GetPlayer();
+
+// Check if player is alive
+bool isAlive = EntityManager.Instance.IsPlayerAlive();
+
+// Get player position
+Vector3 playerPos = EntityManager.Instance.GetPlayerPosition();
+
+// Direct property access
+Entity playerEntity = EntityManager.Instance.Player;
+```
+
+**EntityManager Features:**
+- Tracks all entities in the scene
+- Maintains special reference to player entity
+- Find entities by name, type, or proximity
+- Query alive/dead entities
+- Gizmo visualization (player = cyan, entities = green/red)
+
+**Disabling Auto-Registration:**
+If you need to manually control registration:
+```csharp
+// In Inspector: uncheck "Auto Register With Manager"
+// Then manually register when needed:
+EntityManager.Instance.RegisterEntity(this);
+```
+
+### 8. Test in Scene
 
 1. Drag Samurai prefab into scene
 2. Ensure there's a Camera with tag "MainCamera"
-3. Enter Play mode
-4. The character should display the Idle animation
-5. Use the Context Menu (right-click on Samurai component) to test:
+3. Ensure EntityManager exists in scene (auto-creates if missing)
+4. Enter Play mode
+5. The character should display the Idle animation
+6. Console should show: "[EntityManager] Player entity set: Samurai"
+7. Use the Context Menu (right-click on Samurai component) to test:
    - "Debug: Next Animation" - cycles through animations
    - "Debug: Print Atlas Info" - shows loaded data
 

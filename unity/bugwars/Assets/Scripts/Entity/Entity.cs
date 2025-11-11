@@ -14,6 +14,7 @@ namespace BugWars.Entity
         [SerializeField] protected string entityName;
         [SerializeField] protected float health = 100f;
         [SerializeField] protected float maxHealth = 100f;
+        [SerializeField] protected bool autoRegisterWithManager = true;
 
         [Header("Billboard Sprite")]
         [SerializeField] protected SpriteRenderer spriteRenderer;
@@ -85,6 +86,12 @@ namespace BugWars.Entity
             // Initialize material property block for sprite effects
             spritePropertyBlock = new MaterialPropertyBlock();
             InitializeSpriteFlip();
+
+            // Auto-register with EntityManager
+            if (autoRegisterWithManager)
+            {
+                RegisterWithEntityManager();
+            }
         }
 
         /// <summary>
@@ -136,6 +143,15 @@ namespace BugWars.Entity
         protected virtual void OnDeath()
         {
             // Override in derived classes for specific death behavior
+        }
+
+        protected virtual void OnDestroy()
+        {
+            // Unregister from EntityManager when destroyed
+            if (EntityManager.Instance != null)
+            {
+                EntityManager.Instance.UnregisterEntity(this);
+            }
         }
 
         /// <summary>
@@ -294,6 +310,25 @@ namespace BugWars.Entity
             if (spriteRenderer != null && spritePropertyBlock != null)
             {
                 spriteRenderer.SetPropertyBlock(spritePropertyBlock);
+            }
+        }
+
+        #endregion
+
+        #region EntityManager Integration
+
+        /// <summary>
+        /// Register this entity with the EntityManager
+        /// </summary>
+        protected virtual void RegisterWithEntityManager()
+        {
+            if (EntityManager.Instance != null)
+            {
+                EntityManager.Instance.RegisterEntity(this);
+            }
+            else
+            {
+                Debug.LogWarning($"[Entity] {entityName}: EntityManager instance not found. Entity not registered.");
             }
         }
 
