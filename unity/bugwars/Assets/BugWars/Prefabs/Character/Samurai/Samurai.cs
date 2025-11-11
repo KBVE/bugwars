@@ -26,19 +26,15 @@ namespace BugWars.Character
         [Header("Animation State")]
         [SerializeField] private bool debugAnimation = false;
 
-        private MaterialPropertyBlock propertyBlock;
-
         protected override void Awake()
         {
             base.Awake();
-            Initialize();
         }
 
         protected override void Initialize()
         {
             base.Initialize();
 
-            propertyBlock = new MaterialPropertyBlock();
             LoadAtlasData();
             PlayAnimation("Idle");
         }
@@ -163,11 +159,15 @@ namespace BugWars.Character
 
             FrameData frame = atlasData.frames[frameName];
 
-            // Update shader UV parameters using MaterialPropertyBlock
-            propertyBlock.SetVector(FrameUVMinID, new Vector4(frame.uv.min.x, frame.uv.min.y, 0, 0));
-            propertyBlock.SetVector(FrameUVMaxID, new Vector4(frame.uv.max.x, frame.uv.max.y, 0, 0));
+            // Get the shared property block from Entity (includes flip state)
+            MaterialPropertyBlock propBlock = GetSpritePropertyBlock();
 
-            spriteRenderer.SetPropertyBlock(propertyBlock);
+            // Update shader UV parameters for this animation frame
+            propBlock.SetVector(FrameUVMinID, new Vector4(frame.uv.min.x, frame.uv.min.y, 0, 0));
+            propBlock.SetVector(FrameUVMaxID, new Vector4(frame.uv.max.x, frame.uv.max.y, 0, 0));
+
+            // Apply all properties (flip + UV) to sprite renderer
+            ApplySpritePropertyBlock();
 
             if (debugAnimation)
             {

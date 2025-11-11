@@ -9,6 +9,14 @@ Shader "BugWars/SamuraiAnimatedSprite"
         _FrameUVMin("Frame UV Min", Vector) = (0,0,0,0)
         _FrameUVMax("Frame UV Max", Vector) = (1,1,0,0)
 
+        // Billboard & Sprite Flipping (set from script via MaterialPropertyBlock)
+        _FlipX("Flip Horizontal", Float) = 0  // 0 = normal, 1 = flipped
+        _FlipY("Flip Vertical", Float) = 0     // 0 = normal, 1 = flipped
+
+        // Billboard Effects
+        _BillboardStretch("Billboard Stretch", Vector) = (1,1,1,0) // x=width, y=height, z=depth stretch
+        _PreserveSize("Preserve Size with Distance", Range(0,1)) = 0 // 0=perspective, 1=constant size
+
         // Additional properties
         _Cutoff("Alpha Cutoff", Range(0.0, 1.0)) = 0.5
 
@@ -79,6 +87,10 @@ Shader "BugWars/SamuraiAnimatedSprite"
                 float4 _BaseColor;
                 float4 _FrameUVMin;
                 float4 _FrameUVMax;
+                float _FlipX;
+                float _FlipY;
+                float4 _BillboardStretch;
+                float _PreserveSize;
                 float _Cutoff;
             CBUFFER_END
 
@@ -86,15 +98,49 @@ Shader "BugWars/SamuraiAnimatedSprite"
             {
                 Varyings output = (Varyings)0;
 
-                VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
+                // Apply billboard stretch to vertex position
+                float3 vertexOS = input.positionOS.xyz;
+                vertexOS.x *= _BillboardStretch.x;
+                vertexOS.y *= _BillboardStretch.y;
+                vertexOS.z *= _BillboardStretch.z;
+
+                VertexPositionInputs vertexInput = GetVertexPositionInputs(vertexOS);
                 VertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS);
 
+                // Optional: Preserve sprite size with distance
+                float3 positionWS = vertexInput.positionWS;
+                if (_PreserveSize > 0.0)
+                {
+                    float3 toCamera = _WorldSpaceCameraPos - TransformObjectToWorld(float3(0,0,0));
+                    float distance = length(toCamera);
+                    float scaleFactor = lerp(1.0, distance * 0.1, _PreserveSize);
+
+                    float3 localOffset = input.positionOS.xyz * scaleFactor;
+                    positionWS = TransformObjectToWorld(float3(0,0,0)) + localOffset;
+                    vertexInput.positionCS = TransformWorldToHClip(positionWS);
+                }
+
                 output.positionCS = vertexInput.positionCS;
-                output.positionWS = vertexInput.positionWS;
+                output.positionWS = positionWS;
                 output.normalWS = normalInput.normalWS;
 
+                // Apply sprite flipping to UV
+                float2 uv = input.uv;
+
+                // Flip X (horizontal)
+                if (_FlipX > 0.5)
+                {
+                    uv.x = 1.0 - uv.x;
+                }
+
+                // Flip Y (vertical)
+                if (_FlipY > 0.5)
+                {
+                    uv.y = 1.0 - uv.y;
+                }
+
                 // Remap UV from (0,1) to frame UV bounds
-                output.uv = lerp(_FrameUVMin.xy, _FrameUVMax.xy, input.uv);
+                output.uv = lerp(_FrameUVMin.xy, _FrameUVMax.xy, uv);
 
                 output.color = input.color;
                 output.fogFactor = ComputeFogFactor(vertexInput.positionCS.z);
@@ -174,6 +220,9 @@ Shader "BugWars/SamuraiAnimatedSprite"
                 float4 _BaseMap_ST;
                 float4 _FrameUVMin;
                 float4 _FrameUVMax;
+                float _FlipX;
+                float _FlipY;
+                float4 _BillboardStretch;
                 float _Cutoff;
             CBUFFER_END
 
@@ -182,11 +231,24 @@ Shader "BugWars/SamuraiAnimatedSprite"
             Varyings ShadowPassVertex(Attributes input)
             {
                 Varyings output;
-                float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+
+                // Apply billboard stretch
+                float3 vertexOS = input.positionOS.xyz;
+                vertexOS.x *= _BillboardStretch.x;
+                vertexOS.y *= _BillboardStretch.y;
+                vertexOS.z *= _BillboardStretch.z;
+
+                float3 positionWS = TransformObjectToWorld(vertexOS);
                 float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
 
                 output.positionCS = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, _LightDirection));
-                output.uv = lerp(_FrameUVMin.xy, _FrameUVMax.xy, input.uv);
+
+                // Apply sprite flipping
+                float2 uv = input.uv;
+                if (_FlipX > 0.5) uv.x = 1.0 - uv.x;
+                if (_FlipY > 0.5) uv.y = 1.0 - uv.y;
+
+                output.uv = lerp(_FrameUVMin.xy, _FrameUVMax.xy, uv);
 
                 return output;
             }

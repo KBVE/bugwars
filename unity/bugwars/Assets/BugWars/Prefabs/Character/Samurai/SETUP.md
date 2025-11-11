@@ -5,8 +5,10 @@
 The Samurai character system uses:
 - **Sprite Atlas**: Single texture containing all animation frames
 - **JSON Atlas Data**: Frame positions and animation metadata
-- **Custom URP Shader**: UV-based frame rendering
+- **Custom URP Shader**: UV-based frame rendering with sprite flipping and billboard effects
 - **Entity System**: Extends base Entity class for player character functionality
+- **Automatic Sprite Flipping**: Camera-relative sprite flipping based on movement direction
+- **Billboard Effects**: Enhanced shader support for stretching and size preservation
 
 ## Files Created
 
@@ -226,6 +228,99 @@ This will regenerate `SamuraiAtlas.png` and `SamuraiAtlas.json`.
 → Check that UV coordinates in JSON are correct
 → Verify shader is receiving UV parameters (check MaterialPropertyBlock)
 
+### Sprite not flipping
+→ Ensure "Auto Flip Sprite" is enabled in Entity component
+→ Check that shader has _FlipX and _FlipY parameters
+→ Verify MaterialPropertyBlock is being used correctly
+
+## Sprite Flipping & Billboard Effects
+
+### Automatic Sprite Flipping
+
+The Entity system includes automatic sprite flipping based on movement direction:
+
+**How it works:**
+- Tracks facing direction relative to camera
+- Automatically flips sprite when moving left/right
+- Uses shader-based flipping (no texture duplication)
+- Smooth transitions without performance overhead
+
+**Configuration:**
+```csharp
+// Enable/disable auto-flip in Inspector or code
+entity.autoFlipSprite = true; // default
+
+// Manually control facing direction
+entity.SetFacingDirection(1);  // Face right
+entity.SetFacingDirection(-1); // Face left
+
+// Get current facing direction
+int facing = entity.GetFacingDirection(); // 1 or -1
+```
+
+**Camera-Relative Flipping:**
+The system uses the camera's right vector to determine left/right movement, ensuring sprites flip correctly regardless of camera angle.
+
+### Manual Sprite Flipping
+
+You can manually flip sprites via the Entity API:
+
+```csharp
+// Flip horizontally
+entity.SetSpriteFlip(true, false);
+
+// Flip vertically (e.g., for wall-climbing)
+entity.SetSpriteFlip(false, true);
+
+// Flip both axes
+entity.SetSpriteFlip(true, true);
+
+// No flip
+entity.SetSpriteFlip(false, false);
+```
+
+### Billboard Effects in Shader
+
+The shader supports additional billboard effects:
+
+**Billboard Stretch:**
+Adjust sprite proportions via material properties:
+```csharp
+Material mat = spriteRenderer.material;
+mat.SetVector("_BillboardStretch", new Vector4(1.2f, 1.0f, 1.0f, 0)); // 20% wider
+```
+
+**Preserve Size with Distance:**
+Keep sprite size constant regardless of camera distance:
+```csharp
+mat.SetFloat("_PreserveSize", 0.5f); // 0=perspective, 1=constant size
+```
+
+### Advanced: Custom Property Block Usage
+
+For derived classes that need additional shader parameters:
+
+```csharp
+public class CustomEntity : Entity
+{
+    private static readonly int CustomParamID = Shader.PropertyToID("_CustomParam");
+
+    protected void UpdateCustomShaderParam(float value)
+    {
+        // Get the shared property block (includes flip state, UV coords, etc.)
+        MaterialPropertyBlock block = GetSpritePropertyBlock();
+
+        // Add your custom parameter
+        block.SetFloat(CustomParamID, value);
+
+        // Apply all changes
+        ApplySpritePropertyBlock();
+    }
+}
+```
+
+**Important:** Always use `GetSpritePropertyBlock()` and `ApplySpritePropertyBlock()` from the Entity base class to ensure flip parameters and other properties work together.
+
 ## Extending the System
 
 ### Adding New Animations
@@ -279,10 +374,14 @@ List<string> GetAvailableAnimations()
 // Inherited from Entity
 void TakeDamage(float damage)
 void Heal(float amount)
-void SetSprite(Sprite sprite) // Not needed with atlas system
 float GetHealth()
 float GetMaxHealth()
 bool IsAlive()
+
+// Sprite flipping (inherited from Entity)
+void SetSpriteFlip(bool flipX, bool flipY)
+void SetFacingDirection(int direction) // 1 = right, -1 = left
+int GetFacingDirection()
 ```
 
 ## Credits
