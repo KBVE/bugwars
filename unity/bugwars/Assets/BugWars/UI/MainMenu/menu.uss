@@ -43,8 +43,10 @@
 
 /* Logo styling */
 .menu-logo {
-    width: 400px;
-    height: 100px;
+    width: 90%; /* Responsive width based on parent */
+    min-width: 300px; /* Minimum width for readability */
+    max-width: 600px; /* Maximum width for large screens */
+    height: 150px; /* Increased height for better visibility */
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
