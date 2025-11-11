@@ -3,6 +3,7 @@ using UnityEngine.UIElements;
 using VContainer;
 using VContainer.Unity;
 using BugWars.UI;
+using BugWars.Terrain;
 
 namespace BugWars.Core
 {
@@ -49,6 +50,10 @@ namespace BugWars.Core
             // GameManager depends on EventManager and MainMenuManager - register last
             Debug.Log("[GameLifetimeScope] Registering GameManager");
             RegisterOrCreateManager<GameManager>(builder, "GameManager");
+
+            // TerrainManager for procedural terrain generation
+            Debug.Log("[GameLifetimeScope] Registering TerrainManager");
+            RegisterOrCreateManager<TerrainManager>(builder, "TerrainManager");
 
             Debug.Log("[GameLifetimeScope] Configure complete - all managers registered");
         }
