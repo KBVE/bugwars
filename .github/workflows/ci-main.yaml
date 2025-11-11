@@ -452,8 +452,8 @@ jobs:
               with:
                   source_file: 'dist/apps/webapp/'
                   destination_repo: 'KBVE/kbve.com'
-                  destination_folder: '/docs'
-                  destination_branch: 'main'
+                  destination_folder: '/'
+                  destination_branch: 'gh-pages'
                   destination_branch_create: 'ghpages-deploy-${{ github.run_id }}'
                   user_email: 'h0lybyte@users.noreply.github.com'
                   user_name: 'h0lybyte'
