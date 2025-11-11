@@ -65,6 +65,120 @@ For Bug Wars' architecture, Cinemachine integrates seamlessly with our existing 
 
 The separation between Virtual Cameras (what you want to shoot) and the Brain (how to execute the shot) provides excellent testability and designer iteration. Camera behaviors can be tuned in the editor without code changes, and multiple camera setups can be A/B tested simply by adjusting priorities. This design philosophy aligns perfectly with Bug Wars' emphasis on clean architecture and rapid iteration.
 
+## AI-Assisted Development with MCP
+
+Bug Wars embraces modern AI-assisted development workflows through the Model Context Protocol (MCP), enabling seamless collaboration between human developers and AI assistants directly within the Unity environment. MCP provides a standardized interface for AI tools to interact with development environments, allowing for intelligent code suggestions, automated refactoring, asset management, and context-aware assistance throughout the development process.
+
+By integrating MCP into our development workflow, we accelerate iteration speed, reduce repetitive tasks, and enable developers to focus on creative problem-solving and game design rather than boilerplate code generation. AI assistants can understand the project's architecture, suggest improvements aligned with our coding standards, and help maintain consistency across the codebase. This is particularly valuable for Bug Wars' complex systems involving VContainer dependency graphs, UniTask async patterns, and Cinemachine configurations.
+
+### Unity MCP - AI Bridge for Unity Editor
+
+[Unity MCP GitHub Repository](https://github.com/CoplayDev/unity-mcp)
+
+Unity MCP is an open-source bridge that connects AI assistants (such as Claude, Cursor, and other LLM-powered tools) directly to the Unity Editor through the Model Context Protocol. This integration enables natural language control of Unity projects, allowing developers to leverage AI for automating workflows, managing assets, and accelerating game development tasks that would traditionally require manual editor interactions.
+
+#### Architecture & Components:
+
+Unity MCP consists of two complementary components that work together:
+
+- **Unity Package**: Installed directly into your Unity project via Package Manager, this component exposes Unity Editor APIs and provides hooks into the project's scene hierarchy, asset database, and editor state.
+- **Python Server**: A local server that runs alongside your development environment, facilitating bidirectional communication between your AI client and the Unity Editor. The server translates natural language commands into Unity API calls and returns structured responses.
+
+#### Key Capabilities for Bug Wars Development:
+
+**Asset Management**
+- Import, create, modify, and delete project resources through AI commands
+- Organize prefabs, scripts, textures, and audio files based on natural language instructions
+- Automate batch asset operations (renaming conventions, folder restructuring, metadata tagging)
+
+**Scene Manipulation**
+- Load, save, and modify scene hierarchies conversationally
+- Create and configure GameObjects with specific components and settings
+- Adjust scene lighting, camera positions, and environment properties without manual editor navigation
+
+**Script Creation & Editing**
+- Generate C# scripts with proper namespace conventions and dependency patterns
+- Modify existing code with AI-suggested improvements and refactoring
+- Validate script syntax and integration with Unity's component system
+
+**Workflow Automation**
+- Execute repetitive Unity Editor tasks through natural language commands
+- Automate testing sequences, build configurations, and deployment steps
+- Query editor state to understand current selections, active windows, and project settings
+
+#### Integration with Bug Wars Workflow:
+
+Unity MCP enhances Bug Wars development by enabling AI assistants to:
+
+- **Understand Architecture Context**: AI can analyze the VContainer dependency graphs and suggest proper injection patterns for new managers and controllers
+- **Generate Cinemachine Configurations**: Describe desired camera behaviors in natural language and have the AI configure Virtual Camera components with appropriate settings
+- **Create Event-Driven Code**: AI understands the EventManager pattern and can generate new events with proper trigger methods and listener subscriptions
+- **Validate Unity Best Practices**: AI can review code for Unity-specific anti-patterns (improper lifecycle usage, expensive operations in Update loops, missing null checks) and suggest corrections
+
+#### Setup Requirements:
+
+For developers joining the Bug Wars project, Unity MCP setup involves:
+
+1. Install the Unity package via Package Manager (Git URL or local package)
+2. Configure the Python server with your AI client credentials
+3. Ensure Python 3.8+ is installed with required dependencies
+4. Launch the server alongside Unity Editor for active AI assistance
+
+The system supports multiple simultaneous Unity instances and integrates seamlessly with popular AI coding clients, requiring minimal configuration beyond initial setup. For Bug Wars contributors, Unity MCP accelerates onboarding by allowing new developers to query the AI about architecture decisions, quickly generate boilerplate code following project conventions, and receive context-aware assistance when implementing new gameplay systems.
+
+### Context7 - Up-to-Date Documentation for LLMs
+
+[Context7 Unity Documentation](https://context7.com?q=unity)
+
+Context7 is an open-source Model Context Protocol (MCP) server that provides AI assistants with up-to-date, version-specific documentation and code examples directly from the source. Unlike static documentation or LLM training data that may be outdated, Context7 dynamically retrieves the latest official documentation, ensuring AI-generated code and suggestions align with current best practices and API specifications.
+
+#### What Context7 Provides:
+
+Context7 acts as a real-time documentation bridge between AI assistants and official framework documentation. When an AI needs to reference Unity APIs, component behaviors, or implementation patterns, Context7 fetches the most recent documentation from Unity's official sources and injects it directly into the AI's context. This ensures that code suggestions, API usage examples, and architectural recommendations reflect the latest Unity version being used in the project.
+
+#### Key Benefits for Bug Wars Development:
+
+**Version-Specific Accuracy**
+- Ensures AI suggestions match the exact Unity version used by Bug Wars (avoiding deprecated APIs or unavailable features)
+- Provides accurate documentation for VContainer, UniTask, Cinemachine, and other third-party packages
+- Reduces errors caused by outdated LLM training data or generic code examples
+
+**Enhanced Code Generation**
+- AI assistants can generate Unity scripts with current API signatures and recommended patterns
+- Code examples pulled from official docs ensure compliance with Unity's latest coding standards
+- Reduces manual documentation lookup, allowing developers to stay in flow state
+
+**Contextual API Understanding**
+- When working with complex Unity systems (physics, rendering, UI Toolkit), AI has access to detailed parameter descriptions and usage notes
+- Enables AI to suggest proper component configurations and editor settings
+- Helps AI understand nuances of Unity's component lifecycle and execution order
+
+**Integration with Existing Tools**
+- Works seamlessly with Cursor, Claude, and other AI coding assistants
+- Can be combined with Unity MCP for comprehensive AI-assisted Unity development
+- Requires minimal setup - typically just installing the MCP server and configuring your AI client
+
+#### Use Cases in Bug Wars Workflow:
+
+For Bug Wars contributors, Context7 enhances AI assistance in several ways:
+
+- **Learning New Systems**: When implementing new Unity features (e.g., Timeline, Shader Graph), AI can reference the latest documentation to guide developers through setup
+- **API Migration**: If Unity versions are updated, Context7 ensures AI suggestions reflect migration paths and new API patterns
+- **Third-Party Package Support**: Context7 can retrieve documentation for VContainer, UniTask, and Cinemachine, helping AI understand our core technology stack
+- **Debugging Assistance**: AI can reference official docs when troubleshooting Unity-specific issues, providing more accurate diagnostic suggestions
+- **Code Review**: AI reviewers can validate that code follows current Unity best practices and uses APIs correctly
+
+#### Setup for Bug Wars Contributors:
+
+1. Install Context7 MCP server from the [official repository](https://github.com/upstash/context7)
+2. Configure your AI client (Claude Desktop, Cursor, etc.) to use the Context7 MCP server
+3. Query Unity-specific documentation using the Unity parameter: `https://context7.com?q=unity`
+4. Combine with Unity MCP for a complete AI-assisted development environment
+
+Context7 significantly reduces the friction of working with Unity's extensive API surface, allowing both experienced developers and new contributors to leverage accurate, up-to-date documentation without leaving their development environment.
+
+---
+
 ## Core Architecture
 
 ### GameLifetimeScope
@@ -314,11 +428,17 @@ Camera state changes can be sequenced with UniTask for precise timing - for exam
 
 ## Resources & References
 
+### Core Unity Technologies
 - [VContainer Documentation](https://vcontainer.hadashia.com/)
 - [UniTask Documentation](https://github.com/Cysharp/UniTask)
 - [Cinemachine Documentation](https://docs.unity3d.com/Packages/com.unity.cinemachine@latest)
 - [Unity UI Toolkit Guide](https://docs.unity3d.com/Manual/UIElements.html)
 - [Unity Input System](https://docs.unity3d.com/Packages/com.unity.inputsystem@latest)
+
+### AI-Assisted Development Tools
+- [Unity MCP (Model Context Protocol)](https://github.com/CoplayDev/unity-mcp)
+- [Context7 Unity Documentation](https://context7.com?q=unity)
+- [Context7 GitHub Repository](https://github.com/upstash/context7)
 
 ---
 
