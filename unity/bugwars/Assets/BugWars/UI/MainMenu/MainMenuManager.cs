@@ -16,6 +16,7 @@ namespace BugWars.UI
         private UIDocument _uiDocument;
         private VisualElement _root;
         private VisualElement _mainMenuContainer;
+        private Button _playButton;
         private Button _settingsButton;
         private Button _exitButton;
         private bool _isMenuVisible = false;
@@ -47,6 +48,11 @@ namespace BugWars.UI
         private void OnDestroy()
         {
             // Unregister button callbacks
+            if (_playButton != null)
+            {
+                _playButton.clicked -= OnPlayButtonClicked;
+            }
+
             if (_settingsButton != null)
             {
                 _settingsButton.clicked -= OnSettingsButtonClicked;
@@ -84,10 +90,20 @@ namespace BugWars.UI
             }
 
             // Get button references
+            _playButton = _root.Q<Button>("PlayButton");
             _settingsButton = _root.Q<Button>("SettingsButton");
             _exitButton = _root.Q<Button>("ExitButton");
 
             // Register button callbacks
+            if (_playButton != null)
+            {
+                _playButton.clicked += OnPlayButtonClicked;
+            }
+            else
+            {
+                Debug.LogWarning("[MainMenuManager] PlayButton not found in UXML!");
+            }
+
             if (_settingsButton != null)
             {
                 _settingsButton.clicked += OnSettingsButtonClicked;
@@ -161,6 +177,15 @@ namespace BugWars.UI
         #endregion
 
         #region Button Callbacks
+        /// <summary>
+        /// Called when the Play button is clicked
+        /// </summary>
+        private void OnPlayButtonClicked()
+        {
+            Debug.Log("[MainMenuManager] Play button clicked - hiding menu");
+            HideMenu();
+        }
+
         /// <summary>
         /// Called when the Settings button is clicked
         /// </summary>

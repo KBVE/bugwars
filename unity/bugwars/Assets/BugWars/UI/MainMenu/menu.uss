@@ -33,6 +33,23 @@
     text-shadow: 0 0 20px rgba(132, 204, 22, 0.6); /* Lime 500 glow */
 }
 
+/* Logo container */
+.logo-container {
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+/* Logo styling */
+.menu-logo {
+    width: 400px;
+    height: 100px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
 /* Button container */
 .button-container {
     width: 100%;
@@ -90,6 +107,24 @@
     /* Scale down slightly for press effect */
     scale: 1.02;
     translate: 0 0;
+}
+
+/* Play button - primary action with brighter styling */
+.play-button {
+    /* Brighter Lime 500 for primary action */
+    background-color: rgb(132, 204, 22);
+    border-color: rgb(163, 230, 53); /* Lime 400 */
+    border-width: 4px;
+
+    /* Slightly larger for emphasis */
+    scale: 1.05;
+}
+
+.play-button:hover {
+    /* Even brighter on hover */
+    background-color: rgb(163, 230, 53);
+    border-color: rgb(190, 242, 100); /* Lime 300 */
+    scale: 1.12;
 }
 
 /* Settings button - keep standard Lime styling */
