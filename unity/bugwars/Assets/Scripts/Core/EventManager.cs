@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using System;
 using System.Collections.Generic;
 
 namespace BugWars.Core
@@ -7,9 +8,56 @@ namespace BugWars.Core
     /// <summary>
     /// Central event management system - Managed by VContainer
     /// Handles all game events using UnityEvents for decoupled communication
+    /// Also provides a generic event system for dynamic event handling
     /// </summary>
     public class EventManager : MonoBehaviour
     {
+        #region Generic Event System
+        // Dictionary to store generic event listeners
+        private Dictionary<string, Delegate> _genericEvents = new Dictionary<string, Delegate>();
+
+        /// <summary>
+        /// Add a listener for a generic event with typed payload
+        /// </summary>
+        public void AddListener<T>(string eventName, Action<T> listener)
+        {
+            if (_genericEvents.ContainsKey(eventName))
+            {
+                _genericEvents[eventName] = Delegate.Combine(_genericEvents[eventName], listener);
+            }
+            else
+            {
+                _genericEvents[eventName] = listener;
+            }
+        }
+
+        /// <summary>
+        /// Remove a listener for a generic event with typed payload
+        /// </summary>
+        public void RemoveListener<T>(string eventName, Action<T> listener)
+        {
+            if (_genericEvents.ContainsKey(eventName))
+            {
+                _genericEvents[eventName] = Delegate.Remove(_genericEvents[eventName], listener);
+                if (_genericEvents[eventName] == null)
+                {
+                    _genericEvents.Remove(eventName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Trigger a generic event with typed payload
+        /// </summary>
+        public void TriggerEvent<T>(string eventName, T data)
+        {
+            if (_genericEvents.ContainsKey(eventName))
+            {
+                var eventDelegate = _genericEvents[eventName] as Action<T>;
+                eventDelegate?.Invoke(data);
+            }
+        }
+        #endregion
 
         #region Event Definitions
         // Input Events
@@ -56,6 +104,9 @@ namespace BugWars.Core
             OnPlayerDied.RemoveAllListeners();
             OnMainMenuOpened.RemoveAllListeners();
             OnMainMenuClosed.RemoveAllListeners();
+
+            // Clean up generic events
+            _genericEvents.Clear();
         }
         #endregion
 

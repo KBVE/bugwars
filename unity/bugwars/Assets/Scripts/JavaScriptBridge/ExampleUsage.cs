@@ -1,6 +1,7 @@
 using UnityEngine;
 using VContainer;
 using BugWars.JavaScriptBridge;
+using BugWars.Core;
 
 namespace BugWars.Examples
 {

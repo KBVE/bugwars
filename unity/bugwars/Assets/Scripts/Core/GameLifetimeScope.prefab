@@ -46,6 +46,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BugWars.Entity.EntityManager
   allEntities: []
   autoRegisterEntities: 1
+  playerEntity: {fileID: 0}
 --- !u!1 &2572028443775040931
 GameObject:
   m_ObjectHideFlags: 0
@@ -164,6 +165,50 @@ MonoBehaviour:
   OnMainMenuClosed:
     m_PersistentCalls:
       m_Calls: []
+--- !u!1 &5658335548533922212
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4998318005036485852}
+  - component: {fileID: 6911909644627603942}
+  m_Layer: 0
+  m_Name: WebGLBridge
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4998318005036485852
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5658335548533922212}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8462317456789012346}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6911909644627603942
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5658335548533922212}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c6537d4a14764311b0f1ac9ae9cfe80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.JavaScriptBridge.WebGLBridge
 --- !u!1 &5891999983548506604
 GameObject:
   m_ObjectHideFlags: 0
@@ -261,6 +306,11 @@ MonoBehaviour:
   defaultTerrainMaterial: {fileID: 0}
   chunkSize: 20
   chunkResolution: 20
+  chunkLoadDistance: 2
+  chunkUnloadDistance: 3
+  enableDynamicLoading: 1
+  enableFrustumCulling: 1
+  cullingUpdateInterval: 0.5
   showDebugInfo: 1
 --- !u!1 &8462317456789012345
 GameObject:
@@ -298,6 +348,7 @@ Transform:
   - {fileID: 2234301803023556590}
   - {fileID: 3710305764415122505}
   - {fileID: 393329099463632125}
+  - {fileID: 4998318005036485852}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &8462317456789012347
@@ -319,6 +370,7 @@ MonoBehaviour:
   mainMenuVisualTree: {fileID: 9197481963319205126, guid: 32c65dfa2efc6468b8cf007cedb3e0e8, type: 3}
   panelSettings: {fileID: 11400000, guid: cd8b68efaab914636a10ab6f6fa7a9cb, type: 2}
   eventManager: {fileID: 5771495303729330465}
+  webGLBridge: {fileID: 6911909644627603942}
   inputManager: {fileID: 748890625212931961}
   gameManager: {fileID: 5045267444755541697}
   terrainManager: {fileID: 4995667870493464573}

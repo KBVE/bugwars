@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using VContainer;
+using BugWars.Core;
 
 namespace BugWars.JavaScriptBridge
 {

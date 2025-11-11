@@ -5,6 +5,7 @@ using VContainer.Unity;
 using BugWars.UI;
 using BugWars.Terrain;
 using BugWars.Entity;
+using BugWars.JavaScriptBridge;
 
 namespace BugWars.Core
 {
@@ -25,6 +26,8 @@ namespace BugWars.Core
         [Header("Manager References")]
         [SerializeField] [Tooltip("Optional - EventManager component to register. Will create if not assigned.")]
         private EventManager eventManager;
+        [SerializeField] [Tooltip("Optional - WebGLBridge component to register. Will create if not assigned.")]
+        private WebGLBridge webGLBridge;
         [SerializeField] [Tooltip("Optional - InputManager component to register. Will create if not assigned.")]
         private InputManager inputManager;
         [SerializeField] [Tooltip("Optional - GameManager component to register. Will create if not assigned.")]
@@ -47,6 +50,16 @@ namespace BugWars.Core
             else
             {
                 RegisterOrCreateManager<EventManager>(builder, "EventManager");
+            }
+
+            // WebGLBridge depends on EventManager - register after EventManager
+            if (webGLBridge != null)
+            {
+                builder.RegisterComponent(webGLBridge);
+            }
+            else
+            {
+                RegisterOrCreateManager<WebGLBridge>(builder, "WebGLBridge");
             }
 
             // InputManager depends on EventManager
