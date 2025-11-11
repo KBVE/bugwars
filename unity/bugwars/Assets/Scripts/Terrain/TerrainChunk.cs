@@ -10,7 +10,7 @@ namespace BugWars.Terrain
     public class TerrainChunk : MonoBehaviour
     {
         [Header("Chunk Settings")]
-        [SerializeField] private int chunkSize = 20;
+        [SerializeField] private int chunkSize = 80; // Quadrupled from 20 to 80
         [SerializeField] private int resolution = 20; // Vertices per side
         [SerializeField] private float heightMultiplier = 3f;
         [SerializeField] private Material terrainMaterial;
@@ -24,6 +24,8 @@ namespace BugWars.Terrain
 
         public Vector2Int ChunkCoord => chunkCoord;
         public bool IsGenerated { get; private set; }
+        public bool IsVisible { get; private set; } = true;
+        public Bounds Bounds { get; private set; }
 
         /// <summary>
         /// Initialize the chunk with generation parameters
@@ -154,6 +156,9 @@ namespace BugWars.Terrain
 
             meshFilter.mesh = mesh;
             meshCollider.sharedMesh = mesh;
+
+            // Cache the bounds for frustum culling
+            Bounds = meshRenderer.bounds;
         }
 
         /// <summary>
@@ -167,6 +172,57 @@ namespace BugWars.Terrain
             }
 
             IsGenerated = false;
+        }
+
+        /// <summary>
+        /// Show the chunk (enable renderer)
+        /// </summary>
+        public void Show()
+        {
+            if (meshRenderer != null)
+            {
+                meshRenderer.enabled = true;
+                IsVisible = true;
+            }
+        }
+
+        /// <summary>
+        /// Hide the chunk (disable renderer) - useful for frustum culling
+        /// </summary>
+        public void Hide()
+        {
+            if (meshRenderer != null)
+            {
+                meshRenderer.enabled = false;
+                IsVisible = false;
+            }
+        }
+
+        /// <summary>
+        /// Set chunk visibility based on frustum culling
+        /// </summary>
+        public void SetVisibility(bool visible)
+        {
+            if (visible)
+                Show();
+            else
+                Hide();
+        }
+
+        /// <summary>
+        /// Get the center position of this chunk in world space
+        /// </summary>
+        public Vector3 GetCenterPosition()
+        {
+            return transform.position + new Vector3(chunkSize * 0.5f, 0, chunkSize * 0.5f);
+        }
+
+        /// <summary>
+        /// Calculate distance from a point to this chunk's center
+        /// </summary>
+        public float DistanceFromPoint(Vector3 point)
+        {
+            return Vector3.Distance(GetCenterPosition(), point);
         }
 
         /// <summary>
