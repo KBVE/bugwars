@@ -4,6 +4,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using VContainer;
 using VContainer.Unity;
+using BugWars.Core;
 
 namespace BugWars.Terrain
 {
@@ -11,6 +12,7 @@ namespace BugWars.Terrain
     /// Manages procedural terrain generation using a chunk-based system
     /// Generates a 3x3 grid of low-poly terrain chunks around the player
     /// Uses Perlin noise for height generation with configurable seed
+    /// Supports async chunk loading/unloading and frustum culling for performance
     /// </summary>
     public class TerrainManager : MonoBehaviour, IAsyncStartable
     {
@@ -21,11 +23,21 @@ namespace BugWars.Terrain
         [SerializeField] private Material defaultTerrainMaterial;
 
         [Header("Chunk Settings")]
-        [SerializeField] private int chunkSize = 20;
+        [SerializeField] private int chunkSize = 80; // Quadrupled from 20 to 80
         [SerializeField] private int chunkResolution = 20; // Vertices per chunk side
+
+        [Header("Chunk Loading/Unloading")]
+        [SerializeField] private int chunkLoadDistance = 2; // Load chunks within this distance (in chunk units)
+        [SerializeField] private int chunkUnloadDistance = 3; // Unload chunks beyond this distance
+        [SerializeField] private bool enableDynamicLoading = true; // Enable async chunk streaming
+        [SerializeField] private bool enableFrustumCulling = true; // Enable camera frustum culling
+        [SerializeField] private float cullingUpdateInterval = 0.5f; // How often to update culling (seconds)
 
         [Header("Debug")]
         [SerializeField] private bool showDebugInfo = true;
+
+        // Dependencies
+        private CameraManager _cameraManager;
 
         // Chunk management
         private Dictionary<Vector2Int, TerrainChunk> activeChunks = new Dictionary<Vector2Int, TerrainChunk>();
@@ -36,6 +48,18 @@ namespace BugWars.Terrain
         private bool isGenerating = false;
         private bool isInitialized = false;
 
+        // Culling state
+        private float lastCullingUpdate = 0f;
+
+        /// <summary>
+        /// VContainer dependency injection
+        /// </summary>
+        [Inject]
+        public void Construct(CameraManager cameraManager)
+        {
+            _cameraManager = cameraManager;
+        }
+
         /// <summary>
         /// VContainer async startup callback
         /// </summary>
@@ -45,6 +69,19 @@ namespace BugWars.Terrain
 
             // Generate initial terrain chunks
             await GenerateInitialChunks();
+        }
+
+        private void Update()
+        {
+            if (!isInitialized || !enableFrustumCulling || _cameraManager == null)
+                return;
+
+            // Update frustum culling at intervals
+            if (Time.time - lastCullingUpdate > cullingUpdateInterval)
+            {
+                UpdateChunkVisibility();
+                lastCullingUpdate = Time.time;
+            }
         }
 
         private void InitializeTerrainSystem()
@@ -149,11 +186,14 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Update chunks based on player position (for future chunk streaming)
-        /// This will be used when implementing dynamic chunk loading/unloading
+        /// Update chunks based on player position - async chunk streaming
+        /// Loads chunks within load distance and unloads chunks beyond unload distance
         /// </summary>
         public async UniTask UpdateChunksAroundPosition(Vector3 playerPosition)
         {
+            if (!enableDynamicLoading || isGenerating)
+                return;
+
             // Calculate which chunk the player is in
             Vector2Int playerChunk = WorldPositionToChunkCoord(playerPosition);
 
@@ -163,9 +203,87 @@ namespace BugWars.Terrain
 
             currentPlayerChunkCoord = playerChunk;
 
-            // TODO: Implement chunk loading/unloading based on distance
-            // For now, this is a placeholder for future expansion
-            await UniTask.CompletedTask;
+            isGenerating = true;
+
+            // Determine which chunks should be loaded
+            HashSet<Vector2Int> chunksToLoad = new HashSet<Vector2Int>();
+            for (int x = -chunkLoadDistance; x <= chunkLoadDistance; x++)
+            {
+                for (int z = -chunkLoadDistance; z <= chunkLoadDistance; z++)
+                {
+                    Vector2Int chunkCoord = playerChunk + new Vector2Int(x, z);
+                    chunksToLoad.Add(chunkCoord);
+                }
+            }
+
+            // Unload chunks that are too far away
+            List<Vector2Int> chunksToUnload = new List<Vector2Int>();
+            foreach (var kvp in activeChunks)
+            {
+                Vector2Int chunkCoord = kvp.Key;
+                int distance = Mathf.Max(
+                    Mathf.Abs(chunkCoord.x - playerChunk.x),
+                    Mathf.Abs(chunkCoord.y - playerChunk.y)
+                );
+
+                if (distance > chunkUnloadDistance)
+                {
+                    chunksToUnload.Add(chunkCoord);
+                }
+            }
+
+            // Unload distant chunks
+            foreach (var chunkCoord in chunksToUnload)
+            {
+                UnloadChunk(chunkCoord);
+            }
+
+            // Load new chunks asynchronously
+            List<UniTask> loadTasks = new List<UniTask>();
+            foreach (var chunkCoord in chunksToLoad)
+            {
+                if (!activeChunks.ContainsKey(chunkCoord))
+                {
+                    loadTasks.Add(GenerateChunk(chunkCoord));
+                }
+            }
+
+            // Wait for all new chunks to load
+            if (loadTasks.Count > 0)
+            {
+                await UniTask.WhenAll(loadTasks);
+            }
+
+            isGenerating = false;
+        }
+
+        /// <summary>
+        /// Update chunk visibility based on camera frustum culling
+        /// Hides chunks outside the camera view for better performance
+        /// </summary>
+        private void UpdateChunkVisibility()
+        {
+            if (_cameraManager == null || _cameraManager.MainCamera == null)
+                return;
+
+            // Get frustum planes once for all chunks (optimization)
+            Plane[] frustumPlanes = _cameraManager.GetFrustumPlanes();
+            if (frustumPlanes == null)
+                return;
+
+            // Check each chunk's visibility
+            foreach (var kvp in activeChunks)
+            {
+                TerrainChunk chunk = kvp.Value;
+                if (chunk == null || !chunk.IsGenerated)
+                    continue;
+
+                // Check if chunk bounds are in camera frustum
+                bool isVisible = _cameraManager.IsBoundsInFrustum(chunk.Bounds);
+
+                // Update chunk visibility
+                chunk.SetVisibility(isVisible);
+            }
         }
 
         /// <summary>
@@ -176,6 +294,23 @@ namespace BugWars.Terrain
             int chunkX = Mathf.FloorToInt(worldPosition.x / chunkSize);
             int chunkZ = Mathf.FloorToInt(worldPosition.z / chunkSize);
             return new Vector2Int(chunkX, chunkZ);
+        }
+
+        /// <summary>
+        /// Get all active chunk coordinates
+        /// </summary>
+        public IReadOnlyCollection<Vector2Int> GetActiveChunkCoords()
+        {
+            return activeChunks.Keys;
+        }
+
+        /// <summary>
+        /// Get chunk at specific coordinate
+        /// </summary>
+        public TerrainChunk GetChunk(Vector2Int coord)
+        {
+            activeChunks.TryGetValue(coord, out TerrainChunk chunk);
+            return chunk;
         }
 
         /// <summary>
@@ -236,6 +371,30 @@ namespace BugWars.Terrain
         /// Check if terrain is ready
         /// </summary>
         public bool IsReady => isInitialized && !isGenerating && activeChunks.Count > 0;
+
+        /// <summary>
+        /// Get count of visible chunks (for debugging/stats)
+        /// </summary>
+        public int VisibleChunkCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (var chunk in activeChunks.Values)
+                {
+                    if (chunk.IsVisible) count++;
+                }
+                return count;
+            }
+        }
+
+        /// <summary>
+        /// Manually trigger chunk visibility update (useful for camera changes)
+        /// </summary>
+        public void ForceUpdateChunkVisibility()
+        {
+            UpdateChunkVisibility();
+        }
 
         #if UNITY_EDITOR
         private void OnDrawGizmos()

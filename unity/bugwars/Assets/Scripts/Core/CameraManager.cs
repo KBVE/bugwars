@@ -461,6 +461,74 @@ namespace BugWars.Core
         }
         #endregion
 
+        #region Frustum Culling Helpers
+        /// <summary>
+        /// Checks if a point is within the camera's view frustum
+        /// </summary>
+        /// <param name="point">World space point to check</param>
+        /// <returns>True if the point is visible to the camera</returns>
+        public bool IsPointInFrustum(Vector3 point)
+        {
+            if (MainCamera == null) return false;
+
+            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(MainCamera);
+            return GeometryUtility.TestPlanesAABB(frustumPlanes, new Bounds(point, Vector3.one));
+        }
+
+        /// <summary>
+        /// Checks if bounds are within the camera's view frustum
+        /// </summary>
+        /// <param name="bounds">Bounds to check</param>
+        /// <returns>True if any part of the bounds is visible to the camera</returns>
+        public bool IsBoundsInFrustum(Bounds bounds)
+        {
+            if (MainCamera == null) return false;
+
+            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(MainCamera);
+            return GeometryUtility.TestPlanesAABB(frustumPlanes, bounds);
+        }
+
+        /// <summary>
+        /// Gets the cached frustum planes for the current camera
+        /// Useful for batch culling operations
+        /// </summary>
+        /// <returns>Array of frustum planes</returns>
+        public Plane[] GetFrustumPlanes()
+        {
+            if (MainCamera == null) return null;
+            return GeometryUtility.CalculateFrustumPlanes(MainCamera);
+        }
+
+        /// <summary>
+        /// Calculate distance from camera to a point
+        /// </summary>
+        /// <param name="point">World space point</param>
+        /// <returns>Distance in world units</returns>
+        public float GetDistanceFromCamera(Vector3 point)
+        {
+            if (MainCamera == null) return float.MaxValue;
+            return Vector3.Distance(MainCamera.transform.position, point);
+        }
+
+        /// <summary>
+        /// Gets the camera's current position
+        /// </summary>
+        public Vector3 GetCameraPosition()
+        {
+            if (MainCamera == null) return Vector3.zero;
+            return MainCamera.transform.position;
+        }
+
+        /// <summary>
+        /// Gets the camera's forward direction
+        /// </summary>
+        public Vector3 GetCameraForward()
+        {
+            if (MainCamera == null) return Vector3.forward;
+            return MainCamera.transform.forward;
+        }
+        #endregion
+
         #region Debug Helpers
         /// <summary>
         /// Logs all discovered cameras and their current state
