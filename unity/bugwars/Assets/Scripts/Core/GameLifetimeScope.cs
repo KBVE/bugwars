@@ -21,6 +21,7 @@ namespace BugWars.Core
         [Header("UI Configuration")]
         [SerializeField] private VisualTreeAsset mainMenuVisualTree;
         [SerializeField] private VisualTreeAsset hudVisualTree;
+        [SerializeField] private VisualTreeAsset settingsPanelVisualTree;
         [SerializeField] [Tooltip("Optional - Will create default runtime PanelSettings if not assigned")]
         private PanelSettings panelSettings;
 
@@ -73,8 +74,19 @@ namespace BugWars.Core
                 RegisterOrCreateManager<InputManager>(builder, "InputManager");
             }
 
+            // Create and configure SettingsPanelManager FIRST (it needs to exist before MainMenuManager references it)
+            var settingsPanelManagerInstance = CreateSettingsPanelManager();
+            if (settingsPanelManagerInstance != null)
+            {
+                builder.RegisterComponent(settingsPanelManagerInstance);
+            }
+            else
+            {
+                Debug.LogWarning("[GameLifetimeScope] Failed to create SettingsPanelManager - Settings UI will not function!");
+            }
+
             // Create and configure MainMenuManager with UIDocument properly set up
-            var mainMenuManagerInstance = CreateMainMenuManager();
+            var mainMenuManagerInstance = CreateMainMenuManager(settingsPanelManagerInstance);
             if (mainMenuManagerInstance != null)
             {
                 builder.RegisterComponent(mainMenuManagerInstance);
@@ -138,10 +150,55 @@ namespace BugWars.Core
         }
 
         /// <summary>
+        /// Creates and configures the SettingsPanelManager with UIDocument
+        /// This should be called BEFORE CreateMainMenuManager so MainMenu can reference it
+        /// </summary>
+        private SettingsPanelManager CreateSettingsPanelManager()
+        {
+            // Check if SettingsPanelManager already exists in scene
+            var existingManager = FindFirstObjectByType<SettingsPanelManager>();
+            if (existingManager != null)
+            {
+                return existingManager;
+            }
+
+            // Validate required UXML asset
+            if (settingsPanelVisualTree == null)
+            {
+                Debug.LogError("[GameLifetimeScope] SettingsPanel VisualTreeAsset not assigned!");
+                return null;
+            }
+
+            // If PanelSettings not assigned, create a default one
+            if (panelSettings == null)
+            {
+                Debug.LogWarning("[GameLifetimeScope] PanelSettings not assigned, creating default runtime PanelSettings");
+                panelSettings = CreateDefaultPanelSettings();
+            }
+
+            // Create new GameObject as root (required for DontDestroyOnLoad)
+            var settingsObject = new GameObject("SettingsPanelManager");
+            DontDestroyOnLoad(settingsObject);
+
+            // Add and configure UIDocument FIRST to avoid null reference errors
+            var uiDocument = settingsObject.AddComponent<UIDocument>();
+            uiDocument.visualTreeAsset = settingsPanelVisualTree;
+            uiDocument.panelSettings = panelSettings;
+            uiDocument.sortingOrder = 200; // Higher than MainMenu (100) so it appears on top
+
+            // Now add SettingsPanelManager component (UIDocument is already configured)
+            var settingsPanelManager = settingsObject.AddComponent<SettingsPanelManager>();
+
+            Debug.Log("[GameLifetimeScope] SettingsPanelManager created with sort order 200");
+
+            return settingsPanelManager;
+        }
+
+        /// <summary>
         /// Creates and configures the MainMenuManager with UIDocument
         /// This ensures UIDocument is properly configured before Unity Inspector tries to validate it
         /// </summary>
-        private MainMenuManager CreateMainMenuManager()
+        private MainMenuManager CreateMainMenuManager(SettingsPanelManager settingsPanelManager)
         {
             // Check if MainMenuManager already exists in scene
             var existingManager = FindFirstObjectByType<MainMenuManager>();
@@ -172,10 +229,27 @@ namespace BugWars.Core
             var uiDocument = menuObject.AddComponent<UIDocument>();
             uiDocument.visualTreeAsset = mainMenuVisualTree;
             uiDocument.panelSettings = panelSettings;
-            uiDocument.sortingOrder = 100;
+            uiDocument.sortingOrder = 100; // Lower than SettingsPanel (200)
 
             // Now add MainMenuManager component (UIDocument is already configured)
             var mainMenuManager = menuObject.AddComponent<MainMenuManager>();
+
+            // Wire up the SettingsPanelManager reference using reflection (since it's a private serialized field)
+            if (settingsPanelManager != null)
+            {
+                var fieldInfo = typeof(MainMenuManager).GetField("_settingsPanelManager",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (fieldInfo != null)
+                {
+                    fieldInfo.SetValue(mainMenuManager, settingsPanelManager);
+                    Debug.Log("[GameLifetimeScope] SettingsPanelManager reference assigned to MainMenuManager");
+                }
+                else
+                {
+                    Debug.LogError("[GameLifetimeScope] Could not find _settingsPanelManager field in MainMenuManager!");
+                }
+            }
 
             return mainMenuManager;
         }
