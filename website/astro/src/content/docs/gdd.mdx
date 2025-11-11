@@ -389,6 +389,181 @@ TerrainChunk implements proper cleanup in `OnDestroy()`, ensuring mesh memory is
 
 ---
 
+### Sprite Rendering System
+
+**Location:** `Assets/BugWars/Prefabs/Character/Samurai/`
+
+Bug Wars implements a high-performance 2D sprite rendering system in a 3D environment using a custom URP shader with GPU-based billboarding, mesh-based rendering, and frame-based animation driven by JSON sprite atlases.
+
+#### Architecture Overview
+
+The sprite rendering system replaces Unity's traditional SpriteRenderer component with a MeshRenderer + custom shader approach, providing:
+- **GPU-based billboarding** (no CPU transform updates)
+- **Frame-based animation** via shader UV remapping
+- **MaterialPropertyBlock** for per-instance parameters without material duplication
+- **Zero-garbage animation updates** using cached shader property IDs
+
+This approach is significantly more performant than traditional billboard systems that update transforms in `LateUpdate()`, as all rotation calculations happen on the GPU within the vertex shader.
+
+#### SamuraiAnimatedSprite_Unity6 Shader
+
+**Location:** `Assets/BugWars/Prefabs/Character/Samurai/SamuraiAnimatedSprite_Unity6.shader`
+
+Custom URP-compatible shader implementing GPU-based billboarding with sprite sheet animation support.
+
+**Shader Features:**
+
+- **Billboard Modes**:
+  - `Mode 0`: No billboarding (standard object transform)
+  - `Mode 1`: Cylindrical billboarding (Y-axis locked, ideal for ground-based characters)
+  - `Mode 2`: Spherical billboarding (full camera facing)
+- **Frame Animation**: UV remapping via `_FrameUVMin` and `_FrameUVMax` shader properties for sprite atlas animation
+- **Sprite Flipping**: `_FlipX` and `_FlipY` parameters for directional character facing without mesh regeneration
+- **Transparency**: Alpha cutoff with configurable threshold for sprite edge handling
+- **URP Integration**: Proper fog support, UniversalForward rendering, transparent queue
+
+**Technical Implementation:**
+
+The shader's vertex function calculates billboard rotation by constructing world-space quad positions from camera basis vectors:
+- Cylindrical mode: Projects camera direction onto XZ plane, builds right vector perpendicular to world up
+- Spherical mode: Uses camera's inverse view matrix to extract right/up vectors directly
+- UV coordinates are remapped to frame bounds and optionally flipped based on shader parameters
+
+**Performance Benefits:**
+- Billboard rotation executes entirely on GPU (no CPU `LateUpdate()` overhead)
+- Batching-friendly: multiple characters can share the same material with per-instance property blocks
+- Zero-allocation updates: MaterialPropertyBlock reuse eliminates GC pressure
+
+#### Sprite Atlas System
+
+**Location:** `Assets/BugWars/Prefabs/Character/Samurai/SpriteAtlasData.cs`
+
+JSON-driven sprite atlas format for defining animation frames and sequences.
+
+**Atlas Structure:**
+
+```json
+{
+  "meta": {
+    "version": "1.0",
+    "size": { "w": 1024, "h": 1024 },
+    "frameSize": 128,
+    "frameCount": 60
+  },
+  "frames": {
+    "Idle_0": {
+      "x": 0, "y": 0, "w": 128, "h": 128,
+      "animation": "Idle",
+      "index": 0,
+      "uv": {
+        "min": { "x": 0.0, "y": 0.875 },
+        "max": { "x": 0.125, "y": 1.0 }
+      }
+    }
+  },
+  "animations": {
+    "Idle": {
+      "frames": ["Idle_0", "Idle_1", "Idle_2", "Idle_3"],
+      "frameCount": 4,
+      "fps": 8
+    }
+  }
+}
+```
+
+**Key Components:**
+
+- **Meta**: Atlas metadata (size, frame dimensions, total frame count)
+- **Frames**: Dictionary mapping frame names to UV coordinates, positions, and animation membership
+- **Animations**: Sequences of frame names with playback speed (FPS)
+- **UV Coordinates**: Precomputed normalized UV bounds for direct shader usage
+
+**Data Classes:**
+
+- `SpriteAtlasData`: Root container with Newtonsoft.Json deserialization
+- `FrameData`: Individual frame definition with pixel coordinates and UV bounds
+- `AnimationData`: Frame sequence with FPS and calculated frame duration
+- Uses Newtonsoft.Json for robust dictionary parsing (Unity's JsonUtility doesn't support dictionaries)
+
+#### Samurai Character Implementation
+
+**Location:** `Assets/BugWars/Prefabs/Character/Samurai/Samurai.cs`
+
+The Samurai class demonstrates the sprite rendering system's practical implementation, serving as the player character and reference implementation for future entities.
+
+**Rendering Pipeline:**
+
+1. **Component Replacement**:
+   - At runtime, removes `SpriteRenderer` component (incompatible with custom materials)
+   - Adds `MeshFilter` with procedurally-generated quad mesh (1x1 unit, centered)
+   - Adds `MeshRenderer` with assigned SamuraiMaterial (uses custom shader)
+
+2. **Animation State Mapping**:
+   - Maps universal `EntityAnimationState` enum to Samurai-specific animation names
+   - Example: `EntityAnimationState.Walk` → `"Walk"` animation in SamuraiAtlas.json
+   - Provides consistent interface across different entity types while allowing character-specific animations
+
+3. **Frame-Based Animation**:
+   - Updates current frame index based on elapsed time and animation FPS
+   - Retrieves UV coordinates from atlas for current frame
+   - Updates shader parameters via MaterialPropertyBlock:
+     - `_FrameUVMin`: Frame's minimum UV coordinates
+     - `_FrameUVMax`: Frame's maximum UV coordinates
+   - No mesh regeneration required—shader handles UV remapping
+
+**Quad Mesh Generation:**
+
+```csharp
+// 1x1 unit quad centered at origin with full UV mapping
+Vector3[] vertices = {
+    new Vector3(-0.5f, -0.5f, 0),  // Bottom-left
+    new Vector3( 0.5f, -0.5f, 0),  // Bottom-right
+    new Vector3(-0.5f,  0.5f, 0),  // Top-left
+    new Vector3( 0.5f,  0.5f, 0)   // Top-right
+};
+Vector2[] uvs = { (0,0), (1,0), (0,1), (1,1) };
+```
+
+The shader remaps these 0-1 UV coordinates to the actual frame bounds, allowing a single static mesh to display all animation frames.
+
+**Performance Optimizations:**
+
+- **Cached Shader Property IDs**: `Shader.PropertyToID()` called once in static fields
+- **MaterialPropertyBlock Reuse**: Single property block updated and reused every frame
+- **Billboard Disabled in Entity**: Sets `enableBillboard = false` since shader handles rotation
+- **Async Atlas Loading**: JSON parsing happens during initialization without blocking
+
+**Available Animations:**
+
+The Samurai includes a comprehensive animation set mapped to universal entity states:
+- `Idle`, `Walk`, `Run`, `Jump`
+- `Attack_1`, `Attack_2`, `Attack_3`
+- `Hurt`, `Dead`, `Shield`
+
+Each animation has configurable FPS in the atlas JSON, allowing independent playback speeds for different actions (e.g., fast attack animations, slow idle breathing).
+
+#### Integration with Entity System
+
+The sprite rendering system integrates seamlessly with the Entity base class through several mechanisms:
+
+**MaterialPropertyBlock Sharing:**
+
+The Entity class provides `GetSpritePropertyBlock()` and `ApplySpritePropertyBlock()` helper methods, allowing derived classes like Samurai to extend the property block with additional shader parameters (frame UVs) while preserving Entity's flip state.
+
+**Sprite Flipping:**
+
+Entity's `SetSpriteFlip(bool flipX, bool flipY)` method updates shader parameters that the custom shader reads, enabling camera-relative directional flipping without mesh modifications. The Samurai shader includes `_FlipX` and `_FlipY` parameters that Entity controls based on movement direction.
+
+**Billboard Compatibility:**
+
+While Entity includes CPU-based billboarding via `ApplyBillboard()`, characters using the custom shader disable this (`enableBillboard = false`) since GPU-based billboarding is superior. Entity's billboard system remains for entities using traditional rendering.
+
+**Animation State Abstraction:**
+
+Entity defines a universal `EntityAnimationState` enum with states like `Idle`, `Walk`, `Attack_1`, etc. Derived classes override `OnAnimationStateChanged()` to map these universal states to character-specific animation names in their atlas. This enables polymorphic animation control—calling `entity.SetAnimationState(EntityAnimationState.Walk)` works on any entity type.
+
+---
+
 ### Entity System
 
 **Location:** `Assets/Scripts/Entity/`
@@ -403,7 +578,9 @@ Abstract base class defining core functionality shared across all game entities.
 
 **Key Features:**
 
-- **Billboard Sprite System**: Supports 2D sprite rendering in a 3D environment where sprites automatically face the camera, creating a pseudo-3D effect common in classic action games
+- **Sprite Rendering Support**: Provides infrastructure for 2D sprite rendering in a 3D environment with both CPU-based and GPU-based (shader) billboard systems
+- **Animation State System**: Universal `EntityAnimationState` enum with states mappable to character-specific animations (Idle, Walk, Run, Jump, Attack variants, Hurt, Dead, Shield)
+- **Sprite Flipping**: Camera-relative sprite flipping via MaterialPropertyBlock and shader parameters (`_FlipX`, `_FlipY`)
 - **Health Management**: Built-in health system with `TakeDamage()`, `Heal()`, and `Die()` methods, with virtual methods allowing subclasses to customize behavior
 - **Physics-Based Movement**: Integrates with Unity's Rigidbody system for realistic movement with gravity and collision detection
 - **Auto-Registration**: Entities automatically register themselves with EntityManager on initialization for centralized tracking
@@ -415,7 +592,26 @@ Abstract base class defining core functionality shared across all game entities.
   - Movement speed and rotation speed for gameplay tuning
   - Sprite offset for proper visual positioning relative to collision capsule
   - Max health configuration for difficulty balancing
-- **Billboard Orientation**: Updates in `LateUpdate()` to rotate sprites toward camera after all movement is complete, preventing rotation fighting with physics
+  - Billboard mode toggle (enable for CPU-based, disable for shader-based)
+  - Auto-flip sprite based on movement direction
+- **Billboard Orientation**: CPU-based billboard updates in `LateUpdate()` to rotate sprites toward camera after all movement is complete (used for entities without custom shaders)
+- **MaterialPropertyBlock System**: Maintains a shared property block for sprite shader parameters, allowing derived classes to add custom properties (e.g., frame UVs for animation) while preserving base properties (e.g., flip state)
+
+**Animation State System:**
+
+Entities use a two-tier animation system:
+1. **Universal States**: High-level states defined in `EntityAnimationState` enum
+2. **Character-Specific Mappings**: Derived classes override `OnAnimationStateChanged()` to map universal states to their specific animation names
+
+This abstraction allows gameplay code to call `entity.SetAnimationState(EntityAnimationState.Attack_1)` without knowing the entity's specific animation implementation.
+
+**Sprite Flipping System:**
+
+The Entity class provides automatic camera-relative sprite flipping:
+- Movement direction is projected onto the camera's right vector to determine left/right facing
+- `UpdateFacingDirection()` calculates whether the entity is moving left or right relative to the camera
+- `SetSpriteFlip()` updates shader parameters via MaterialPropertyBlock
+- Flipping is GPU-based (no sprite regeneration), working with both SpriteRenderer and custom shaders
 
 **Death Handling:**
 
@@ -638,10 +834,17 @@ Each bug type will feature unique characteristics:
 - **Boss Enemies**: Multi-phase encounters with unique mechanics
 
 **Technical Foundation:**
-- All enemies will extend Entity base class for consistent behavior
-- EntityManager provides spatial awareness for AI decision-making
-- Billboard sprite system supports 2D enemy artwork in 3D gameplay
-- Physics system ready for enemy collision and movement
+
+- **Entity Base Class**: All enemies will extend Entity base class for consistent behavior (health, damage, movement)
+- **Sprite Rendering Pipeline**: Enemies will follow the Samurai implementation pattern:
+  - Custom sprite atlas JSON defining animations per enemy type
+  - Shared SamuraiAnimatedSprite_Unity6 shader for consistent rendering
+  - MeshRenderer + quad mesh approach for optimal performance
+  - Per-enemy MaterialPropertyBlock for instance-specific frame UVs
+- **Animation States**: Enemies will map universal EntityAnimationState to enemy-specific animations (e.g., `Attack_1` → `"Bite"` for ants, `"Sting"` for wasps)
+- **GPU Billboarding**: Shader-based billboarding ensures enemies always face camera without CPU overhead
+- **EntityManager Integration**: Spatial awareness for AI decision-making (target acquisition, threat assessment, group behavior)
+- **Physics System**: Ready for enemy collision, movement, and environmental interaction
 
 ---
 
@@ -710,13 +913,16 @@ Camera state changes can be sequenced with UniTask for precise timing - for exam
 		✅ **COMPLETE** - CameraManager with Cinemachine integration, virtual camera control, frustum culling utilities, and spatial queries.
 	</Card>
 	<Card title="Entity System" icon="approve-check">
-		✅ **COMPLETE** - Entity base class with health/damage, EntityManager with spatial queries, billboard sprite rendering.
+		✅ **COMPLETE** - Entity base class with health/damage, EntityManager with spatial queries, animation state system, sprite flipping.
+	</Card>
+	<Card title="Sprite Rendering System" icon="approve-check">
+		✅ **COMPLETE** - Custom URP shader with GPU-based billboarding, mesh-based rendering, JSON sprite atlas system, frame-based animation, MaterialPropertyBlock optimization.
 	</Card>
 	<Card title="UI Foundation" icon="approve-check">
 		✅ **COMPLETE** - UI Toolkit integration, MainMenuManager with event-driven visibility control.
 	</Card>
 	<Card title="Performance Foundation" icon="approve-check">
-		✅ **COMPLETE** - UniTask async operations, background thread mesh generation, frustum culling, chunk streaming optimization.
+		✅ **COMPLETE** - UniTask async operations, background thread mesh generation, frustum culling, chunk streaming optimization, zero-allocation animation updates.
 	</Card>
 </CardGrid>
 
@@ -751,11 +957,18 @@ Camera state changes can be sequenced with UniTask for precise timing - for exam
 
 ### Recent Accomplishments (Last 2 Weeks)
 
+- **Sprite Rendering System**: Implemented custom URP shader with GPU-based billboarding (cylindrical and spherical modes)
+- **Mesh-Based Rendering**: Replaced SpriteRenderer with MeshRenderer + custom shader for material control and performance
+- **Sprite Atlas System**: Created JSON-driven sprite atlas format with frame definitions and animation sequences using Newtonsoft.Json
+- **Samurai Character**: Implemented complete player character with frame-based animation, atlas loading, and shader integration
+- **Animation State System**: Universal EntityAnimationState enum with character-specific mapping for polymorphic animation control
+- **MaterialPropertyBlock Optimization**: Zero-allocation animation updates via cached shader property IDs and property block reuse
+- **Camera Focus Fix**: Resolved camera tracking issues to properly follow player character
+- **Sprite Flipping System**: Camera-relative directional flipping via shader parameters (_FlipX, _FlipY)
 - Quadrupled terrain chunk size from 20x20 to 80x80 units for better performance/detail ratio
 - Implemented async chunk loading/unloading with distance-based triggers
 - Added frustum culling integration between TerrainManager and CameraManager
 - Developed CameraManager with Cinemachine utilities and spatial query methods
-- Created Entity base class with billboard sprite system for 2D-in-3D rendering
 - Built EntityManager with spatial query capabilities (radius searches, closest entity, type filtering)
 - Refactored logging across all systems with defensive null checks
 - Integrated all new systems into VContainer dependency injection pipeline
@@ -1108,4 +1321,4 @@ BugWars_PressKit/
 
 ---
 
-*Last Updated: 2025-11-11*
+*Last Updated: 2025-01-11 - Added Sprite Rendering System documentation (custom URP shader, mesh-based rendering, sprite atlas system, Samurai character implementation)*
