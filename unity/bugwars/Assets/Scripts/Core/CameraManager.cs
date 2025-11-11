@@ -13,6 +13,21 @@ namespace BugWars.Core
     /// </summary>
     public class CameraManager : MonoBehaviour
     {
+        #region Singleton
+        private static CameraManager _instance;
+        public static CameraManager Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindFirstObjectByType<CameraManager>();
+                }
+                return _instance;
+            }
+        }
+        #endregion
+
         #region Dependencies
         private EventManager _eventManager;
 
@@ -106,6 +121,16 @@ namespace BugWars.Core
         #region Unity Lifecycle
         private void Awake()
         {
+            // Singleton setup
+            if (_instance != null && _instance != this)
+            {
+                Debug.LogWarning("[CameraManager] Multiple CameraManager instances detected. Destroying duplicate.");
+                Destroy(gameObject);
+                return;
+            }
+
+            _instance = this;
+
             if (debugMode)
                 Debug.Log("[CameraManager] Awake called");
 

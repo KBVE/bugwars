@@ -44,6 +44,9 @@ namespace BugWars.Terrain
             meshRenderer = gameObject.AddComponent<MeshRenderer>();
             meshCollider = gameObject.AddComponent<MeshCollider>();
 
+            // Configure mesh collider for terrain (non-convex for proper terrain collision)
+            meshCollider.convex = false; // Must be false for terrain meshes
+
             if (terrainMaterial != null)
             {
                 meshRenderer.material = terrainMaterial;

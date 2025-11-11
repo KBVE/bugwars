@@ -32,9 +32,19 @@ namespace BugWars.Entity
         [SerializeField] private List<Entity> allEntities = new List<Entity>();
         [SerializeField] private bool autoRegisterEntities = true;
 
+        [Header("Player Configuration")]
+        [SerializeField] [Tooltip("Player prefab to spawn at game start")]
+        private GameObject playerPrefab;
+        [SerializeField] [Tooltip("Auto-spawn player after initialization")]
+        private bool autoSpawnPlayer = true;
+        [SerializeField] [Tooltip("Spawn position for the player. If zero, spawns at (0, 2, 0)")]
+        private Vector3 playerSpawnPosition = Vector3.zero;
+
         [Header("Player Reference")]
         [SerializeField] private Entity playerEntity;
         public Entity Player => playerEntity;
+
+        private bool playerSpawned = false;
 
         private void Awake()
         {
@@ -56,6 +66,73 @@ namespace BugWars.Entity
         private void Start()
         {
             Debug.Log($"[EntityManager] Initialized with {allEntities.Count} entities");
+
+            // Auto-spawn player if enabled
+            if (autoSpawnPlayer && !playerSpawned)
+            {
+                SpawnPlayer();
+            }
+        }
+
+        /// <summary>
+        /// Spawn the player at the configured position
+        /// </summary>
+        public void SpawnPlayer()
+        {
+            if (playerSpawned)
+            {
+                Debug.LogWarning("[EntityManager] Player already spawned");
+                return;
+            }
+
+            if (playerPrefab == null)
+            {
+                Debug.LogError("[EntityManager] Cannot spawn player - playerPrefab is not assigned!");
+                return;
+            }
+
+            // Determine spawn position
+            Vector3 spawnPos = playerSpawnPosition;
+            if (spawnPos == Vector3.zero)
+            {
+                spawnPos = new Vector3(0, 2f, 0); // Default spawn slightly above origin
+            }
+
+            // Instantiate player
+            GameObject playerObj = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
+            playerObj.name = "Player";
+
+            // Get Entity component
+            Entity entity = playerObj.GetComponent<Entity>();
+            if (entity != null)
+            {
+                // Set as player (will auto-register if not already)
+                SetPlayer(entity, true);
+                playerSpawned = true;
+                Debug.Log($"[EntityManager] Player spawned at {spawnPos}");
+            }
+            else
+            {
+                Debug.LogError("[EntityManager] Player prefab does not have an Entity component!");
+                Destroy(playerObj);
+            }
+        }
+
+        /// <summary>
+        /// Spawn player at a specific position
+        /// </summary>
+        public void SpawnPlayerAt(Vector3 position)
+        {
+            playerSpawnPosition = position;
+            SpawnPlayer();
+        }
+
+        /// <summary>
+        /// Check if player has been spawned
+        /// </summary>
+        public bool IsPlayerSpawned()
+        {
+            return playerSpawned && playerEntity != null;
         }
 
         /// <summary>

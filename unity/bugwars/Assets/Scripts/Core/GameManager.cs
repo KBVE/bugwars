@@ -3,6 +3,7 @@ using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
 using BugWars.UI;
 using BugWars.Terrain;
+using BugWars.Entity;
 using VContainer;
 
 namespace BugWars.Core
@@ -17,15 +18,18 @@ namespace BugWars.Core
         private EventManager _eventManager;
         private MainMenuManager _mainMenuManager;
         private TerrainManager _terrainManager;
+        private EntityManager _entityManager;
 
         [Inject]
-        public void Construct(EventManager eventManager, MainMenuManager mainMenuManager, TerrainManager terrainManager)
+        public void Construct(EventManager eventManager, MainMenuManager mainMenuManager, TerrainManager terrainManager, EntityManager entityManager)
         {
             _eventManager = eventManager;
             _mainMenuManager = mainMenuManager;
             _terrainManager = terrainManager;
+            _entityManager = entityManager;
         }
         #endregion
+
 
         #region Scene Management
         /// <summary>
@@ -334,6 +338,14 @@ namespace BugWars.Core
             {
                 // Wait for terrain to be ready (TerrainManager's StartAsync handles generation)
                 await UniTask.WaitUntil(() => _terrainManager.IsReady);
+
+                // Spawn player at terrain center after terrain is ready
+                if (_entityManager != null && !_entityManager.IsPlayerSpawned())
+                {
+                    Vector3 spawnPos = _terrainManager.GetTerrainCenter();
+                    spawnPos.y += 2f; // Spawn slightly above terrain
+                    _entityManager.SpawnPlayerAt(spawnPos);
+                }
             }
             else
             {

@@ -46,7 +46,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BugWars.Entity.EntityManager
   allEntities: []
   autoRegisterEntities: 1
-  playerEntity: {fileID: 0}
+  playerPrefab: {fileID: 3244544186479847998, guid: 044a69cd0754645118da0bc8604128eb, type: 3}
+  autoSpawnPlayer: 1
+  playerSpawnPosition: {x: 0, y: 10, z: 0}
+  playerEntity: {fileID: 752621112871938939, guid: 044a69cd0754645118da0bc8604128eb, type: 3}
 --- !u!1 &2572028443775040931
 GameObject:
   m_ObjectHideFlags: 0

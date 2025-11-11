@@ -1,4 +1,5 @@
 using UnityEngine;
+using BugWars.Core;
 
 namespace BugWars.Entity
 {
@@ -44,10 +45,19 @@ namespace BugWars.Entity
 
         protected virtual void Start()
         {
-            // Cache camera reference for billboarding
-            if (Camera.main != null)
+            // Cache camera reference for billboarding using CameraManager
+            if (CameraManager.Instance != null && CameraManager.Instance.MainCamera != null)
             {
-                cameraTransform = Camera.main.transform;
+                cameraTransform = CameraManager.Instance.MainCamera.transform;
+
+                if (enableBillboard)
+                {
+                    Debug.Log($"[Entity] {entityName}: Billboard enabled, using camera: {CameraManager.Instance.MainCamera.name}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[Entity] {entityName}: CameraManager or MainCamera not found! Billboard effect will not work.");
             }
         }
 
@@ -99,7 +109,25 @@ namespace BugWars.Entity
         /// </summary>
         protected virtual void ApplyBillboard()
         {
-            if (spriteRenderer == null || cameraTransform == null) return;
+            if (spriteRenderer == null)
+            {
+                Debug.LogWarning($"[Entity] {entityName}: ApplyBillboard called but spriteRenderer is null");
+                return;
+            }
+
+            if (cameraTransform == null)
+            {
+                // Try to re-acquire camera transform from CameraManager
+                if (CameraManager.Instance != null && CameraManager.Instance.MainCamera != null)
+                {
+                    cameraTransform = CameraManager.Instance.MainCamera.transform;
+                    Debug.Log($"[Entity] {entityName}: Re-acquired camera transform from CameraManager");
+                }
+                else
+                {
+                    return;
+                }
+            }
 
             // Get direction to camera
             Vector3 directionToCamera = cameraTransform.position - spriteRenderer.transform.position;
@@ -216,10 +244,16 @@ namespace BugWars.Entity
             if (horizontal.magnitude > 0.1f)
             {
                 // Get camera-relative direction for proper flipping
-                if (cameraTransform != null)
+                Transform activeCameraTransform = cameraTransform;
+                if (activeCameraTransform == null && CameraManager.Instance != null && CameraManager.Instance.MainCamera != null)
+                {
+                    activeCameraTransform = CameraManager.Instance.MainCamera.transform;
+                }
+
+                if (activeCameraTransform != null)
                 {
                     // Project movement onto camera's right vector to determine left/right
-                    Vector3 cameraRight = cameraTransform.right;
+                    Vector3 cameraRight = activeCameraTransform.right;
                     cameraRight.y = 0;
                     cameraRight.Normalize();
 

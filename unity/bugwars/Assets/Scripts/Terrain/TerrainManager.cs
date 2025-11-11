@@ -396,6 +396,33 @@ namespace BugWars.Terrain
             UpdateChunkVisibility();
         }
 
+        /// <summary>
+        /// Get the center position of the terrain (center of all active chunks)
+        /// </summary>
+        public Vector3 GetTerrainCenter()
+        {
+            if (activeChunks.Count == 0)
+            {
+                return Vector3.zero;
+            }
+
+            // Calculate bounds of all active chunks
+            Vector3 min = new Vector3(float.MaxValue, 0, float.MaxValue);
+            Vector3 max = new Vector3(float.MinValue, 0, float.MinValue);
+
+            foreach (var kvp in activeChunks)
+            {
+                Vector2Int coord = kvp.Key;
+                Vector3 chunkMin = new Vector3(coord.x * chunkSize, 0, coord.y * chunkSize);
+                Vector3 chunkMax = new Vector3((coord.x + 1) * chunkSize, 0, (coord.y + 1) * chunkSize);
+
+                min = Vector3.Min(min, chunkMin);
+                max = Vector3.Max(max, chunkMax);
+            }
+
+            return (min + max) * 0.5f;
+        }
+
         #if UNITY_EDITOR
         private void OnDrawGizmos()
         {

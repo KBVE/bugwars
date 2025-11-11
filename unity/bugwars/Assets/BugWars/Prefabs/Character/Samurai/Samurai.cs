@@ -47,6 +47,23 @@ namespace BugWars.Character
             if (spriteMaterial != null && spriteRenderer != null)
             {
                 spriteRenderer.material = spriteMaterial;
+
+                // Verify the material has the texture assigned
+                if (spriteRenderer.material.GetTexture("_BaseMap") == null)
+                {
+                    Debug.LogError("Samurai: Material does not have _BaseMap texture assigned! Check SamuraiMaterial.");
+                }
+                else
+                {
+                    Debug.Log($"Samurai: Material texture OK: {spriteRenderer.material.GetTexture("_BaseMap").name}");
+                }
+            }
+            else
+            {
+                if (spriteMaterial == null)
+                    Debug.LogError("Samurai: spriteMaterial is not assigned!");
+                if (spriteRenderer == null)
+                    Debug.LogError("Samurai: spriteRenderer is not assigned!");
             }
         }
 
