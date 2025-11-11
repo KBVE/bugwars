@@ -83,6 +83,8 @@ namespace BugWars.Core
         // Camera Events
         public UnityEvent<CameraFollowConfig> OnCameraFollowRequested = new UnityEvent<CameraFollowConfig>();
         public UnityEvent<string> OnCameraStopFollowRequested = new UnityEvent<string>();
+        public UnityEvent<Vector2> OnCameraLookInput = new UnityEvent<Vector2>();
+        public UnityEvent<float> OnCameraZoomInput = new UnityEvent<float>();
         #endregion
 
         #region Unity Lifecycle
@@ -110,6 +112,8 @@ namespace BugWars.Core
             OnMainMenuClosed.RemoveAllListeners();
             OnCameraFollowRequested.RemoveAllListeners();
             OnCameraStopFollowRequested.RemoveAllListeners();
+            OnCameraLookInput.RemoveAllListeners();
+            OnCameraZoomInput.RemoveAllListeners();
 
             // Clean up generic events
             _genericEvents.Clear();
@@ -200,6 +204,22 @@ namespace BugWars.Core
         public void RequestCameraStopFollow(string cameraName = null)
         {
             OnCameraStopFollowRequested?.Invoke(cameraName);
+        }
+
+        /// <summary>
+        /// Broadcast camera look input (mouse/stick delta)
+        /// </summary>
+        public void TriggerCameraLook(Vector2 delta)
+        {
+            OnCameraLookInput?.Invoke(delta);
+        }
+
+        /// <summary>
+        /// Broadcast camera zoom input (scroll wheel or gamepad trigger)
+        /// </summary>
+        public void TriggerCameraZoom(float delta)
+        {
+            OnCameraZoomInput?.Invoke(delta);
         }
         #endregion
 

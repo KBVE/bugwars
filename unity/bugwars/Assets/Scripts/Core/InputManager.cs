@@ -26,6 +26,14 @@ namespace BugWars.Core
         [Header("Input Settings")]
         [Tooltip("Enable debug logging for input events")]
         [SerializeField] private bool debugMode = true; // Enabled for debugging
+        [SerializeField] [Tooltip("Scale applied to raw mouse delta before broadcasting camera look input")]
+        private float cameraLookSensitivity = 0.1f;
+        [SerializeField] [Tooltip("Scale applied to scroll wheel delta before broadcasting camera zoom input")]
+        private float cameraZoomSensitivity = 0.1f;
+        [SerializeField] [Tooltip("Invert vertical camera look input")]
+        private bool invertCameraY = true;
+        [SerializeField] [Tooltip("When enabled, mouse/gamepad look input will drive the camera")]
+        private bool cameraInputCaptured = false;
         #endregion
 
         #region Unity Lifecycle
@@ -47,6 +55,7 @@ namespace BugWars.Core
             // Only handle global/system-level inputs
             // Game-specific inputs should be in respective controllers
             HandleGlobalInputs();
+            HandleCameraInputs();
         }
         #endregion
 
@@ -88,6 +97,37 @@ namespace BugWars.Core
             // - Screenshot (F12)
             // - Debug console (~, F3)
             // - Quit game (Alt+F4 override)
+        }
+        #endregion
+
+        #region Camera Input
+        private void HandleCameraInputs()
+        {
+            if (_eventManager == null || Mouse.current == null)
+            {
+                return;
+            }
+
+            if (!cameraInputCaptured)
+            {
+                return;
+            }
+
+            Vector2 lookDelta = Mouse.current.delta.ReadValue();
+            if (lookDelta.sqrMagnitude > Mathf.Epsilon)
+            {
+                float yMultiplier = invertCameraY ? 1f : -1f;
+                Vector2 scaledDelta = new Vector2(
+                    lookDelta.x * cameraLookSensitivity,
+                    lookDelta.y * cameraLookSensitivity * yMultiplier);
+                _eventManager.TriggerCameraLook(scaledDelta);
+            }
+
+            float scrollDelta = Mouse.current.scroll.ReadValue().y;
+            if (Mathf.Abs(scrollDelta) > Mathf.Epsilon)
+            {
+                _eventManager.TriggerCameraZoom(scrollDelta * cameraZoomSensitivity);
+            }
         }
         #endregion
 
