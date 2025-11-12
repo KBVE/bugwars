@@ -97,9 +97,18 @@ namespace BugWars.Core
             // Desired pivot position
             Vector3 desired = player.position + headRoom + shoulder + (moveDir * lead);
 
-            // Chase with critically damped feel
-            transform.position = Vector3.SmoothDamp(transform.position, desired, ref _pivotVel, extraSmoothing,
-                                                     Mathf.Infinity, Time.deltaTime);
+            // Snap immediately when the player is nearly stationary to avoid spring-back
+            if (speed < 0.15f)
+            {
+                transform.position = desired;
+                _pivotVel = Vector3.zero;
+            }
+            else
+            {
+                // Chase with critically damped feel
+                transform.position = Vector3.SmoothDamp(transform.position, desired, ref _pivotVel, extraSmoothing,
+                                                         Mathf.Infinity, Time.deltaTime);
+            }
 
             if (followPlayerYaw && player != null)
             {
@@ -244,9 +253,9 @@ namespace BugWars.Core
             {
                 target = target,
                 cameraName = cameraName,
-                shoulderOffset = new Vector3(0.35f, 1.0f, 0f),
+                shoulderOffset = new Vector3(0.35f, 1.2f, 0f),
                 verticalArmLength = 0f,
-                cameraDistance = 7.0f,
+                cameraDistance = 6.5f,
                 immediate = immediate,
 
                 // Damping: moderate lag for cinematic feel
@@ -284,9 +293,9 @@ namespace BugWars.Core
             {
                 target = target,
                 cameraName = cameraName,
-                shoulderOffset = new Vector3(0.4f, 1.2f, 0f),
+                shoulderOffset = new Vector3(0.4f, 1.3f, 0f),
                 verticalArmLength = 0f,
-                cameraDistance = 6.5f,
+                cameraDistance = 6.0f,
                 immediate = immediate,
 
                 // Damping: smooth orbit (X/Y lower, Z slightly higher for depth)
@@ -393,7 +402,7 @@ namespace BugWars.Core
         [SerializeField] [Tooltip("Invert the Y axis for camera look input")]
         private bool invertY = true;
         [SerializeField] [Tooltip("Default downward tilt (in degrees) applied when the camera is initialised")]
-        private float defaultTiltAngle = 30f;
+        private float defaultTiltAngle = -25f;
         [SerializeField] [Tooltip("Default yaw offset relative to the target forward when camera initialises")]
         private float defaultPanOffset = 0f;
 
@@ -471,6 +480,8 @@ namespace BugWars.Core
         #region Unity Lifecycle
         private void Awake()
         {
+            ForceCameraDefaults();
+
             // Singleton setup
             if (_instance != null && _instance != this)
             {
@@ -491,84 +502,6 @@ namespace BugWars.Core
             {
                 Debug.Log($"[CameraManager] Main camera found: {_mainCamera.name}");
             }
-        }
-
-        private void Reset()
-        {
-            ForceCameraDefaults();
-        }
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            if (!Application.isPlaying)
-            {
-                ForceCameraDefaults();
-            }
-        }
-#endif
-
-        private void ForceCameraDefaults()
-        {
-            ApplyFramingPreset(framingPreset, force: true);
-        }
-
-        public void ApplyFramingPreset(CameraFramingPreset preset, bool force = false)
-        {
-            framingPreset = preset;
-
-            switch (preset)
-            {
-                case CameraFramingPreset.OverShoulder:
-                    orbitShoulderOffset = new Vector3(0.45f, 1.3f, 0f);
-                    orbitCameraDistance = 6.6f;
-                    orbitPositionDamping = Vector3.zero;
-                    orbitPitchClamp = new Vector2(8f, 65f);
-                    defaultTiltAngle = -34f;
-                    pivotHeadRoom = new Vector3(0f, 1.15f, 0f);
-                    pivotShoulderRight = 0.35f;
-                    orbitCameraSide = 0.35f;
-                    break;
-
-                case CameraFramingPreset.Centered:
-                default:
-                    orbitShoulderOffset = new Vector3(0f, 2.0f, 0f);
-                    orbitCameraDistance = 8.2f;
-                    orbitPositionDamping = Vector3.zero;
-                    orbitPitchClamp = new Vector2(12f, 55f);
-                    defaultTiltAngle = -28f;
-                    pivotHeadRoom = new Vector3(0f, 1.6f, 0f);
-                    pivotShoulderRight = 0f;
-                    orbitCameraSide = 0.5f;
-                    defaultPanOffset = 0f;
-                    break;
-            }
-
-            defaultPanOffset = 0f;
-
-            if (!force)
-            {
-                ReapplyActiveFollowConfig();
-            }
-        }
-
-        private void ReapplyActiveFollowConfig()
-        {
-            if (!_hasActiveFollowConfig)
-            {
-                return;
-            }
-
-            var config = _activeFollowConfig;
-            config.cameraDistance = orbitCameraDistance;
-            config.shoulderOffset = orbitShoulderOffset;
-            config.positionDamping = orbitPositionDamping;
-            config.pitchClamp = orbitPitchClamp;
-            config.screenX = orbitCameraSide;
-            config.screenY = framingPreset == CameraFramingPreset.Centered ? 0.45f : 0.5f;
-            config.immediate = true;
-
-            HandleCameraFollowRequest(config);
         }
 
         private void Start()
@@ -688,17 +621,6 @@ namespace BugWars.Core
 
             if (virtualCamera != null)
             {
-                // Override with inspector-tuned orbit settings
-                config.cameraDistance = orbitCameraDistance;
-                config.shoulderOffset = orbitShoulderOffset;
-                config.positionDamping = orbitPositionDamping;
-                config.pitchClamp = orbitPitchClamp;
-                config.screenX = orbitCameraSide;
-                config.screenY = framingPreset == CameraFramingPreset.Centered ? 0.45f : 0.5f;
-
-                _activeFollowConfig = config;
-                _hasActiveFollowConfig = true;
-
                 // Use lead pivot system for better readability
                 if (preferOrthographic)
                 {
@@ -1468,24 +1390,10 @@ namespace BugWars.Core
 
             // Create/get lead pivot
             CameraLeadPivot pivot = GetOrCreateLeadPivot(config.target);
-            if (framingPreset == CameraFramingPreset.OverShoulder)
-            {
-                pivot.maxLeadDistance = 0.4f;
-                pivot.maxSpeedForLead = 6f;
-                pivot.extraSmoothing = 0.05f;
-                pivot.shoulderBlend = 0.1f;
-            }
-            else
-            {
-                pivot.maxLeadDistance = 0f;
-                pivot.maxSpeedForLead = 0f;
-                pivot.extraSmoothing = 0f;
-                pivot.shoulderBlend = 0f;
-            }
-            pivot.shoulderRight = pivotShoulderRight;
-            pivot.headRoom = pivotHeadRoom;
-            pivot.followPlayerYaw = autoAlignMode == AutoAlignMode.AlwaysBehind;
-            pivot.followYawSpeed = autoAlignSpeed;
+            pivot.maxLeadDistance = 3.0f;
+            pivot.maxSpeedForLead = 7.5f;
+            pivot.shoulderRight = 0.3f;
+            pivot.headRoom = new Vector3(0, 1.1f, 0);
             if (teleport) pivot.TeleportToPlayer();
 
             // Body: ThirdPersonFollow
@@ -1496,12 +1404,12 @@ namespace BugWars.Core
                 Debug.Log($"[CameraManager] Added ThirdPersonFollow for perspective rig to '{vcam.name}'");
             }
 
-            float desiredDistance = config.cameraDistance <= 0f ? 6.2f : config.cameraDistance;
+            float desiredDistance = orbitCameraDistance;
             tpf.CameraDistance = desiredDistance;
-            tpf.ShoulderOffset = config.shoulderOffset;
+            tpf.ShoulderOffset = orbitShoulderOffset;
             tpf.VerticalArmLength = config.verticalArmLength;
-            tpf.CameraSide = orbitCameraSide;
-            tpf.Damping = orbitPositionDamping;
+            tpf.CameraSide = 0.5f;
+            tpf.Damping = new Vector3(0.35f, 0.35f, 0.55f);
 
             // Collision detection
             var deoc = vcam.GetComponent<CinemachineDeoccluder>();
@@ -1727,7 +1635,7 @@ namespace BugWars.Core
             Vector2 pitchClamp = config.pitchClamp;
             if (Mathf.Approximately(pitchClamp.x, 0f) && Mathf.Approximately(pitchClamp.y, 0f))
             {
-                pitchClamp = new Vector2(-35f, 35f);
+                pitchClamp = new Vector2(10f, 60f);
             }
 
             float minPitch = Mathf.Clamp(pitchClamp.x, -89f, 89f);
