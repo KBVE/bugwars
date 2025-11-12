@@ -13,50 +13,26 @@ hero:
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
+import AstroUnityGameContainer from '@/components/unity-react/AstroUnityGameContainer.astro';
+
+export const unityConfig = {
+  loaderUrl: "/assets/game/Build/WebGL.loader.js",
+  dataUrl: "/assets/game/Build/WebGL.data",
+  frameworkUrl: "/assets/game/Build/WebGL.framework.js",
+  codeUrl: "/assets/game/Build/WebGL.wasm",
+};
 
 ## Play BugWars in Your Browser
 
 Get ready to face the ultimate survival challenge. BugWars runs directly in your browser using Unity WebGL technology - no installation required.
 
-{/* Unity WebGL container will be injected here when the build is ready */}
-<div id="unity-game-wrapper" style="margin: 2rem 0;">
-	<div id="unity-loading-placeholder" style="text-align: center; padding: 4rem 2rem; background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%); border-radius: 12px; border: 2px dashed rgba(99, 102, 241, 0.3);">
-		<h3 style="margin-bottom: 1rem; color: #6366f1;">Unity WebGL Build Coming Soon</h3>
-		<p style="color: #94a3b8; max-width: 600px; margin: 0 auto;">
-			The game is currently in development. Once the Unity WebGL build is ready, it will be embedded here for instant browser-based gameplay.
-		</p>
-		<p style="margin-top: 1.5rem; font-size: 0.875rem; color: #64748b;">
-			Expected features: Full 3D graphics, responsive controls, wave-based combat, and immersive sound design.
-		</p>
-	</div>
-</div>
-
-{/*
-  Unity WebGL Integration Notes for Future Implementation:
-
-  1. Add Unity Loader Script:
-     <script src="/Build/UnityLoader.js"></script>
-
-  2. Initialize Unity Instance:
-     var unityInstance = UnityLoader.instantiate("unity-canvas-container", "/Build/BugWars.json", {
-       onProgress: UnityProgress
-     });
-
-  3. Required Build Files (to be placed in public/Build/):
-     - BugWars.json (build configuration)
-     - BugWars.data (game data)
-     - BugWars.wasm (WebAssembly binary)
-     - BugWars.framework.js (Unity framework)
-     - BugWars.loader.js (Unity loader)
-
-  4. react-unity-webgl integration (alternative):
-     import { Unity, useUnityContext } from "react-unity-webgl";
-
-  5. Responsive Canvas Styling:
-     - Set canvas width/height based on viewport
-     - Handle fullscreen toggle
-     - Optimize for mobile devices
-*/}
+<AstroUnityGameContainer
+  config={unityConfig}
+  className="bugwars-unity-container"
+  canvasId="bugwars-canvas"
+  showFullscreenButton={true}
+  height="600px"
+/>
 
 ## Game Controls
 

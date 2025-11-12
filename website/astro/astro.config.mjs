@@ -70,5 +70,13 @@ export default defineConfig({
 
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      rollupOptions: {
+        external: ['fsevents', /^\.\.\/pkg/],
+      },
+    },
+    optimizeDeps: {
+      exclude: ['fsevents'],
+    },
   },
 });

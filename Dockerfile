@@ -24,21 +24,21 @@ COPY website/astro/public ./public
 # Build Astro site
 RUN pnpm run build
 
-# TODO: Uncomment after Unity WebGL build is complete and webgl.zip is available
-# Copy and extract Unity WebGL game into dist
-# COPY webgl.zip /tmp/webgl.zip
-# RUN apk add --no-cache unzip && \
-#     mkdir -p /app/astro/dist/assets/game && \
-#     unzip -q /tmp/webgl.zip -d /app/astro/dist/assets/game && \
-#     rm /tmp/webgl.zip && \
-#     echo "Unity WebGL extracted to /app/astro/dist/assets/game" && \
-#     ls -lah /app/astro/dist/assets/game
+# Download and extract Unity WebGL game into dist
+RUN apk add --no-cache wget unzip && \
+    wget -O /tmp/webgl.zip https://unity-bw.kbve.com/webgl.zip && \
+    mkdir -p /app/astro/dist/assets/game && \
+    unzip -q /tmp/webgl.zip -d /app/astro/dist/assets/game && \
+    rm /tmp/webgl.zip && \
+    echo "Unity WebGL extracted to /app/astro/dist/assets/game" && \
+    ls -lah /app/astro/dist/assets/game
 
 # Precompress all static assets with gzip -9 and remove originals
 # We keep Askama templates uncompressed (they're used for server-side rendering)
+# We also keep Unity WebGL files uncompressed (Unity loader expects specific formats)
 WORKDIR /app/astro/dist
 RUN apk add --no-cache gzip && \
-    # Compress and replace CSS, JS, JSON, SVG, XML, TXT files with .gz versions
+    # Compress and replace CSS, JS, JSON, SVG, XML, TXT files (except Unity WebGL files)
     find . -type f \( \
         -name "*.css" -o \
         -name "*.js" -o \
@@ -46,10 +46,11 @@ RUN apk add --no-cache gzip && \
         -name "*.svg" -o \
         -name "*.xml" -o \
         -name "*.txt" \
-    \) -exec sh -c 'gzip -9 -c "$1" > "$1.gz" && rm "$1"' _ {} \; && \
+    \) ! -path "*/assets/game/*" -exec sh -c 'gzip -9 -c "$1" > "$1.gz" && rm "$1"' _ {} \; && \
     # Compress and replace HTML files (except in askama/)
     find . -type f -name "*.html" ! -path "*/askama/*" -exec sh -c 'gzip -9 -c "$1" > "$1.gz" && rm "$1"' _ {} \; && \
     # WOFF/WOFF2 are already compressed, keep originals
+    # Unity WebGL files (.wasm, .data, .loader.js, .framework.js) kept uncompressed
     echo "Precompression complete"
 
 # ============================================================================
