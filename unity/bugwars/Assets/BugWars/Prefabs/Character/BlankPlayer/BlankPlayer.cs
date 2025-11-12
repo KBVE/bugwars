@@ -271,6 +271,18 @@ namespace BugWars.Character
                     Debug.LogError("BlankPlayer: Failed to parse atlas JSON!");
                     return;
                 }
+
+                if (atlasData.frames == null)
+                {
+                    atlasData.frames = new Dictionary<string, FrameData>();
+                    Debug.LogError("BlankPlayer: Atlas JSON missing 'frames' data.");
+                }
+
+                if (atlasData.animations == null)
+                {
+                    atlasData.animations = new Dictionary<string, AnimationData>();
+                    Debug.LogError("BlankPlayer: Atlas JSON missing 'animations' data.");
+                }
             }
             catch (System.Exception e)
             {
@@ -278,12 +290,25 @@ namespace BugWars.Character
             }
         }
 
+        private bool TryGetAnimation(string animationName, out AnimationData animation)
+        {
+            animation = null;
+
+            if (string.IsNullOrEmpty(animationName))
+                return false;
+
+            if (atlasData == null || atlasData.animations == null)
+                return false;
+
+            return atlasData.animations.TryGetValue(animationName, out animation);
+        }
+
         /// <summary>
         /// Play a specific animation by name
         /// </summary>
         public void PlayAnimation(string animationName)
         {
-            if (atlasData == null || !atlasData.animations.ContainsKey(animationName))
+            if (!TryGetAnimation(animationName, out var anim))
             {
                 Debug.LogWarning($"BlankPlayer: Animation '{animationName}' not found!");
                 return;
@@ -296,7 +321,7 @@ namespace BugWars.Character
             currentFrameIndex = 0;
             animationTimer = 0f;
 
-            SetFrame(0);
+            SetFrame(0, anim);
         }
 
         /// <summary>
@@ -304,10 +329,9 @@ namespace BugWars.Character
         /// </summary>
         private void UpdateAnimation(float deltaTime)
         {
-            if (atlasData == null || !atlasData.animations.ContainsKey(currentAnimation))
+            if (!TryGetAnimation(currentAnimation, out var anim))
                 return;
 
-            AnimationData anim = atlasData.animations[currentAnimation];
             float frameDuration = anim.GetFrameDuration();
 
             animationTimer += deltaTime;
@@ -316,35 +340,32 @@ namespace BugWars.Character
             {
                 animationTimer -= frameDuration;
                 currentFrameIndex = (currentFrameIndex + 1) % anim.frameCount;
-                SetFrame(currentFrameIndex);
+                SetFrame(currentFrameIndex, anim);
             }
         }
 
         /// <summary>
         /// Set the displayed frame by updating shader UV parameters
         /// </summary>
-        private void SetFrame(int frameIndex)
+        private void SetFrame(int frameIndex, AnimationData animation = null)
         {
             if (atlasData == null || _meshRenderer == null)
                 return;
 
-            if (!atlasData.animations.ContainsKey(currentAnimation))
+            AnimationData anim = animation;
+            if (anim == null && !TryGetAnimation(currentAnimation, out anim))
                 return;
-
-            AnimationData anim = atlasData.animations[currentAnimation];
 
             if (frameIndex < 0 || frameIndex >= anim.frames.Count)
                 return;
 
             string frameName = anim.frames[frameIndex];
 
-            if (!atlasData.frames.ContainsKey(frameName))
+            if (atlasData.frames == null || !atlasData.frames.TryGetValue(frameName, out var frame))
             {
                 Debug.LogWarning($"BlankPlayer: Frame '{frameName}' not found in atlas!");
                 return;
             }
-
-            FrameData frame = atlasData.frames[frameName];
 
             MaterialPropertyBlock propBlock = GetSpritePropertyBlock();
 

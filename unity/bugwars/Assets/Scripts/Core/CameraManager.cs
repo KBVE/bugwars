@@ -105,17 +105,22 @@ namespace BugWars.Core
             }
             else
             {
-                // Chase with critically damped feel
-                transform.position = Vector3.SmoothDamp(transform.position, desired, ref _pivotVel, extraSmoothing,
-                                                         Mathf.Infinity, Time.deltaTime);
+            // Chase with critically damped feel
+            transform.position = Vector3.SmoothDamp(transform.position, desired, ref _pivotVel, extraSmoothing,
+                                                     Mathf.Infinity, Time.deltaTime);
             }
 
             if (followPlayerYaw && player != null)
             {
-                Vector3 flatForward = Vector3.ProjectOnPlane(player.forward, Vector3.up);
-                if (flatForward.sqrMagnitude > 0.0001f)
+                Vector3 direction = moveDir.sqrMagnitude > 0.0001f
+                    ? moveDir
+                    : Vector3.ProjectOnPlane(player.forward, Vector3.up);
+
+                if (direction.sqrMagnitude > 0.0001f)
                 {
-                    Quaternion targetRotation = Quaternion.LookRotation(flatForward.normalized, Vector3.up);
+                    float angle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
+                    float snapped = SnapToCardinal(angle);
+                    Quaternion targetRotation = Quaternion.Euler(0f, snapped, 0f);
                     float yawSpeed = Mathf.Max(1f, followYawSpeed);
                     transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, yawSpeed * Time.deltaTime);
                 }
@@ -125,6 +130,26 @@ namespace BugWars.Core
                 // Keep pivot upright (helps if you read its forward elsewhere)
                 transform.rotation = Quaternion.identity;
             }
+        }
+
+        private float SnapToCardinal(float angle)
+        {
+            angle = Mathf.Repeat(angle, 360f);
+            float[] cardinals = { 0f, 90f, 180f, 270f };
+            float nearest = cardinals[0];
+            float minDiff = Mathf.Abs(Mathf.DeltaAngle(angle, cardinals[0]));
+
+            for (int i = 1; i < cardinals.Length; i++)
+            {
+                float diff = Mathf.Abs(Mathf.DeltaAngle(angle, cardinals[i]));
+                if (diff < minDiff)
+                {
+                    minDiff = diff;
+                    nearest = cardinals[i];
+                }
+            }
+
+            return nearest;
         }
     }
 
@@ -410,6 +435,8 @@ namespace BugWars.Core
         [SerializeField] private CameraFramingPreset framingPreset = CameraFramingPreset.Centered;
         [SerializeField] private AutoAlignMode autoAlignMode = AutoAlignMode.AlwaysBehind;
         [SerializeField] private float autoAlignSpeed = 360f;
+        [Header("Perspective Rig")] 
+        [SerializeField] private PerspectiveRigMode perspectiveRigMode = PerspectiveRigMode.LockedPivot;
 
         private Vector3 orbitShoulderOffset;
         private float orbitCameraDistance;
@@ -422,6 +449,12 @@ namespace BugWars.Core
         private CameraFollowConfig _activeFollowConfig;
         private bool _hasActiveFollowConfig;
         private readonly Dictionary<string, CinemachinePanTilt> _panTiltCache = new Dictionary<string, CinemachinePanTilt>();
+
+        private enum PerspectiveRigMode
+        {
+            LockedPivot,
+            ThirdPersonOrbit
+        }
 
         /// <summary>
         /// Gets the main Unity Camera component
@@ -506,33 +539,62 @@ namespace BugWars.Core
 
         private void ForceCameraDefaults()
         {
-            switch (framingPreset)
+            ApplyFramingPreset(framingPreset, force: true);
+        }
+
+        public void ApplyFramingPreset(CameraFramingPreset preset, bool force = false)
+        {
+            framingPreset = preset;
+
+            switch (preset)
             {
                 case CameraFramingPreset.OverShoulder:
-                    orbitShoulderOffset = new Vector3(0.45f, 1.3f, 0f);
-                    orbitCameraDistance = 6.6f;
-                    orbitPositionDamping = new Vector3(0.35f, 0.35f, 0.55f);
-                    orbitPitchClamp = new Vector2(8f, 65f);
-                    pivotHeadRoom = new Vector3(0f, 1.15f, 0f);
-                    pivotShoulderRight = 0.35f;
-                    orbitCameraSide = 0.35f;
+                    orbitShoulderOffset = new Vector3(0.2f, 1.45f, 0f);
+                    orbitCameraDistance = 7.5f;
+                    orbitPositionDamping = Vector3.zero;
+                    orbitPitchClamp = new Vector2(5f, 65f);
                     defaultTiltAngle = -32f;
-                    defaultPanOffset = 10f;
+                    pivotHeadRoom = new Vector3(0f, 1.2f, 0f);
+                    pivotShoulderRight = 0f;
+                    orbitCameraSide = 0.5f;
+                    defaultPanOffset = 0f;
                     break;
 
                 case CameraFramingPreset.Centered:
                 default:
                     orbitShoulderOffset = new Vector3(0f, 2.0f, 0f);
                     orbitCameraDistance = 8.2f;
-                    orbitPositionDamping = new Vector3(0.25f, 0.25f, 0.45f);
+                    orbitPositionDamping = Vector3.zero;
                     orbitPitchClamp = new Vector2(12f, 55f);
+                    defaultTiltAngle = -28f;
                     pivotHeadRoom = new Vector3(0f, 1.6f, 0f);
                     pivotShoulderRight = 0f;
                     orbitCameraSide = 0.5f;
-                    defaultTiltAngle = -28f;
                     defaultPanOffset = 0f;
                     break;
             }
+
+            if (!force)
+            {
+                ReapplyActiveFollowConfig();
+            }
+        }
+
+        private void ReapplyActiveFollowConfig()
+        {
+            if (!_hasActiveFollowConfig || _currentActiveCamera == null)
+            {
+                return;
+            }
+
+            var config = _activeFollowConfig;
+            config.cameraDistance = orbitCameraDistance;
+            config.shoulderOffset = orbitShoulderOffset;
+            config.positionDamping = orbitPositionDamping;
+            config.pitchClamp = orbitPitchClamp;
+            _activeFollowConfig = config;
+
+            ConfigureThirdPersonFollow(_currentActiveCamera, config);
         }
 
         private void Start()
@@ -664,6 +726,10 @@ namespace BugWars.Core
 
                 // Activate this camera
                 ActivateCamera(virtualCamera, true);
+
+                config.cameraName = virtualCamera.name;
+                _activeFollowConfig = config;
+                _hasActiveFollowConfig = true;
 
                 if (debugMode)
                     Debug.Log($"[CameraManager] Camera '{virtualCamera.name}' now following '{config.target.name}' via lead pivot ({(preferOrthographic ? "Ortho" : "Perspective")})");
@@ -1412,22 +1478,93 @@ namespace BugWars.Core
         private void BuildPerspectiveLiteRig(CinemachineCamera vcam, CameraFollowConfig config, bool teleport = true)
         {
             if (vcam == null || config.target == null || MainCamera == null) return;
-
-            // Main camera perspective settings
-            MainCamera.orthographic = false;
-            MainCamera.fieldOfView = perspectiveFov;
-            MainCamera.nearClipPlane = 0.05f;
-            MainCamera.farClipPlane = 500f;
-
-            // Create/get lead pivot
-            CameraLeadPivot pivot = GetOrCreateLeadPivot(config.target);
-            pivot.maxLeadDistance = 3.0f;
-            pivot.maxSpeedForLead = 7.5f;
-            pivot.shoulderRight = 0.3f;
-            pivot.headRoom = new Vector3(0, 1.1f, 0);
+ 
+             // Main camera perspective settings
+             MainCamera.orthographic = false;
+             MainCamera.fieldOfView = perspectiveFov;
+             MainCamera.nearClipPlane = 0.05f;
+             MainCamera.farClipPlane = 500f;
+ 
+             // Create/get lead pivot
+             CameraLeadPivot pivot = GetOrCreateLeadPivot(config.target);
+            pivot.maxLeadDistance = 0f;
+            pivot.maxSpeedForLead = 0f;
+            pivot.shoulderRight = pivotShoulderRight;
+            pivot.shoulderBlend = 0f;
+            pivot.headRoom = pivotHeadRoom;
+            pivot.extraSmoothing = 0f;
+            pivot.followPlayerYaw = perspectiveRigMode == PerspectiveRigMode.LockedPivot && autoAlignMode == AutoAlignMode.AlwaysBehind;
+            pivot.followYawSpeed = autoAlignSpeed;
             if (teleport) pivot.TeleportToPlayer();
+            if (perspectiveRigMode == PerspectiveRigMode.LockedPivot)
+            {
+                ConfigureLockedPerspectiveRig(vcam, config, pivot);
+            }
+            else
+            {
+                ConfigureThirdPersonPerspectiveRig(vcam, config, pivot);
+            }
+        }
 
-            // Body: ThirdPersonFollow
+        private void ConfigureLockedPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
+        {
+            var oldTpf = vcam.GetComponent<CinemachineThirdPersonFollow>();
+            if (oldTpf != null)
+            {
+                Destroy(oldTpf);
+            }
+
+            var panTilt = vcam.GetComponent<CinemachinePanTilt>();
+            if (panTilt != null)
+            {
+                Destroy(panTilt);
+            }
+
+            var deoc = vcam.GetComponent<CinemachineDeoccluder>();
+            if (deoc != null)
+            {
+                Destroy(deoc);
+            }
+
+            var lockRot = vcam.GetComponent<LockedCameraRotation>();
+            if (lockRot != null)
+            {
+                Destroy(lockRot);
+            }
+
+            var follow = vcam.GetComponent<CinemachineFollow>();
+            if (follow == null)
+            {
+                follow = vcam.gameObject.AddComponent<CinemachineFollow>();
+                Debug.Log($"[CameraManager] Added CinemachineFollow for perspective rig to '{vcam.name}'");
+            }
+
+            follow.FollowOffset = new Vector3(0f, 0f, -orbitCameraDistance);
+            follow.TrackerSettings.BindingMode = Unity.Cinemachine.TargetTracking.BindingMode.LazyFollow;
+            follow.TrackerSettings.PositionDamping = orbitPositionDamping;
+            follow.TrackerSettings.RotationDamping = Vector3.zero;
+
+            vcam.Follow = pivot.transform;
+            vcam.LookAt = config.target;
+
+            if (debugMode)
+            {
+                Debug.Log($"[CameraManager] Built Perspective Lite Rig (Locked Pivot):");
+                Debug.Log($"  - FOV: {perspectiveFov}°");
+                Debug.Log($"  - Follow Offset: {follow.FollowOffset}");
+                Debug.Log($"  - Following: {pivot.transform.name}");
+                Debug.Log($"  - Looking At: {config.target.name}");
+            }
+        }
+
+        private void ConfigureThirdPersonPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
+        {
+            var follow = vcam.GetComponent<CinemachineFollow>();
+            if (follow != null)
+            {
+                Destroy(follow);
+            }
+
             var tpf = vcam.GetComponent<CinemachineThirdPersonFollow>();
             if (tpf == null)
             {
@@ -1435,14 +1572,12 @@ namespace BugWars.Core
                 Debug.Log($"[CameraManager] Added ThirdPersonFollow for perspective rig to '{vcam.name}'");
             }
 
-            float desiredDistance = orbitCameraDistance;
-            tpf.CameraDistance = desiredDistance;
+            tpf.CameraDistance = orbitCameraDistance;
             tpf.ShoulderOffset = orbitShoulderOffset;
             tpf.VerticalArmLength = config.verticalArmLength;
             tpf.CameraSide = 0.5f;
-            tpf.Damping = new Vector3(0.35f, 0.35f, 0.55f);
+            tpf.Damping = orbitPositionDamping;
 
-            // Collision detection
             var deoc = vcam.GetComponent<CinemachineDeoccluder>();
             if (deoc == null)
             {
@@ -1456,27 +1591,17 @@ namespace BugWars.Core
             deoc.AvoidObstacles.CameraRadius = 0.2f;
             deoc.AvoidObstacles.DistanceLimit = tpf.CameraDistance + 1.5f;
 
-            // Remove any orthographic rotation locks from previous config
-            var lockRot = vcam.GetComponent<LockedCameraRotation>();
-            if (lockRot != null)
-            {
-                Destroy(lockRot);
-            }
-
-            // Orbit aim via Pan/Tilt
             EnsurePanTilt(vcam, config);
 
-            // Follow/LookAt the pivot
             vcam.Follow = pivot.transform;
             vcam.LookAt = pivot.transform;
 
             if (debugMode)
             {
-                Debug.Log($"[CameraManager] Built Perspective Lite Rig:");
-                Debug.Log($"  - FOV: {perspectiveFov}°");
-                Debug.Log($"  - Lead Distance: {pivot.maxLeadDistance}m");
-                Debug.Log($"  - Camera Angle: 20° down");
-                Debug.Log($"  - Following: Lead Pivot");
+                Debug.Log($"[CameraManager] Built Perspective Lite Rig (Third-person Orbit):");
+                Debug.Log($"  - CameraDistance: {orbitCameraDistance}");
+                Debug.Log($"  - ShoulderOffset: {orbitShoulderOffset}");
+                Debug.Log($"  - Using Pan/Tilt for input orbit");
             }
         }
 
@@ -1639,26 +1764,14 @@ namespace BugWars.Core
             if (panTilt == null)
                 return;
 
-            panTilt.ReferenceFrame = autoAlignMode == AutoAlignMode.AlwaysBehind
-                ? CinemachinePanTilt.ReferenceFrames.TrackingTarget
-                : CinemachinePanTilt.ReferenceFrames.ParentObject;
+            panTilt.ReferenceFrame = CinemachinePanTilt.ReferenceFrames.ParentObject;
             panTilt.RecenterTarget = CinemachinePanTilt.RecenterTargetModes.AxisCenter;
 
             var panAxis = panTilt.PanAxis;
             panAxis.Range = new Vector2(-180f, 180f);
             panAxis.Wrap = true;
             panAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
-            float desiredPan = defaultPanOffset;
-            if (config.target != null)
-            {
-                Vector3 flatForward = Vector3.ProjectOnPlane(config.target.forward, Vector3.up);
-                if (flatForward.sqrMagnitude > 0.0001f)
-                {
-                    desiredPan += Vector3.SignedAngle(Vector3.forward, flatForward.normalized, Vector3.up);
-                }
-            }
-            desiredPan = Mathf.Repeat(desiredPan + 180f, 360f) - 180f; // normalize to [-180,180]
-            desiredPan = Mathf.Clamp(desiredPan, panAxis.Range.x, panAxis.Range.y);
+            float desiredPan = Mathf.Clamp(0f, panAxis.Range.x, panAxis.Range.y);
             panAxis.Center = desiredPan;
             panAxis.Value = desiredPan;
             panTilt.PanAxis = panAxis;
@@ -1688,7 +1801,7 @@ namespace BugWars.Core
 
         private void OnCameraLookInput(Vector2 delta)
         {
-            if (preferOrthographic || _activePanTilt == null)
+            if (preferOrthographic || _activePanTilt == null || autoAlignMode == AutoAlignMode.AlwaysBehind)
                 return;
 
             ApplyLookDelta(_activePanTilt, delta);
