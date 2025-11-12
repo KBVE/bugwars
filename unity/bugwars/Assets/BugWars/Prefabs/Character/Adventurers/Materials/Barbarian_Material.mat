@@ -73,16 +73,16 @@ Material:
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
-    - _OutlineWidth: 0.015
+    - _OutlineWidth: 0.02
     - _Parallax: 0.02
-    - _PixelSize: 0.05
-    - _QuantizationSize: 0.15
+    - _PixelSize: 0.08
+    - _QuantizationSize: 0.2
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _TexturePixelation: 16
+    - _TexturePixelation: 32
     - _UVSec: 0
-    - _VertexQuantization: 0.7
+    - _VertexQuantization: 0.9
     - _ZWrite: 1
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}

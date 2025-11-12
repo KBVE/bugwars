@@ -146,19 +146,19 @@ namespace BugWars.Characters.Editor
                             if (material.HasProperty("_Color"))
                                 material.SetColor("_Color", color);
 
-                            // Set default pixel art parameters (more aggressive for noticeable effect)
+                            // Set default pixel art parameters (HEAVY pixelation for retro look)
                             if (material.HasProperty("_PixelSize"))
-                                material.SetFloat("_PixelSize", 0.05f);  // Increased from 0.02
+                                material.SetFloat("_PixelSize", 0.08f);  // Much more aggressive
                             if (material.HasProperty("_TexturePixelation"))
-                                material.SetFloat("_TexturePixelation", 16f);  // Increased from 8
+                                material.SetFloat("_TexturePixelation", 32f);  // Very pixelated textures
                             if (material.HasProperty("_OutlineWidth"))
-                                material.SetFloat("_OutlineWidth", 0.015f);  // Slightly thicker
+                                material.SetFloat("_OutlineWidth", 0.02f);  // Thicker outline
                             if (material.HasProperty("_OutlineColor"))
                                 material.SetColor("_OutlineColor", Color.black);
                             if (material.HasProperty("_VertexQuantization"))
-                                material.SetFloat("_VertexQuantization", 0.7f);  // Increased from 0.5
+                                material.SetFloat("_VertexQuantization", 0.9f);  // Almost full quantization
                             if (material.HasProperty("_QuantizationSize"))
-                                material.SetFloat("_QuantizationSize", 0.15f);  // Increased from 0.1
+                                material.SetFloat("_QuantizationSize", 0.2f);  // Larger grid = blockier
                             if (material.HasProperty("_AmbientStrength"))
                                 material.SetFloat("_AmbientStrength", 0.3f);
                             if (material.HasProperty("_DiffuseStrength"))
@@ -815,19 +815,19 @@ namespace BugWars.Characters.Editor
                         material.SetColor("_Color", color);
                     }
 
-                    // Set default pixel art parameters (more aggressive for noticeable effect)
+                    // Set default pixel art parameters (HEAVY pixelation for retro look)
                     if (material.HasProperty("_PixelSize"))
-                        material.SetFloat("_PixelSize", 0.05f);  // Increased from 0.02
+                        material.SetFloat("_PixelSize", 0.08f);  // Much more aggressive
                     if (material.HasProperty("_TexturePixelation"))
-                        material.SetFloat("_TexturePixelation", 16f);  // Increased from 8
+                        material.SetFloat("_TexturePixelation", 32f);  // Very pixelated textures
                     if (material.HasProperty("_OutlineWidth"))
-                        material.SetFloat("_OutlineWidth", 0.015f);  // Slightly thicker
+                        material.SetFloat("_OutlineWidth", 0.02f);  // Thicker outline
                     if (material.HasProperty("_OutlineColor"))
                         material.SetColor("_OutlineColor", Color.black);
                     if (material.HasProperty("_VertexQuantization"))
-                        material.SetFloat("_VertexQuantization", 0.7f);  // Increased from 0.5
+                        material.SetFloat("_VertexQuantization", 0.9f);  // Almost full quantization
                     if (material.HasProperty("_QuantizationSize"))
-                        material.SetFloat("_QuantizationSize", 0.15f);  // Increased from 0.1
+                        material.SetFloat("_QuantizationSize", 0.2f);  // Larger grid = blockier
                     if (material.HasProperty("_AmbientStrength"))
                         material.SetFloat("_AmbientStrength", 0.3f);
                     if (material.HasProperty("_DiffuseStrength"))
