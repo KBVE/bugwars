@@ -20,6 +20,7 @@ namespace BugWars.Core
 
         [Header("UI Configuration")]
         [SerializeField] private VisualTreeAsset mainMenuVisualTree;
+        [SerializeField] private VisualTreeAsset hudVisualTree;
         [SerializeField] [Tooltip("Optional - Will create default runtime PanelSettings if not assigned")]
         private PanelSettings panelSettings;
 
@@ -81,6 +82,17 @@ namespace BugWars.Core
             else
             {
                 Debug.LogError("[GameLifetimeScope] Failed to create MainMenuManager - UI will not function!");
+            }
+
+            // Create and configure HUDManager with UIDocument properly set up
+            var hudManagerInstance = CreateHUDManager();
+            if (hudManagerInstance != null)
+            {
+                builder.RegisterComponent(hudManagerInstance);
+            }
+            else
+            {
+                Debug.LogError("[GameLifetimeScope] Failed to create HUDManager - HUD will not function!");
             }
 
             // GameManager depends on EventManager and MainMenuManager - register last
@@ -166,6 +178,49 @@ namespace BugWars.Core
             var mainMenuManager = menuObject.AddComponent<MainMenuManager>();
 
             return mainMenuManager;
+        }
+
+        /// <summary>
+        /// Creates and configures the HUDManager with UIDocument
+        /// This ensures UIDocument is properly configured before Unity Inspector tries to validate it
+        /// </summary>
+        private HUDManager CreateHUDManager()
+        {
+            // Check if HUDManager already exists in scene
+            var existingManager = FindFirstObjectByType<HUDManager>();
+            if (existingManager != null)
+            {
+                return existingManager;
+            }
+
+            // Validate required UXML asset
+            if (hudVisualTree == null)
+            {
+                Debug.LogError("[GameLifetimeScope] HUD VisualTreeAsset not assigned!");
+                return null;
+            }
+
+            // If PanelSettings not assigned, create a default one
+            if (panelSettings == null)
+            {
+                Debug.LogWarning("[GameLifetimeScope] PanelSettings not assigned, creating default runtime PanelSettings");
+                panelSettings = CreateDefaultPanelSettings();
+            }
+
+            // Create new GameObject as root (required for DontDestroyOnLoad)
+            var hudObject = new GameObject("HUDManager");
+            DontDestroyOnLoad(hudObject);
+
+            // Add and configure UIDocument FIRST to avoid null reference errors
+            var uiDocument = hudObject.AddComponent<UIDocument>();
+            uiDocument.visualTreeAsset = hudVisualTree;
+            uiDocument.panelSettings = panelSettings;
+            uiDocument.sortingOrder = 0; // HUD renders below menus
+
+            // Now add HUDManager component (UIDocument is already configured)
+            var hudManager = hudObject.AddComponent<HUDManager>();
+
+            return hudManager;
         }
 
         /// <summary>
