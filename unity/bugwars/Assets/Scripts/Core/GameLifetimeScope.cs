@@ -312,7 +312,6 @@ namespace BugWars.Core
                 {
                     Debug.LogError("[GameLifetimeScope] Could not find _settingsPanelManager field in MainMenuManager!");
                 }
-            }
 
             return mainMenuManager;
         }
