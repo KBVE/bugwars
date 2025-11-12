@@ -9,9 +9,12 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## Game Overview
 
-**Bug Wars** is a survival action game built in Unity where players face off against relentless waves of insects and creatures from the natural world. The game features intense combat mechanics, strategic resource management, and progressive difficulty scaling. Players must adapt to different bug types, each with unique behaviors and attack patterns, while managing limited resources and upgrading their defensive capabilities.
+**Bug Wars** is a survival action game built in Unity where players face off against relentless waves of insects and creatures from the natural world. 
+The game features intense combat mechanics, strategic resource management, and progressive difficulty scaling.
+Players must adapt to different bug types, each with unique behaviors and attack patterns, while managing limited resources and upgrading their defensive capabilities.
 
-The game is built using modern Unity development practices, leveraging powerful architectural patterns through dependency injection (VContainer) and asynchronous programming (UniTask). The core architecture emphasizes modularity, testability, and clean separation of concerns, making the codebase maintainable and scalable as new features are added.
+The game is built using modern Unity development practices, leveraging powerful architectural patterns through dependency injection (VContainer) and asynchronous programming (UniTask).
+The core architecture emphasizes modularity, testability, and clean separation of concerns, making the codebase maintainable and scalable as new features are added.
 
 ## Core Technologies
 
@@ -19,11 +22,16 @@ The game is built using modern Unity development practices, leveraging powerful 
 
 [VContainer GitHub Repository](https://github.com/hadashiA/VContainer)
 
-VContainer is the fastest and most lightweight dependency injection (DI) framework for Unity, providing a robust foundation for managing object lifecycles and dependencies throughout Bug Wars. Unlike traditional Unity development where components find each other using `FindObjectOfType` or singleton patterns, VContainer enables proper inversion of control (IoC) where dependencies are explicitly declared and automatically injected.
+VContainer is the fastest and most lightweight dependency injection (DI) framework for Unity, providing a robust foundation for managing object lifecycles and dependencies throughout Bug Wars.
+Unlike traditional Unity development where components find each other using `FindObjectOfType` or singleton patterns, VContainer enables proper inversion of control (IoC) where dependencies are explicitly declared and automatically injected.
 
-In Bug Wars, VContainer serves as the backbone of our architecture through the `GameLifetimeScope` class, which orchestrates all core managers (GameManager, EventManager, InputManager, etc.). This approach eliminates tight coupling between systems, makes testing easier through dependency mocking, and provides clear visibility into system dependencies. VContainer's constructor and method injection automatically resolves dependencies when components are created, ensuring that all required references are available before a component begins its work.
+In Bug Wars, VContainer serves as the backbone of our architecture through the `GameLifetimeScope` class, which orchestrates all core managers (GameManager, EventManager, InputManager, etc.). 
+This approach eliminates tight coupling between systems, makes testing easier through dependency mocking, and provides clear visibility into system dependencies. 
+VContainer's constructor and method injection automatically resolves dependencies when components are created, ensuring that all required references are available before a component begins its work.
 
-The framework's performance characteristics are crucial for games - VContainer generates optimal IL code at build time, resulting in zero reflection overhead at runtime. This makes it ideal for performance-critical game environments where every frame counts. Our implementation uses VContainer's `LifetimeScope` to manage singleton managers that persist across scenes, while still maintaining the flexibility to add scoped dependencies for level-specific systems.
+The framework's performance characteristics are crucial for games - VContainer generates optimal IL code at build time, resulting in zero reflection overhead at runtime. 
+This makes it ideal for performance-critical game environments where every frame counts. 
+Our implementation uses VContainer's `LifetimeScope` to manage singleton managers that persist across scenes, while still maintaining the flexibility to add scoped dependencies for level-specific systems.
 
 ### UniTask - High-Performance Async/Await
 
