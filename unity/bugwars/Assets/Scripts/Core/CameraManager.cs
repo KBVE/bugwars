@@ -436,7 +436,7 @@ namespace BugWars.Core
         [SerializeField] private AutoAlignMode autoAlignMode = AutoAlignMode.AlwaysBehind;
         [SerializeField] private float autoAlignSpeed = 360f;
         [Header("Perspective Rig")] 
-        [SerializeField] private PerspectiveRigMode perspectiveRigMode = PerspectiveRigMode.LockedPivot;
+        [SerializeField] private PerspectiveRigMode perspectiveRigMode = PerspectiveRigMode.Locked;
 
         private Vector3 orbitShoulderOffset;
         private float orbitCameraDistance;
@@ -452,8 +452,8 @@ namespace BugWars.Core
 
         private enum PerspectiveRigMode
         {
-            LockedPivot,
-            ThirdPersonOrbit
+            Locked,
+            Unlocked
         }
 
         /// <summary>
@@ -1493,31 +1493,25 @@ namespace BugWars.Core
             pivot.shoulderBlend = 0f;
             pivot.headRoom = pivotHeadRoom;
             pivot.extraSmoothing = 0f;
-            pivot.followPlayerYaw = perspectiveRigMode == PerspectiveRigMode.LockedPivot && autoAlignMode == AutoAlignMode.AlwaysBehind;
+            pivot.followPlayerYaw = perspectiveRigMode == PerspectiveRigMode.Locked && autoAlignMode == AutoAlignMode.AlwaysBehind;
             pivot.followYawSpeed = autoAlignSpeed;
             if (teleport) pivot.TeleportToPlayer();
-            if (perspectiveRigMode == PerspectiveRigMode.LockedPivot)
+            if (perspectiveRigMode == PerspectiveRigMode.Unlocked)
             {
-                ConfigureLockedPerspectiveRig(vcam, config, pivot);
+                ConfigureUnlockedPerspectiveRig(vcam, config, pivot);
             }
             else
             {
-                ConfigureThirdPersonPerspectiveRig(vcam, config, pivot);
+                ConfigureLockedPerspectiveRig(vcam, config, pivot);
             }
         }
 
-        private void ConfigureLockedPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
+        private void ConfigureUnlockedPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
         {
             var oldTpf = vcam.GetComponent<CinemachineThirdPersonFollow>();
             if (oldTpf != null)
             {
                 Destroy(oldTpf);
-            }
-
-            var panTilt = vcam.GetComponent<CinemachinePanTilt>();
-            if (panTilt != null)
-            {
-                Destroy(panTilt);
             }
 
             var deoc = vcam.GetComponent<CinemachineDeoccluder>();
@@ -1544,12 +1538,19 @@ namespace BugWars.Core
             follow.TrackerSettings.PositionDamping = orbitPositionDamping;
             follow.TrackerSettings.RotationDamping = Vector3.zero;
 
+            var panTilt = vcam.GetComponent<CinemachinePanTilt>();
+            if (panTilt == null)
+            {
+                panTilt = vcam.gameObject.AddComponent<CinemachinePanTilt>();
+            }
+            ConfigurePanTilt(panTilt, config);
+
             vcam.Follow = pivot.transform;
             vcam.LookAt = config.target;
 
             if (debugMode)
             {
-                Debug.Log($"[CameraManager] Built Perspective Lite Rig (Locked Pivot):");
+                Debug.Log($"[CameraManager] Built Perspective Lite Rig (Unlocked):");
                 Debug.Log($"  - FOV: {perspectiveFov}°");
                 Debug.Log($"  - Follow Offset: {follow.FollowOffset}");
                 Debug.Log($"  - Following: {pivot.transform.name}");
@@ -1557,12 +1558,18 @@ namespace BugWars.Core
             }
         }
 
-        private void ConfigureThirdPersonPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
+        private void ConfigureLockedPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
         {
             var follow = vcam.GetComponent<CinemachineFollow>();
             if (follow != null)
             {
                 Destroy(follow);
+            }
+
+            var panTilt = vcam.GetComponent<CinemachinePanTilt>();
+            if (panTilt != null)
+            {
+                Destroy(panTilt);
             }
 
             var tpf = vcam.GetComponent<CinemachineThirdPersonFollow>();
@@ -1591,17 +1598,15 @@ namespace BugWars.Core
             deoc.AvoidObstacles.CameraRadius = 0.2f;
             deoc.AvoidObstacles.DistanceLimit = tpf.CameraDistance + 1.5f;
 
-            EnsurePanTilt(vcam, config);
-
             vcam.Follow = pivot.transform;
             vcam.LookAt = pivot.transform;
 
             if (debugMode)
             {
-                Debug.Log($"[CameraManager] Built Perspective Lite Rig (Third-person Orbit):");
+                Debug.Log($"[CameraManager] Built Perspective Lite Rig (Locked):");
                 Debug.Log($"  - CameraDistance: {orbitCameraDistance}");
                 Debug.Log($"  - ShoulderOffset: {orbitShoulderOffset}");
-                Debug.Log($"  - Using Pan/Tilt for input orbit");
+                Debug.Log($"  - Using ThirdPersonFollow for orbital lock");
             }
         }
 
@@ -1801,7 +1806,8 @@ namespace BugWars.Core
 
         private void OnCameraLookInput(Vector2 delta)
         {
-            if (preferOrthographic || _activePanTilt == null || autoAlignMode == AutoAlignMode.AlwaysBehind)
+            if (preferOrthographic || _activePanTilt == null ||
+                (perspectiveRigMode == PerspectiveRigMode.Unlocked && autoAlignMode == AutoAlignMode.AlwaysBehind))
                 return;
 
             ApplyLookDelta(_activePanTilt, delta);

@@ -312,6 +312,23 @@ namespace BugWars.Characters.Editor
                     }
                 }
 
+                // Set Avatar from the FBX model
+                string fbxPath = FBX_PATH + characterName + ".fbx";
+                GameObject fbxModel = AssetDatabase.LoadAssetAtPath<GameObject>(fbxPath);
+                if (fbxModel != null)
+                {
+                    Animator fbxAnimator = fbxModel.GetComponentInChildren<Animator>();
+                    if (fbxAnimator != null && fbxAnimator.avatar != null)
+                    {
+                        animator.avatar = fbxAnimator.avatar;
+                        report.AppendLine($"  + Assigned Avatar from FBX model");
+                    }
+                    else
+                    {
+                        report.AppendLine($"  ⚠ No Avatar found in FBX - may need to configure FBX import settings");
+                    }
+                }
+
                 // Use SerializedObject to set the rig references (handles private/protected fields)
                 SerializedObject serializedCharacter = new SerializedObject(character);
 
@@ -462,13 +479,26 @@ namespace BugWars.Characters.Editor
                     else
                     {
                         Animator anim = animProp.objectReferenceValue as Animator;
-                        if (anim != null && anim.runtimeAnimatorController != null)
+                        if (anim != null)
                         {
-                            report.AppendLine($"  ✓ Animator with controller: {anim.runtimeAnimatorController.name}");
-                        }
-                        else
-                        {
-                            report.AppendLine($"  ✓ Animator present (⚠ no controller)");
+                            if (anim.runtimeAnimatorController != null)
+                            {
+                                report.AppendLine($"  ✓ Animator with controller: {anim.runtimeAnimatorController.name}");
+                            }
+                            else
+                            {
+                                report.AppendLine($"  ✓ Animator present (⚠ no controller)");
+                            }
+
+                            // Check Avatar
+                            if (anim.avatar != null)
+                            {
+                                report.AppendLine($"  ✓ Avatar: {anim.avatar.name}");
+                            }
+                            else
+                            {
+                                report.AppendLine($"  ⚠ Avatar not assigned");
+                            }
                         }
                     }
 
@@ -604,6 +634,63 @@ namespace BugWars.Characters.Editor
             }
 
             return controller;
+        }
+
+        /// <summary>
+        /// Configure FBX import settings to generate humanoid Avatar
+        /// </summary>
+        [MenuItem("KBVE/Characters/Configure FBX Import Settings")]
+        public static void ConfigureFBXImportSettings()
+        {
+            Debug.Log("=== Configuring FBX Import Settings ===");
+
+            int configuredCount = 0;
+
+            foreach (string characterName in CHARACTER_NAMES)
+            {
+                string fbxPath = FBX_PATH + characterName + ".fbx";
+                ModelImporter importer = AssetImporter.GetAtPath(fbxPath) as ModelImporter;
+
+                if (importer != null)
+                {
+                    bool changed = false;
+
+                    // Configure Avatar generation
+                    if (importer.animationType != ModelImporterAnimationType.Human)
+                    {
+                        importer.animationType = ModelImporterAnimationType.Human;
+                        changed = true;
+                    }
+
+                    // Generate Avatar
+                    if (importer.avatarSetup != ModelImporterAvatarSetup.CreateFromThisModel)
+                    {
+                        importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
+                        changed = true;
+                    }
+
+                    if (changed)
+                    {
+                        importer.SaveAndReimport();
+                        configuredCount++;
+                        Debug.Log($"✓ Configured FBX import for: {characterName}");
+                    }
+                }
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            Debug.Log($"=== FBX Configuration Complete: {configuredCount} files updated ===");
+
+            if (configuredCount > 0)
+            {
+                EditorUtility.DisplayDialog(
+                    "FBX Configuration Complete",
+                    $"Configured {configuredCount} FBX file(s) for humanoid Avatar generation.\n\n" +
+                    "Run 'Sync Adventurers' again to assign the Avatars.",
+                    "OK");
+            }
         }
 
         #endregion
