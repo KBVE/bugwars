@@ -73,6 +73,14 @@ Knight:
 
 ## Secondary Commands
 
+### KBVE > Characters > Configure FBX Import Settings
+**Use this if Avatars are showing as "None"**
+- Configures all character FBX files to generate humanoid Avatars
+- Sets Animation Type to Humanoid
+- Sets Avatar Definition to "Create From This Model"
+- Auto-reimports FBX files
+- After running, sync again to assign Avatars
+
 ### KBVE > Characters > Setup Test Character
 Creates a Knight character in the scene at (0, 0, 0) for testing.
 
@@ -100,6 +108,15 @@ Located in: `Assets/BugWars/Prefabs/Character/Adventurers/Rig_Medium/`
 - **Rig_Medium_MovementBasic.fbx** - Movement animations
 
 ## Common Issues
+
+### Issue: Avatar shows as "None" ⚠️ MOST COMMON
+**This prevents animations from working!**
+
+**Solution:**
+1. Run `KBVE > Characters > Configure FBX Import Settings`
+2. Wait for FBX files to reimport
+3. Run `KBVE > Characters > Sync Adventurers`
+4. Avatar will now be assigned
 
 ### Issue: "General rig not assigned"
 **Solution:** Run `KBVE > Characters > Sync Adventurers`

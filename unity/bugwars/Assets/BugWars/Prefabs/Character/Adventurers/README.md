@@ -83,6 +83,7 @@ All character management is located under `KBVE > Characters`:
 | Command | Description |
 |---------|-------------|
 | **Sync Adventurers** | **[ALL-IN-ONE]** Creates, syncs, and verifies all character prefabs. Handles everything in one click! |
+| **Configure FBX Import Settings** | Configures all character FBX files to generate humanoid Avatars. Run this if Avatars are missing. |
 | **Setup Test Character** | Creates a test Knight character in the current scene at (0, 0, 0). |
 
 ### Manual Setup
@@ -168,12 +169,24 @@ These can be attached to characters as child objects or held items.
 
 ## Troubleshooting
 
+### Avatar shows as "None" in Animator
+**This is the most common issue!**
+
+**Solution:**
+1. Run `KBVE > Characters > Configure FBX Import Settings`
+2. This will configure all FBX files to generate humanoid Avatars
+3. Then run `KBVE > Characters > Sync Adventurers` again
+4. Avatars will be automatically assigned
+
+**What this does:** Sets FBX import settings to `Animation Type: Humanoid` and `Avatar Definition: Create From This Model`
+
 ### Characters appear without textures
 - Ensure materials are assigned in the AdventurerCharacter component
 - Check that texture import settings are correct (Read/Write enabled if needed)
 
 ### Animation not playing
 - Verify Animator component is present and has a controller assigned
+- **Check that Avatar is assigned** (see above if None)
 - Check that the rig is properly configured in FBX import settings
 - Ensure animation clips are imported from the Rig_Medium files
 
