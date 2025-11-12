@@ -17,3 +17,6 @@ https://free-game-assets.itch.io/free-base-4-direction-male-character-pixel-art
 
 KayKit Character Pack : Adventures
 https://kaylousberg.itch.io/kaykit-adventurers
+
+KayKit Rigs
+https://kaylousberg.itch.io/kaykit-character-animations

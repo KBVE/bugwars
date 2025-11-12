@@ -24,32 +24,66 @@ Adventurers/
 │   ├── rogue_texture.png
 │   ├── ranger_texture.png
 │   └── [weapons and props].fbx
-├── Rig_Medium/                    # Animation rig files
-│   ├── Rig_Medium_General.fbx     # General character rig
-│   └── Rig_Medium_MovementBasic.fbx # Movement animations
+├── Rig_Medium/                    # Animation rig files (7 total)
+│   ├── Rig_Medium_General.fbx     # General character poses & idle
+│   ├── Rig_Medium_MovementBasic.fbx # Basic movement (walk, run)
+│   ├── Rig_Medium_MovementAdvanced.fbx # Advanced movement (jump, climb, etc.)
+│   ├── Rig_Medium_CombatMelee.fbx # Melee combat animations
+│   ├── Rig_Medium_CombatRanged.fbx # Ranged combat animations
+│   ├── Rig_Medium_Simulation.fbx  # Simulation/interaction animations
+│   └── Rig_Medium_Special.fbx     # Special/unique animations
 ├── Materials/                     # Character materials
 │   ├── Knight_Material.mat
 │   ├── Barbarian_Material.mat
 │   ├── Mage_Material.mat
 │   ├── Rogue_Material.mat
 │   └── Ranger_Material.mat
+├── Animators/                     # Animator Controllers (auto-generated)
+│   ├── Knight_Controller.controller
+│   ├── Barbarian_Controller.controller
+│   ├── Mage_Controller.controller
+│   └── Rogue_Controller.controller
 ├── Editor/                        # Editor utilities
 │   └── AdventurerPrefabCreator.cs
-└── AdventurerCharacter.cs         # Character controller component
+├── AdventurerCharacter.cs         # Character controller component
+└── [Character]_Prefab.prefab      # Ready-to-use prefabs
 ```
 
 ## Quick Start
 
-### Creating Character Prefabs
+### One-Click Setup (All-In-One)
 
 1. **Open Unity Editor**
-2. **Use the Menu Command:**
-   - Go to `BugWars > Create Adventurer Prefabs`
-   - This will automatically create prefabs for all characters
+2. **Run the Sync Command:**
+   - Go to `KBVE > Characters > Sync Adventurers`
+   - This **single command** handles everything:
+     - ✓ Creates any missing prefabs (preserves existing GUIDs)
+     - ✓ Creates Animator Controllers with default states
+     - ✓ Syncs **all 7 rig references**:
+       - General, Movement (Basic & Advanced)
+       - Combat (Melee & Ranged)
+       - Simulation, Special
+     - ✓ Assigns materials and components
+     - ✓ Links Animator components with controllers
+     - ✓ Verifies all configurations
+     - ✓ Provides detailed console report
+     - ✓ Shows success/failure dialog
+3. **Done!** All 5 characters are ready to use
 
-3. **Create a Test Character:**
-   - Go to `BugWars > Setup Single Character (Test)`
-   - This will create a Knight character in your scene for testing
+### Testing Characters
+
+- **Create a Test Character:**
+  - Go to `KBVE > Characters > Setup Test Character`
+  - Creates a Knight at (0, 0, 0) for immediate testing
+
+## KBVE Menu Commands
+
+All character management is located under `KBVE > Characters`:
+
+| Command | Description |
+|---------|-------------|
+| **Sync Adventurers** | **[ALL-IN-ONE]** Creates, syncs, and verifies all character prefabs. Handles everything in one click! |
+| **Setup Test Character** | Creates a test Knight character in the current scene at (0, 0, 0). |
 
 ### Manual Setup
 
@@ -59,6 +93,7 @@ If you prefer to create characters manually:
 2. **Add the AdventurerCharacter component** to the GameObject
 3. **Assign the corresponding material** from the `Materials/` folder
 4. **Set the character class** in the inspector (Knight, Mage, etc.)
+5. **Run `KBVE > Characters > Sync Adventurers`** to automatically assign rig references
 
 ## Character Component
 

@@ -15,8 +15,15 @@ namespace BugWars.Characters
         
         [Header("Animation")]
         [SerializeField] private Animator animator;
-        [SerializeField] private GameObject generalRigReference;  // Rig_Medium_General
-        [SerializeField] private GameObject movementRigReference; // Rig_Medium_MovementBasic
+
+        [Header("Animation Rig References")]
+        [SerializeField] private GameObject generalRigReference;          // Rig_Medium_General
+        [SerializeField] private GameObject movementBasicRigReference;    // Rig_Medium_MovementBasic
+        [SerializeField] private GameObject movementAdvancedRigReference; // Rig_Medium_MovementAdvanced
+        [SerializeField] private GameObject combatMeleeRigReference;      // Rig_Medium_CombatMelee
+        [SerializeField] private GameObject combatRangedRigReference;     // Rig_Medium_CombatRanged
+        [SerializeField] private GameObject simulationRigReference;       // Rig_Medium_Simulation
+        [SerializeField] private GameObject specialRigReference;          // Rig_Medium_Special
         
         [Header("Rendering")]
         [SerializeField] private SkinnedMeshRenderer meshRenderer;
