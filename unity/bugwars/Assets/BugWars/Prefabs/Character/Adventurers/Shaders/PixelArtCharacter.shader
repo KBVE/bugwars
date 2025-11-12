@@ -119,26 +119,39 @@ Shader "BugWars/PixelArtCharacter"
                 return floor(pos / gridSize) * gridSize;
             }
 
+            // Quantize screen position for pixel effect
+            float4 QuantizeScreenPos(float4 vertex, float pixelSize)
+            {
+                float4 screenPos = ComputeScreenPos(vertex);
+                screenPos.xyz /= screenPos.w;
+
+                float2 pixelatedPos = floor(screenPos.xy / pixelSize) * pixelSize;
+                screenPos.xy = pixelatedPos * screenPos.w;
+
+                return vertex;
+            }
+
             v2f vert(appdata v)
             {
                 v2f o;
 
-                // Apply vertex quantization for blocky look
-                float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
-                float3 quantizedWorldPos = lerp(
-                    worldPos,
-                    QuantizePosition(worldPos, _QuantizationSize),
-                    _VertexQuantization
-                );
+                // Transform to clip space first
+                float4 clipPos = UnityObjectToClipPos(v.vertex);
 
-                // Transform back to object space
-                float3 localPos = mul(unity_WorldToObject, float4(quantizedWorldPos, 1.0)).xyz;
+                // Apply screen-space pixelation
+                float2 screenSize = _ScreenParams.xy;
+                float2 pixelSize = float2(_PixelSize, _PixelSize) * 100.0;
+                float2 ndc = clipPos.xy / clipPos.w;
+                float2 pixelatedNDC = floor(ndc * screenSize / pixelSize) * pixelSize / screenSize;
 
-                o.pos = UnityObjectToClipPos(float4(localPos, 1.0));
+                // Blend between normal and pixelated based on quantization amount
+                clipPos.xy = lerp(ndc, pixelatedNDC, _VertexQuantization) * clipPos.w;
+
+                o.pos = clipPos;
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 o.worldNormal = UnityObjectToWorldNormal(v.normal);
-                o.worldPos = quantizedWorldPos;
-                o.screenPos = ComputeScreenPos(o.pos);
+                o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+                o.screenPos = ComputeScreenPos(clipPos);
 
                 TRANSFER_SHADOW(o);
 

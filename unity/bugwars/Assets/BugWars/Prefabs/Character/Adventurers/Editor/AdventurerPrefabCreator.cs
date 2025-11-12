@@ -146,19 +146,19 @@ namespace BugWars.Characters.Editor
                             if (material.HasProperty("_Color"))
                                 material.SetColor("_Color", color);
 
-                            // Set default pixel art parameters
+                            // Set default pixel art parameters (more aggressive for noticeable effect)
                             if (material.HasProperty("_PixelSize"))
-                                material.SetFloat("_PixelSize", 0.02f);
+                                material.SetFloat("_PixelSize", 0.05f);  // Increased from 0.02
                             if (material.HasProperty("_TexturePixelation"))
-                                material.SetFloat("_TexturePixelation", 8f);
+                                material.SetFloat("_TexturePixelation", 16f);  // Increased from 8
                             if (material.HasProperty("_OutlineWidth"))
-                                material.SetFloat("_OutlineWidth", 0.01f);
+                                material.SetFloat("_OutlineWidth", 0.015f);  // Slightly thicker
                             if (material.HasProperty("_OutlineColor"))
                                 material.SetColor("_OutlineColor", Color.black);
                             if (material.HasProperty("_VertexQuantization"))
-                                material.SetFloat("_VertexQuantization", 0.5f);
+                                material.SetFloat("_VertexQuantization", 0.7f);  // Increased from 0.5
                             if (material.HasProperty("_QuantizationSize"))
-                                material.SetFloat("_QuantizationSize", 0.1f);
+                                material.SetFloat("_QuantizationSize", 0.15f);  // Increased from 0.1
                             if (material.HasProperty("_AmbientStrength"))
                                 material.SetFloat("_AmbientStrength", 0.3f);
                             if (material.HasProperty("_DiffuseStrength"))
@@ -815,19 +815,19 @@ namespace BugWars.Characters.Editor
                         material.SetColor("_Color", color);
                     }
 
-                    // Set default pixel art parameters
+                    // Set default pixel art parameters (more aggressive for noticeable effect)
                     if (material.HasProperty("_PixelSize"))
-                        material.SetFloat("_PixelSize", 0.02f);
+                        material.SetFloat("_PixelSize", 0.05f);  // Increased from 0.02
                     if (material.HasProperty("_TexturePixelation"))
-                        material.SetFloat("_TexturePixelation", 8f);
+                        material.SetFloat("_TexturePixelation", 16f);  // Increased from 8
                     if (material.HasProperty("_OutlineWidth"))
-                        material.SetFloat("_OutlineWidth", 0.01f);
+                        material.SetFloat("_OutlineWidth", 0.015f);  // Slightly thicker
                     if (material.HasProperty("_OutlineColor"))
                         material.SetColor("_OutlineColor", Color.black);
                     if (material.HasProperty("_VertexQuantization"))
-                        material.SetFloat("_VertexQuantization", 0.5f);
+                        material.SetFloat("_VertexQuantization", 0.7f);  // Increased from 0.5
                     if (material.HasProperty("_QuantizationSize"))
-                        material.SetFloat("_QuantizationSize", 0.1f);
+                        material.SetFloat("_QuantizationSize", 0.15f);  // Increased from 0.1
                     if (material.HasProperty("_AmbientStrength"))
                         material.SetFloat("_AmbientStrength", 0.3f);
                     if (material.HasProperty("_DiffuseStrength"))
