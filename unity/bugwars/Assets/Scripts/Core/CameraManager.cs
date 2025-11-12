@@ -1496,17 +1496,17 @@ namespace BugWars.Core
             pivot.followPlayerYaw = perspectiveRigMode == PerspectiveRigMode.Locked && autoAlignMode == AutoAlignMode.AlwaysBehind;
             pivot.followYawSpeed = autoAlignSpeed;
             if (teleport) pivot.TeleportToPlayer();
-            if (perspectiveRigMode == PerspectiveRigMode.Unlocked)
-            {
-                ConfigureUnlockedPerspectiveRig(vcam, config, pivot);
-            }
-            else
+            if (perspectiveRigMode == PerspectiveRigMode.Locked)
             {
                 ConfigureLockedPerspectiveRig(vcam, config, pivot);
             }
+            else
+            {
+                ConfigureUnlockedPerspectiveRig(vcam, config, pivot);
+            }
         }
 
-        private void ConfigureUnlockedPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
+        private void ConfigureLockedPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
         {
             var oldTpf = vcam.GetComponent<CinemachineThirdPersonFollow>();
             if (oldTpf != null)
@@ -1526,40 +1526,40 @@ namespace BugWars.Core
                 Destroy(lockRot);
             }
 
+            var panTilt = vcam.GetComponent<CinemachinePanTilt>();
+            if (panTilt != null)
+            {
+                Destroy(panTilt);
+            }
+
             var follow = vcam.GetComponent<CinemachineFollow>();
             if (follow == null)
             {
                 follow = vcam.gameObject.AddComponent<CinemachineFollow>();
-                Debug.Log($"[CameraManager] Added CinemachineFollow for perspective rig to '{vcam.name}'");
+                Debug.Log($"[CameraManager] Added CinemachineFollow for locked perspective rig to '{vcam.name}'");
             }
- 
-            float followHeight = Mathf.Max(0.5f, orbitShoulderOffset.y - pivot.headRoom.y * 0.5f);
-            follow.FollowOffset = new Vector3(orbitShoulderOffset.x, followHeight, -orbitCameraDistance);
-            follow.TrackerSettings.BindingMode = Unity.Cinemachine.TargetTracking.BindingMode.LazyFollow;
-            follow.TrackerSettings.PositionDamping = orbitPositionDamping;
-            follow.TrackerSettings.RotationDamping = Vector3.zero;
 
-            var panTilt = vcam.GetComponent<CinemachinePanTilt>();
-            if (panTilt == null)
-            {
-                panTilt = vcam.gameObject.AddComponent<CinemachinePanTilt>();
-            }
-            ConfigurePanTilt(panTilt, config);
+            follow.FollowOffset = new Vector3(0f, 0f, -orbitCameraDistance);
+            follow.TrackerSettings.BindingMode = Unity.Cinemachine.TargetTracking.BindingMode.LazyFollow;
+            follow.TrackerSettings.PositionDamping = new Vector3(0.1f, 0.1f, 0.1f);
+            follow.TrackerSettings.RotationDamping = Vector3.zero;
 
             vcam.Follow = pivot.transform;
             vcam.LookAt = config.target;
 
             if (debugMode)
             {
-                Debug.Log($"[CameraManager] Built Perspective Lite Rig (Unlocked):");
+                Debug.Log($"[CameraManager] Built Locked Perspective Rig:");
                 Debug.Log($"  - FOV: {perspectiveFov}°");
                 Debug.Log($"  - Follow Offset: {follow.FollowOffset}");
+                Debug.Log($"  - Pivot Position: {pivot.transform.position}");
+                Debug.Log($"  - Player Position: {config.target.position}");
                 Debug.Log($"  - Following: {pivot.transform.name}");
                 Debug.Log($"  - Looking At: {config.target.name}");
             }
         }
 
-        private void ConfigureLockedPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
+        private void ConfigureUnlockedPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
         {
             var follow = vcam.GetComponent<CinemachineFollow>();
             if (follow != null)
@@ -1582,7 +1582,7 @@ namespace BugWars.Core
  
             tpf.CameraDistance = orbitCameraDistance;
             tpf.ShoulderOffset = orbitShoulderOffset;
-            tpf.VerticalArmLength = Mathf.Max(0.25f, config.verticalArmLength - 0.5f);
+            tpf.VerticalArmLength = config.verticalArmLength;
             tpf.CameraSide = 0.5f;
             tpf.Damping = orbitPositionDamping;
  
@@ -1599,15 +1599,18 @@ namespace BugWars.Core
             deoc.AvoidObstacles.CameraRadius = 0.2f;
             deoc.AvoidObstacles.DistanceLimit = tpf.CameraDistance + 1.5f;
  
+            EnsurePanTilt(vcam, config);
+
             vcam.Follow = pivot.transform;
             vcam.LookAt = pivot.transform;
  
             if (debugMode)
             {
-                Debug.Log($"[CameraManager] Built Perspective Lite Rig (Locked):");
-                Debug.Log($"  - CameraDistance: {orbitCameraDistance}");
-                Debug.Log($"  - ShoulderOffset: {orbitShoulderOffset}");
-                Debug.Log($"  - Using ThirdPersonFollow for orbital lock");
+                Debug.Log($"[CameraManager] Built Perspective Lite Rig (Unlocked):");
+                Debug.Log($"  - FOV: {perspectiveFov}°");
+                Debug.Log($"  - Follow Offset: {follow.FollowOffset}");
+                Debug.Log($"  - Following: {pivot.transform.name}");
+                Debug.Log($"  - Looking At: {config.target.name}");
             }
         }
 
@@ -1619,18 +1622,35 @@ namespace BugWars.Core
             if (!pivot.followPlayerYaw)
                 return;
 
-            Vector3 direction = moveDir.sqrMagnitude > 0.0001f
-                ? moveDir
-                : Vector3.ProjectOnPlane(player.forward, Vector3.up);
-
-            if (direction.sqrMagnitude < 0.0001f)
+            if (moveDir.sqrMagnitude < 0.0001f)
                 return;
 
+            Vector3 direction = moveDir;
             float angle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
             float snapped = SnapToCardinal(angle);
             Quaternion targetRotation = Quaternion.Euler(0f, snapped, 0f);
             float yawSpeed = Mathf.Max(1f, pivot.followYawSpeed);
             pivot.transform.rotation = Quaternion.RotateTowards(pivot.transform.rotation, targetRotation, yawSpeed * Time.deltaTime);
+        }
+
+        private static float SnapToCardinal(float angle)
+        {
+            angle = Mathf.Repeat(angle, 360f);
+            float[] cardinals = { 0f, 90f, 180f, 270f };
+            float nearest = cardinals[0];
+            float minDiff = Mathf.Abs(Mathf.DeltaAngle(angle, cardinals[0]));
+
+            for (int i = 1; i < cardinals.Length; i++)
+            {
+                float diff = Mathf.Abs(Mathf.DeltaAngle(angle, cardinals[i]));
+                if (diff < minDiff)
+                {
+                    minDiff = diff;
+                    nearest = cardinals[i];
+                }
+            }
+
+            return nearest;
         }
 
         /// <summary>
