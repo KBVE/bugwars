@@ -39,10 +39,10 @@ namespace BugWars.Characters
         
         void Start()
         {
-            // Apply the character material if set
-            if (characterMaterial != null && meshRenderer != null)
+            // Apply the character material to all mesh renderers if set
+            if (characterMaterial != null)
             {
-                meshRenderer.material = characterMaterial;
+                ApplyMaterialToAllMeshes();
             }
         }
         
@@ -113,9 +113,22 @@ namespace BugWars.Characters
         public void SetMaterial(Material material)
         {
             characterMaterial = material;
-            if (meshRenderer != null)
+            ApplyMaterialToAllMeshes();
+        }
+
+        /// <summary>
+        /// Apply the character material to all SkinnedMeshRenderers in the hierarchy
+        /// </summary>
+        private void ApplyMaterialToAllMeshes()
+        {
+            if (characterMaterial == null) return;
+
+            // Get all SkinnedMeshRenderers in children (this includes the character body parts)
+            SkinnedMeshRenderer[] renderers = GetComponentsInChildren<SkinnedMeshRenderer>();
+
+            foreach (SkinnedMeshRenderer renderer in renderers)
             {
-                meshRenderer.material = material;
+                renderer.material = characterMaterial;
             }
         }
         

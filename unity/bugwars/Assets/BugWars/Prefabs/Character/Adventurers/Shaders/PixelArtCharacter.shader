@@ -2,215 +2,103 @@ Shader "BugWars/PixelArtCharacter"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
-        _Color ("Tint Color", Color) = (1,1,1,1)
-
-        [Header(Pixelation Settings)]
-        _PixelSize ("Pixel Size", Range(0.001, 0.1)) = 0.02
-        _TexturePixelation ("Texture Pixelation", Range(1, 64)) = 8
-
-        [Header(Outline Settings)]
-        _OutlineWidth ("Outline Width", Range(0, 0.1)) = 0.01
-        _OutlineColor ("Outline Color", Color) = (0,0,0,1)
-
-        [Header(Vertex Quantization)]
-        _VertexQuantization ("Vertex Quantization", Range(0, 1)) = 0.5
-        _QuantizationSize ("Quantization Grid Size", Range(0.01, 1.0)) = 0.1
-
-        [Header(Lighting)]
-        _AmbientStrength ("Ambient Strength", Range(0, 1)) = 0.3
-        _DiffuseStrength ("Diffuse Strength", Range(0, 1)) = 0.7
+        [MainTexture] _BaseMap("Texture", 2D) = "white" {}
+        [MainColor] _BaseColor("Color", Color) = (1, 1, 1, 1)
+        _TexturePixelation("Texture Pixelation", Range(1, 64)) = 16
     }
 
     SubShader
     {
-        Tags { "RenderType"="Opaque" "Queue"="Geometry" }
-        LOD 100
-
-        // First pass: Draw outline
-        Pass
+        Tags
         {
-            Name "OUTLINE"
-            Tags { "LightMode" = "Always" }
-            Cull Front
-
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #include "UnityCG.cginc"
-
-            struct appdata
-            {
-                float4 vertex : POSITION;
-                float3 normal : NORMAL;
-            };
-
-            struct v2f
-            {
-                float4 pos : SV_POSITION;
-            };
-
-            float _OutlineWidth;
-            float4 _OutlineColor;
-
-            v2f vert(appdata v)
-            {
-                v2f o;
-
-                // Expand vertices along normals for outline
-                float3 norm = normalize(v.normal);
-                float3 expanded = v.vertex.xyz + norm * _OutlineWidth;
-
-                o.pos = UnityObjectToClipPos(float4(expanded, 1.0));
-                return o;
-            }
-
-            fixed4 frag(v2f i) : SV_Target
-            {
-                return _OutlineColor;
-            }
-            ENDCG
+            "RenderType" = "Opaque"
+            "RenderPipeline" = "UniversalPipeline"
+            "Queue" = "Geometry"
         }
 
-        // Second pass: Main pixel shader with quantization
+        // Main Lit Pass
         Pass
         {
-            Name "BASE"
-            Tags { "LightMode" = "ForwardBase" }
+            Name "ForwardLit"
+            Tags { "LightMode" = "UniversalForward" }
+
             Cull Back
+            ZWrite On
 
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma multi_compile_fwdbase
-            #include "UnityCG.cginc"
-            #include "AutoLight.cginc"
+            HLSLPROGRAM
+            #pragma vertex LitPassVertex
+            #pragma fragment LitPassFragment
 
-            struct appdata
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+
+            struct Attributes
             {
-                float4 vertex : POSITION;
-                float3 normal : NORMAL;
-                float2 uv : TEXCOORD0;
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+                float2 texcoord : TEXCOORD0;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                float3 worldNormal : TEXCOORD1;
-                float3 worldPos : TEXCOORD2;
-                float4 screenPos : TEXCOORD3;
-                SHADOW_COORDS(4)
+                float3 normalWS : TEXCOORD1;
+                float4 positionCS : SV_POSITION;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-            float4 _Color;
-            float _PixelSize;
-            float _TexturePixelation;
-            float _VertexQuantization;
-            float _QuantizationSize;
-            float _AmbientStrength;
-            float _DiffuseStrength;
+            TEXTURE2D(_BaseMap);
+            SAMPLER(sampler_BaseMap);
 
-            // Quantize position to grid
-            float3 QuantizePosition(float3 pos, float gridSize)
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST;
+                half4 _BaseColor;
+                float _TexturePixelation;
+            CBUFFER_END
+
+            Varyings LitPassVertex(Attributes input)
             {
-                return floor(pos / gridSize) * gridSize;
+                Varyings output = (Varyings)0;
+
+                VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
+                VertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS);
+
+                output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
+                output.normalWS = normalInput.normalWS;
+                output.positionCS = vertexInput.positionCS;
+
+                return output;
             }
 
-            // Quantize screen position for pixel effect
-            float4 QuantizeScreenPos(float4 vertex, float pixelSize)
+            half4 LitPassFragment(Varyings input) : SV_Target
             {
-                float4 screenPos = ComputeScreenPos(vertex);
-                screenPos.xyz /= screenPos.w;
-
-                float2 pixelatedPos = floor(screenPos.xy / pixelSize) * pixelSize;
-                screenPos.xy = pixelatedPos * screenPos.w;
-
-                return vertex;
-            }
-
-            v2f vert(appdata v)
-            {
-                v2f o;
-
-                // Transform to clip space first
-                float4 clipPos = UnityObjectToClipPos(v.vertex);
-
-                // Apply screen-space pixelation
-                float2 screenSize = _ScreenParams.xy;
-                float2 pixelSize = float2(_PixelSize, _PixelSize) * 100.0;
-                float2 ndc = clipPos.xy / clipPos.w;
-                float2 pixelatedNDC = floor(ndc * screenSize / pixelSize) * pixelSize / screenSize;
-
-                // Blend between normal and pixelated based on quantization amount
-                clipPos.xy = lerp(ndc, pixelatedNDC, _VertexQuantization) * clipPos.w;
-
-                o.pos = clipPos;
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                o.worldNormal = UnityObjectToWorldNormal(v.normal);
-                o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
-                o.screenPos = ComputeScreenPos(clipPos);
-
-                TRANSFER_SHADOW(o);
-
-                return o;
-            }
-
-            // Pixelate UV coordinates
-            float2 PixelateUV(float2 uv, float pixelation)
-            {
-                float2 pixelatedUV = floor(uv * pixelation) / pixelation;
-                return pixelatedUV;
-            }
-
-            // Simple toon-style lighting with stepped shading
-            float ToonShading(float3 normal, float3 lightDir, int steps)
-            {
-                float NdotL = dot(normal, lightDir);
-                float lighting = max(0.0, NdotL);
-
-                // Quantize lighting into discrete steps for pixel art look
-                lighting = floor(lighting * steps) / steps;
-
-                return lighting;
-            }
-
-            fixed4 frag(v2f i) : SV_Target
-            {
-                // Pixelate UVs for texture
-                float2 pixelatedUV = PixelateUV(i.uv, _TexturePixelation);
+                // Pixelate UVs for retro texture look
+                float2 pixelatedUV = floor(input.uv * _TexturePixelation) / _TexturePixelation;
 
                 // Sample texture with pixelated UVs
-                fixed4 col = tex2D(_MainTex, pixelatedUV) * _Color;
+                half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, pixelatedUV);
+                albedo *= _BaseColor;
 
-                // Calculate lighting
-                float3 normal = normalize(i.worldNormal);
-                float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
+                // Get main light
+                Light mainLight = GetMainLight();
 
-                // Toon shading with 4 steps for retro look
-                float diffuse = ToonShading(normal, lightDir, 4);
+                // Calculate simple diffuse lighting
+                float3 normalWS = normalize(input.normalWS);
+                float NdotL = saturate(dot(normalWS, mainLight.direction));
+
+                // Add strong ambient for good visibility
+                float lighting = max(0.6, NdotL);
+
+                // Quantize to 4 steps for toon/pixel art look
+                lighting = floor(lighting * 4.0) / 4.0;
 
                 // Apply lighting
-                float3 ambient = _AmbientStrength * col.rgb;
-                float3 diffuseColor = _DiffuseStrength * diffuse * col.rgb;
+                half3 color = albedo.rgb * lighting * mainLight.color;
 
-                col.rgb = ambient + diffuseColor;
-
-                // Apply shadows
-                float shadow = SHADOW_ATTENUATION(i);
-                col.rgb *= shadow;
-
-                // Quantize final color for pixel art look (reduce color palette)
-                float colorSteps = 16.0;
-                col.rgb = floor(col.rgb * colorSteps) / colorSteps;
-
-                return col;
+                return half4(color, albedo.a);
             }
-            ENDCG
+            ENDHLSL
         }
     }
 
-    FallBack "Diffuse"
+    FallBack "Hidden/Universal Render Pipeline/FallbackError"
 }

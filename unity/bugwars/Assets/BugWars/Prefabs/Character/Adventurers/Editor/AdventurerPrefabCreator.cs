@@ -138,31 +138,40 @@ namespace BugWars.Characters.Editor
                         // Only update if not already using the pixel shader
                         if (material.shader != pixelShader)
                         {
+                            // Get current texture or load from fbx folder
                             Texture mainTex = material.mainTexture;
-                            Color color = material.HasProperty("_Color") ? material.color : Color.white;
+
+                            // If no texture, try to load the character texture from fbx folder
+                            if (mainTex == null)
+                            {
+                                string textureName = characterName.Replace("_Hooded", "").ToLower() + "_texture.png";
+                                string texturePath = FBX_PATH + textureName;
+                                mainTex = AssetDatabase.LoadAssetAtPath<Texture>(texturePath);
+                            }
+
+                            Color color = material.HasProperty("_Color") ? material.color :
+                                          material.HasProperty("_BaseColor") ? material.GetColor("_BaseColor") : Color.white;
 
                             material.shader = pixelShader;
-                            material.mainTexture = mainTex;
-                            if (material.HasProperty("_Color"))
-                                material.SetColor("_Color", color);
 
-                            // Set default pixel art parameters (HEAVY pixelation for retro look)
-                            if (material.HasProperty("_PixelSize"))
-                                material.SetFloat("_PixelSize", 0.08f);  // Much more aggressive
+                            // Set texture for URP shader (_BaseMap)
+                            if (material.HasProperty("_BaseMap") && mainTex != null)
+                            {
+                                material.SetTexture("_BaseMap", mainTex);
+                                fullReport.AppendLine($"  • Set texture: {mainTex.name}");
+                            }
+                            else if (mainTex == null)
+                            {
+                                fullReport.AppendLine($"  ⚠ No texture found for {characterName}");
+                            }
+
+                            // Set color for URP shader (_BaseColor)
+                            if (material.HasProperty("_BaseColor"))
+                                material.SetColor("_BaseColor", color);
+
+                            // Set pixel art parameters for balanced retro look
                             if (material.HasProperty("_TexturePixelation"))
-                                material.SetFloat("_TexturePixelation", 32f);  // Very pixelated textures
-                            if (material.HasProperty("_OutlineWidth"))
-                                material.SetFloat("_OutlineWidth", 0.02f);  // Thicker outline
-                            if (material.HasProperty("_OutlineColor"))
-                                material.SetColor("_OutlineColor", Color.black);
-                            if (material.HasProperty("_VertexQuantization"))
-                                material.SetFloat("_VertexQuantization", 0.9f);  // Almost full quantization
-                            if (material.HasProperty("_QuantizationSize"))
-                                material.SetFloat("_QuantizationSize", 0.2f);  // Larger grid = blockier
-                            if (material.HasProperty("_AmbientStrength"))
-                                material.SetFloat("_AmbientStrength", 0.3f);
-                            if (material.HasProperty("_DiffuseStrength"))
-                                material.SetFloat("_DiffuseStrength", 0.7f);
+                                material.SetFloat("_TexturePixelation", 16f);  // Moderate texture pixelation
 
                             EditorUtility.SetDirty(material);
                             fullReport.AppendLine($"✓ Applied pixel shader to: {materialName}");
@@ -801,37 +810,47 @@ namespace BugWars.Characters.Editor
 
                 if (material != null)
                 {
-                    // Store the main texture before changing shader
+                    // Get current texture or load from fbx folder
                     Texture mainTex = material.mainTexture;
-                    Color color = material.HasProperty("_Color") ? material.color : Color.white;
+
+                    // If no texture, try to load the character texture from fbx folder
+                    if (mainTex == null)
+                    {
+                        string textureName = characterName.Replace("_Hooded", "").ToLower() + "_texture.png";
+                        string texturePath = FBX_PATH + textureName;
+                        mainTex = AssetDatabase.LoadAssetAtPath<Texture>(texturePath);
+
+                        if (mainTex != null)
+                        {
+                            Debug.Log($"  • Loaded texture: {textureName}");
+                        }
+                    }
+
+                    Color color = material.HasProperty("_Color") ? material.color :
+                                  material.HasProperty("_BaseColor") ? material.GetColor("_BaseColor") : Color.white;
 
                     // Change shader
                     material.shader = pixelShader;
 
-                    // Restore and set properties
-                    material.mainTexture = mainTex;
-                    if (material.HasProperty("_Color"))
+                    // Set texture for URP shader (_BaseMap)
+                    if (material.HasProperty("_BaseMap") && mainTex != null)
                     {
-                        material.SetColor("_Color", color);
+                        material.SetTexture("_BaseMap", mainTex);
+                    }
+                    else if (mainTex == null)
+                    {
+                        Debug.LogWarning($"  ⚠ No texture found for {characterName}");
                     }
 
-                    // Set default pixel art parameters (HEAVY pixelation for retro look)
-                    if (material.HasProperty("_PixelSize"))
-                        material.SetFloat("_PixelSize", 0.08f);  // Much more aggressive
+                    // Set color
+                    if (material.HasProperty("_BaseColor"))
+                    {
+                        material.SetColor("_BaseColor", color);
+                    }
+
+                    // Set pixel art parameters for balanced retro look
                     if (material.HasProperty("_TexturePixelation"))
-                        material.SetFloat("_TexturePixelation", 32f);  // Very pixelated textures
-                    if (material.HasProperty("_OutlineWidth"))
-                        material.SetFloat("_OutlineWidth", 0.02f);  // Thicker outline
-                    if (material.HasProperty("_OutlineColor"))
-                        material.SetColor("_OutlineColor", Color.black);
-                    if (material.HasProperty("_VertexQuantization"))
-                        material.SetFloat("_VertexQuantization", 0.9f);  // Almost full quantization
-                    if (material.HasProperty("_QuantizationSize"))
-                        material.SetFloat("_QuantizationSize", 0.2f);  // Larger grid = blockier
-                    if (material.HasProperty("_AmbientStrength"))
-                        material.SetFloat("_AmbientStrength", 0.3f);
-                    if (material.HasProperty("_DiffuseStrength"))
-                        material.SetFloat("_DiffuseStrength", 0.7f);
+                        material.SetFloat("_TexturePixelation", 16f);  // Moderate texture pixelation
 
                     EditorUtility.SetDirty(material);
                     updatedCount++;
@@ -851,12 +870,12 @@ namespace BugWars.Characters.Editor
             EditorUtility.DisplayDialog(
                 "Pixel Shader Applied",
                 $"Successfully applied PixelArtCharacter shader to {updatedCount} material(s)!\n\n" +
-                "Default settings:\n" +
-                "• Pixel Size: 0.02\n" +
-                "• Texture Pixelation: 8x\n" +
-                "• Outline Width: 0.01\n" +
-                "• Vertex Quantization: 0.5\n\n" +
-                "You can adjust these in the material inspector.",
+                "Simple Pixel Art Settings:\n" +
+                "• Texture Pixelation: 16x\n" +
+                "• Lighting: 4-step toon shading\n" +
+                "• Strong ambient lighting for visibility\n\n" +
+                "Characters should be fully visible with a subtle pixel art look!\n\n" +
+                "You can adjust Texture Pixelation in the material inspector.",
                 "OK");
         }
 

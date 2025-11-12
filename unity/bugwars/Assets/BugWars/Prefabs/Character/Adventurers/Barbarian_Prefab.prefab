@@ -48,10 +48,34 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -8420439007254882976, guid: bed0754a885684d7cbc007b65e03cdbb, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 2cc0be80f9ff94792bea90a49171fbb3, type: 2}
+    - target: {fileID: -7738652505069355772, guid: bed0754a885684d7cbc007b65e03cdbb, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 2cc0be80f9ff94792bea90a49171fbb3, type: 2}
+    - target: {fileID: -4348951990779965208, guid: bed0754a885684d7cbc007b65e03cdbb, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 2cc0be80f9ff94792bea90a49171fbb3, type: 2}
+    - target: {fileID: -1161860275224355241, guid: bed0754a885684d7cbc007b65e03cdbb, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 2cc0be80f9ff94792bea90a49171fbb3, type: 2}
     - target: {fileID: 919132149155446097, guid: bed0754a885684d7cbc007b65e03cdbb, type: 3}
       propertyPath: m_Name
       value: Barbarian_Prefab
       objectReference: {fileID: 0}
+    - target: {fileID: 1524220712459093414, guid: bed0754a885684d7cbc007b65e03cdbb, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 2cc0be80f9ff94792bea90a49171fbb3, type: 2}
+    - target: {fileID: 2909256914867834565, guid: bed0754a885684d7cbc007b65e03cdbb, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 2cc0be80f9ff94792bea90a49171fbb3, type: 2}
     - target: {fileID: 4681804441759626293, guid: bed0754a885684d7cbc007b65e03cdbb, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 

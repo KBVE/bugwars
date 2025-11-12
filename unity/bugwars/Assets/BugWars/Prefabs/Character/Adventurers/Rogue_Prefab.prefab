@@ -48,6 +48,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7263015266732235272, guid: 963b58038a78e4bbaae610fb64731617, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 00a8e2534983a445d80052e509c75212, type: 2}
+    - target: {fileID: -3558002004447144709, guid: 963b58038a78e4bbaae610fb64731617, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 00a8e2534983a445d80052e509c75212, type: 2}
+    - target: {fileID: -3053669679340262298, guid: 963b58038a78e4bbaae610fb64731617, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 00a8e2534983a445d80052e509c75212, type: 2}
     - target: {fileID: -935533772807217311, guid: 963b58038a78e4bbaae610fb64731617, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -56,6 +68,18 @@ PrefabInstance:
       propertyPath: m_Name
       value: Rogue_Prefab
       objectReference: {fileID: 0}
+    - target: {fileID: 3680723932289504619, guid: 963b58038a78e4bbaae610fb64731617, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 00a8e2534983a445d80052e509c75212, type: 2}
+    - target: {fileID: 5271092880574161400, guid: 963b58038a78e4bbaae610fb64731617, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 00a8e2534983a445d80052e509c75212, type: 2}
+    - target: {fileID: 7780057163218742532, guid: 963b58038a78e4bbaae610fb64731617, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 00a8e2534983a445d80052e509c75212, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
