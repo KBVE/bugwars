@@ -82,8 +82,9 @@ All character management is located under `KBVE > Characters`:
 
 | Command | Description |
 |---------|-------------|
-| **Sync Adventurers** | **[ALL-IN-ONE]** Creates, syncs, and verifies all character prefabs. Handles everything in one click! |
+| **Sync Adventurers** | **[ALL-IN-ONE]** Creates, syncs, and verifies all character prefabs. Applies pixel art shader. Handles everything in one click! |
 | **Configure FBX Import Settings** | Configures all character FBX files to generate humanoid Avatars. Run this if Avatars are missing. |
+| **Apply Pixel Shader to Materials** | Applies the PixelArtCharacter shader to all character materials. Auto-done during sync. |
 | **Setup Test Character** | Creates a test Knight character in the current scene at (0, 0, 0). |
 
 ### Manual Setup
@@ -145,14 +146,38 @@ Each character has a dedicated texture file in the `fbx/` folder:
 
 Materials are created using Unity's Standard shader by default, located in the `Materials/` folder.
 
-## Next Steps: Pixel Shader
+## Pixel Art Shader
 
-After setting up the characters, the next phase will be creating a custom pixel shader to give these 3D models a pixelated look that blends with the game's art style. This will involve:
+The characters use a custom **PixelArtCharacter** shader (`Shaders/PixelArtCharacter.shader`) that transforms 3D models into retro pixel art. The shader is **automatically applied** during the "Sync Adventurers" command.
 
-1. Creating a custom shader that quantizes the model's position/normals
-2. Applying pixelation effects to the texture sampling
-3. Implementing outline/edge detection for a retro aesthetic
-4. Optimizing the shader for performance
+### Features
+- **Vertex Quantization** - Snaps vertices to a grid for blocky low-poly look
+- **Texture Pixelation** - Reduces texture resolution (default: 8x pixelation)
+- **Two-Pass Outline Rendering** - Black outlines around characters for crisp edges
+- **Toon Lighting** - 4-level stepped lighting for retro aesthetic
+- **Color Quantization** - 16-level color palette reduction per channel
+
+### Adjustable Parameters
+All parameters can be tweaked in the Material Inspector:
+
+| Parameter | Range | Default | Description |
+|-----------|-------|---------|-------------|
+| Pixel Size | 0.001 - 0.1 | 0.02 | Overall pixelation amount |
+| Texture Pixelation | 1 - 64 | 8 | Texture pixelation level |
+| Outline Width | 0 - 0.1 | 0.01 | Outline thickness |
+| Outline Color | Color | Black | Outline color |
+| Vertex Quantization | 0 - 1 | 0.5 | Geometry snap to grid amount |
+| Quantization Grid Size | 0.01 - 1.0 | 0.1 | Grid cell size |
+| Ambient Strength | 0 - 1 | 0.3 | Ambient lighting |
+| Diffuse Strength | 0 - 1 | 0.7 | Directional lighting |
+
+### Shader Location
+`Assets/BugWars/Prefabs/Character/Adventurers/Shaders/PixelArtCharacter.shader`
+
+### Manual Application
+If you need to manually apply or re-apply the shader:
+- Run `KBVE > Characters > Apply Pixel Shader to Materials`
+- Or assign the shader directly in the Material Inspector
 
 ## Weapons and Props
 

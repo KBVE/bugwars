@@ -29,6 +29,12 @@
    - Validates rig assignments
    - Confirms materials are applied
 
+4. **PHASE 4:** Applies Pixel Art Shader
+   - Loads PixelArtCharacter shader
+   - Applies shader to all character materials
+   - Sets default pixelation parameters
+   - Creates retro pixel art aesthetic with outlines
+
 **Expected Output:**
 ```
 === KBVE Adventurer Sync - All-In-One ===
@@ -62,6 +68,17 @@ Knight:
   ✓ Mesh renderer present
 [... similar for other characters ...]
 
+PHASE 4: Applying Pixel Art Shader
+-----------------------------------
+✓ Loaded shader: BugWars/PixelArtCharacter
+✓ Applied pixel shader to: Knight_Material.mat
+✓ Applied pixel shader to: Barbarian_Material.mat
+✓ Applied pixel shader to: Mage_Material.mat
+✓ Applied pixel shader to: Rogue_Material.mat
+✓ Applied pixel shader to: Ranger_Material.mat
+
+Pixel Shader Applied: 5 material(s) updated
+
 ╔════════════════════════════════════════════════════╗
 ║  ✓ SUCCESS - All adventurers ready to use!        ║
 ╚════════════════════════════════════════════════════╝
@@ -80,6 +97,13 @@ Knight:
 - Sets Avatar Definition to "Create From This Model"
 - Auto-reimports FBX files
 - After running, sync again to assign Avatars
+
+### KBVE > Characters > Apply Pixel Shader to Materials
+**Standalone command to apply pixel shader**
+- Applies PixelArtCharacter shader to all character materials
+- Sets default pixelation parameters
+- Useful if you want to re-apply shader settings or if shader was updated
+- Note: This is automatically done during "Sync Adventurers"
 
 ### KBVE > Characters > Setup Test Character
 Creates a Knight character in the scene at (0, 0, 0) for testing.
@@ -157,14 +181,32 @@ Located in: `Assets/BugWars/Prefabs/Character/Adventurers/Rig_Medium/`
 2. A Knight appears at (0, 0, 0)
 3. Test animations, materials, etc.
 
-## Next Phase: Pixel Shader
+## Pixel Art Shader
 
-Once characters are verified and working:
-- Custom pixel shader for 3D → pixelated look
-- Vertex quantization for low-poly aesthetic
-- Texture pixelation effects
-- Outline/edge detection
-- Retro style that matches 2D pixel art
+The characters use a custom **PixelArtCharacter** shader that transforms 3D models into retro pixel art:
+
+### Features
+- **Vertex Quantization** - Snaps vertices to a grid for blocky low-poly look
+- **Texture Pixelation** - Reduces texture resolution for pixel art aesthetic
+- **Outline/Edge Detection** - Black outlines around characters (two-pass rendering)
+- **Toon Lighting** - Stepped lighting with 4 discrete levels
+- **Color Quantization** - Reduces color palette to 16 levels per channel for retro look
+
+### Shader Parameters (Adjustable in Material Inspector)
+- **Pixel Size** (0.001 - 0.1) - Controls overall pixelation amount (default: 0.02)
+- **Texture Pixelation** (1 - 64) - How pixelated textures appear (default: 8x)
+- **Outline Width** (0 - 0.1) - Thickness of character outline (default: 0.01)
+- **Outline Color** - Color of the outline (default: black)
+- **Vertex Quantization** (0 - 1) - How much geometry is snapped to grid (default: 0.5)
+- **Quantization Grid Size** (0.01 - 1.0) - Size of snap grid (default: 0.1)
+- **Ambient Strength** (0 - 1) - Ambient lighting amount (default: 0.3)
+- **Diffuse Strength** (0 - 1) - Directional lighting amount (default: 0.7)
+
+### Location
+`Assets/BugWars/Prefabs/Character/Adventurers/Shaders/PixelArtCharacter.shader`
+
+### Auto-Applied
+The shader is **automatically applied** during "Sync Adventurers" command (Phase 4).
 
 ## File Structure
 

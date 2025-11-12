@@ -115,6 +115,75 @@ namespace BugWars.Characters.Editor
                     allValid = false;
             }
 
+            // PHASE 4: Apply Pixel Shader
+            fullReport.AppendLine("\nPHASE 4: Applying Pixel Art Shader");
+            fullReport.AppendLine("-----------------------------------");
+
+            string shaderPath = "Assets/BugWars/Prefabs/Character/Adventurers/Shaders/PixelArtCharacter.shader";
+            Shader pixelShader = AssetDatabase.LoadAssetAtPath<Shader>(shaderPath);
+
+            int shaderAppliedCount = 0;
+            if (pixelShader != null)
+            {
+                fullReport.AppendLine($"✓ Loaded shader: {pixelShader.name}");
+
+                foreach (string characterName in CHARACTER_NAMES)
+                {
+                    string materialName = characterName.Replace("_Hooded", "") + "_Material.mat";
+                    string materialFullPath = MATERIAL_PATH + materialName;
+                    Material material = AssetDatabase.LoadAssetAtPath<Material>(materialFullPath);
+
+                    if (material != null)
+                    {
+                        // Only update if not already using the pixel shader
+                        if (material.shader != pixelShader)
+                        {
+                            Texture mainTex = material.mainTexture;
+                            Color color = material.HasProperty("_Color") ? material.color : Color.white;
+
+                            material.shader = pixelShader;
+                            material.mainTexture = mainTex;
+                            if (material.HasProperty("_Color"))
+                                material.SetColor("_Color", color);
+
+                            // Set default pixel art parameters
+                            if (material.HasProperty("_PixelSize"))
+                                material.SetFloat("_PixelSize", 0.02f);
+                            if (material.HasProperty("_TexturePixelation"))
+                                material.SetFloat("_TexturePixelation", 8f);
+                            if (material.HasProperty("_OutlineWidth"))
+                                material.SetFloat("_OutlineWidth", 0.01f);
+                            if (material.HasProperty("_OutlineColor"))
+                                material.SetColor("_OutlineColor", Color.black);
+                            if (material.HasProperty("_VertexQuantization"))
+                                material.SetFloat("_VertexQuantization", 0.5f);
+                            if (material.HasProperty("_QuantizationSize"))
+                                material.SetFloat("_QuantizationSize", 0.1f);
+                            if (material.HasProperty("_AmbientStrength"))
+                                material.SetFloat("_AmbientStrength", 0.3f);
+                            if (material.HasProperty("_DiffuseStrength"))
+                                material.SetFloat("_DiffuseStrength", 0.7f);
+
+                            EditorUtility.SetDirty(material);
+                            fullReport.AppendLine($"✓ Applied pixel shader to: {materialName}");
+                            shaderAppliedCount++;
+                        }
+                        else
+                        {
+                            fullReport.AppendLine($"• {materialName} already using pixel shader");
+                        }
+                    }
+                }
+
+                AssetDatabase.SaveAssets();
+                fullReport.AppendLine($"\nPixel Shader Applied: {shaderAppliedCount} material(s) updated");
+            }
+            else
+            {
+                fullReport.AppendLine($"⚠ Pixel shader not found at: {shaderPath}");
+                fullReport.AppendLine("  Materials will use default shader. Run 'Apply Pixel Shader to Materials' manually.");
+            }
+
             // Final Summary
             fullReport.AppendLine("\n╔════════════════════════════════════════════════════╗");
             if (allValid && errorCount == 0)
@@ -136,10 +205,14 @@ namespace BugWars.Characters.Editor
             // Show summary dialog in editor
             if (allValid && errorCount == 0)
             {
+                string shaderInfo = pixelShader != null
+                    ? $"\n\nPixel Art Shader: Applied to {shaderAppliedCount} material(s)"
+                    : "";
+
                 EditorUtility.DisplayDialog(
                     "Adventurer Sync Complete",
                     $"Successfully synced all {successCount} adventurer characters!\n\n" +
-                    "All rigs, materials, and components are configured.\n\n" +
+                    "All rigs, materials, and components are configured." + shaderInfo + "\n\n" +
                     "Characters are ready to use in your scenes.",
                     "OK");
             }
@@ -691,6 +764,100 @@ namespace BugWars.Characters.Editor
                     "Run 'Sync Adventurers' again to assign the Avatars.",
                     "OK");
             }
+        }
+
+        /// <summary>
+        /// Apply the Pixel Art shader to all character materials
+        /// </summary>
+        [MenuItem("KBVE/Characters/Apply Pixel Shader to Materials")]
+        public static void ApplyPixelShaderToMaterials()
+        {
+            Debug.Log("=== Applying Pixel Shader to Character Materials ===");
+
+            // Load the pixel shader
+            string shaderPath = "Assets/BugWars/Prefabs/Character/Adventurers/Shaders/PixelArtCharacter.shader";
+            Shader pixelShader = AssetDatabase.LoadAssetAtPath<Shader>(shaderPath);
+
+            if (pixelShader == null)
+            {
+                Debug.LogError($"Pixel shader not found at: {shaderPath}");
+                EditorUtility.DisplayDialog(
+                    "Shader Not Found",
+                    $"Could not find PixelArtCharacter shader at:\n{shaderPath}\n\nMake sure the shader file exists.",
+                    "OK");
+                return;
+            }
+
+            Debug.Log($"✓ Loaded shader: {pixelShader.name}");
+
+            int updatedCount = 0;
+
+            // Update each character material
+            foreach (string characterName in CHARACTER_NAMES)
+            {
+                string materialName = characterName.Replace("_Hooded", "") + "_Material.mat";
+                string materialFullPath = MATERIAL_PATH + materialName;
+                Material material = AssetDatabase.LoadAssetAtPath<Material>(materialFullPath);
+
+                if (material != null)
+                {
+                    // Store the main texture before changing shader
+                    Texture mainTex = material.mainTexture;
+                    Color color = material.HasProperty("_Color") ? material.color : Color.white;
+
+                    // Change shader
+                    material.shader = pixelShader;
+
+                    // Restore and set properties
+                    material.mainTexture = mainTex;
+                    if (material.HasProperty("_Color"))
+                    {
+                        material.SetColor("_Color", color);
+                    }
+
+                    // Set default pixel art parameters
+                    if (material.HasProperty("_PixelSize"))
+                        material.SetFloat("_PixelSize", 0.02f);
+                    if (material.HasProperty("_TexturePixelation"))
+                        material.SetFloat("_TexturePixelation", 8f);
+                    if (material.HasProperty("_OutlineWidth"))
+                        material.SetFloat("_OutlineWidth", 0.01f);
+                    if (material.HasProperty("_OutlineColor"))
+                        material.SetColor("_OutlineColor", Color.black);
+                    if (material.HasProperty("_VertexQuantization"))
+                        material.SetFloat("_VertexQuantization", 0.5f);
+                    if (material.HasProperty("_QuantizationSize"))
+                        material.SetFloat("_QuantizationSize", 0.1f);
+                    if (material.HasProperty("_AmbientStrength"))
+                        material.SetFloat("_AmbientStrength", 0.3f);
+                    if (material.HasProperty("_DiffuseStrength"))
+                        material.SetFloat("_DiffuseStrength", 0.7f);
+
+                    EditorUtility.SetDirty(material);
+                    updatedCount++;
+                    Debug.Log($"✓ Updated material: {materialName}");
+                }
+                else
+                {
+                    Debug.LogWarning($"Material not found: {materialFullPath}");
+                }
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            Debug.Log($"=== Pixel Shader Applied: {updatedCount} materials updated ===");
+
+            EditorUtility.DisplayDialog(
+                "Pixel Shader Applied",
+                $"Successfully applied PixelArtCharacter shader to {updatedCount} material(s)!\n\n" +
+                "Default settings:\n" +
+                "• Pixel Size: 0.02\n" +
+                "• Texture Pixelation: 8x\n" +
+                "• Outline Width: 0.01\n" +
+                "• Vertex Quantization: 0.5\n\n" +
+                "You can adjust these in the material inspector.",
+                "OK");
         }
 
         #endregion
