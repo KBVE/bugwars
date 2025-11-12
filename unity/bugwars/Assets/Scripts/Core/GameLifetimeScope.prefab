@@ -286,6 +286,8 @@ MonoBehaviour:
   defaultTiltAngle: -34
   defaultPanOffset: 0
   framingPreset: 1
+  autoAlignMode: 0
+  autoAlignSpeed: 360
 --- !u!1 &7897882360276293766
 GameObject:
   m_ObjectHideFlags: 0

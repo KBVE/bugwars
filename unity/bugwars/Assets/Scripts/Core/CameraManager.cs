@@ -504,6 +504,37 @@ namespace BugWars.Core
             }
         }
 
+        private void ForceCameraDefaults()
+        {
+            switch (framingPreset)
+            {
+                case CameraFramingPreset.OverShoulder:
+                    orbitShoulderOffset = new Vector3(0.45f, 1.3f, 0f);
+                    orbitCameraDistance = 6.6f;
+                    orbitPositionDamping = new Vector3(0.35f, 0.35f, 0.55f);
+                    orbitPitchClamp = new Vector2(8f, 65f);
+                    pivotHeadRoom = new Vector3(0f, 1.15f, 0f);
+                    pivotShoulderRight = 0.35f;
+                    orbitCameraSide = 0.35f;
+                    defaultTiltAngle = -32f;
+                    defaultPanOffset = 10f;
+                    break;
+
+                case CameraFramingPreset.Centered:
+                default:
+                    orbitShoulderOffset = new Vector3(0f, 2.0f, 0f);
+                    orbitCameraDistance = 8.2f;
+                    orbitPositionDamping = new Vector3(0.25f, 0.25f, 0.45f);
+                    orbitPitchClamp = new Vector2(12f, 55f);
+                    pivotHeadRoom = new Vector3(0f, 1.6f, 0f);
+                    pivotShoulderRight = 0f;
+                    orbitCameraSide = 0.5f;
+                    defaultTiltAngle = -28f;
+                    defaultPanOffset = 0f;
+                    break;
+            }
+        }
+
         private void Start()
         {
             if (debugMode)
@@ -1609,7 +1640,7 @@ namespace BugWars.Core
                 return;
 
             panTilt.ReferenceFrame = autoAlignMode == AutoAlignMode.AlwaysBehind
-                ? CinemachinePanTilt.ReferenceFrames.FollowTarget
+                ? CinemachinePanTilt.ReferenceFrames.TrackingTarget
                 : CinemachinePanTilt.ReferenceFrames.ParentObject;
             panTilt.RecenterTarget = CinemachinePanTilt.RecenterTargetModes.AxisCenter;
 
