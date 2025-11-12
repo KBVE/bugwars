@@ -165,8 +165,31 @@ namespace BugWars.Core
             // Validate required UXML asset
             if (settingsPanelVisualTree == null)
             {
-                Debug.LogError("[GameLifetimeScope] SettingsPanel VisualTreeAsset not assigned!");
-                return null;
+                Debug.LogWarning("[GameLifetimeScope] SettingsPanel VisualTreeAsset not assigned in Inspector, attempting to load from Resources...");
+
+                // Try to load from Resources as a fallback
+                settingsPanelVisualTree = Resources.Load<VisualTreeAsset>("BugWars/UI/Settings/settings_panel");
+
+                if (settingsPanelVisualTree == null)
+                {
+                    // Try loading directly from Assets using UnityEditor in editor mode
+                    #if UNITY_EDITOR
+                    settingsPanelVisualTree = UnityEditor.AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
+                        "Assets/BugWars/UI/Settings/settings_panel.uxml");
+
+                    if (settingsPanelVisualTree != null)
+                    {
+                        Debug.Log("[GameLifetimeScope] Successfully loaded settings_panel.uxml from Assets folder");
+                    }
+                    #endif
+                }
+
+                if (settingsPanelVisualTree == null)
+                {
+                    Debug.LogError("[GameLifetimeScope] Failed to load SettingsPanel VisualTreeAsset! Settings UI will not function.");
+                    Debug.LogError("[GameLifetimeScope] Please assign it in the GameLifetimeScope Inspector.");
+                    return null;
+                }
             }
 
             // If PanelSettings not assigned, create a default one
@@ -213,8 +236,31 @@ namespace BugWars.Core
             // Validate required UXML asset
             if (mainMenuVisualTree == null)
             {
-                Debug.LogError("[GameLifetimeScope] MainMenu VisualTreeAsset not assigned!");
-                return null;
+                Debug.LogWarning("[GameLifetimeScope] MainMenu VisualTreeAsset not assigned in Inspector, attempting to load from Resources...");
+
+                // Try to load from Resources as a fallback
+                mainMenuVisualTree = Resources.Load<VisualTreeAsset>("BugWars/UI/MainMenu/main_menu");
+
+                if (mainMenuVisualTree == null)
+                {
+                    // Try loading directly from Assets using UnityEditor in editor mode
+                    #if UNITY_EDITOR
+                    mainMenuVisualTree = UnityEditor.AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
+                        "Assets/BugWars/UI/MainMenu/main_menu.uxml");
+
+                    if (mainMenuVisualTree != null)
+                    {
+                        Debug.Log("[GameLifetimeScope] Successfully loaded main_menu.uxml from Assets folder");
+                    }
+                    #endif
+                }
+
+                if (mainMenuVisualTree == null)
+                {
+                    Debug.LogError("[GameLifetimeScope] Failed to load MainMenu VisualTreeAsset! Main menu UI will not function.");
+                    Debug.LogError("[GameLifetimeScope] Please assign it in the GameLifetimeScope Inspector.");
+                    return null;
+                }
             }
 
             // If PanelSettings not assigned, create a default one
