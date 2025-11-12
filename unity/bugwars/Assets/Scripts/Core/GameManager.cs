@@ -17,14 +17,16 @@ namespace BugWars.Core
         #region Dependencies
         private EventManager _eventManager;
         private MainMenuManager _mainMenuManager;
+        private HUDManager _hudManager;
         private TerrainManager _terrainManager;
         private EntityManager _entityManager;
 
         [Inject]
-        public void Construct(EventManager eventManager, MainMenuManager mainMenuManager, TerrainManager terrainManager, EntityManager entityManager)
+        public void Construct(EventManager eventManager, MainMenuManager mainMenuManager, HUDManager hudManager, TerrainManager terrainManager, EntityManager entityManager)
         {
             _eventManager = eventManager;
             _mainMenuManager = mainMenuManager;
+            _hudManager = hudManager;
             _terrainManager = terrainManager;
             _entityManager = entityManager;
         }
@@ -158,6 +160,11 @@ namespace BugWars.Core
             if (_mainMenuManager == null)
             {
                 Debug.LogError("[GameManager] MainMenuManager reference is null!");
+            }
+
+            if (_hudManager == null)
+            {
+                Debug.LogError("[GameManager] HUDManager reference is null!");
             }
 
             if (_terrainManager == null)
@@ -325,6 +332,113 @@ namespace BugWars.Core
                 Debug.LogWarning("[GameManager] MainMenuManager reference not available!");
             }
         }
+        #endregion
+
+        #region HUD Control
+        /// <summary>
+        /// Shows the HUD
+        /// </summary>
+        public void ShowHUD()
+        {
+            if (_hudManager != null)
+            {
+                _hudManager.ShowHUD();
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] HUDManager reference not available!");
+            }
+        }
+
+        /// <summary>
+        /// Hides the HUD
+        /// </summary>
+        public void HideHUD()
+        {
+            if (_hudManager != null)
+            {
+                _hudManager.HideHUD();
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] HUDManager reference not available!");
+            }
+        }
+
+        /// <summary>
+        /// Toggles the HUD visibility
+        /// </summary>
+        public void ToggleHUD()
+        {
+            if (_hudManager != null)
+            {
+                _hudManager.ToggleHUD();
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] HUDManager reference not available!");
+            }
+        }
+
+        /// <summary>
+        /// Updates player health in the HUD
+        /// </summary>
+        public void UpdateHUDHealth(float current, float max)
+        {
+            if (_hudManager != null)
+            {
+                _hudManager.UpdateHealth(current, max);
+            }
+        }
+
+        /// <summary>
+        /// Updates wave number in the HUD
+        /// </summary>
+        public void UpdateHUDWave(int wave)
+        {
+            if (_hudManager != null)
+            {
+                _hudManager.UpdateWave(wave);
+            }
+        }
+
+        /// <summary>
+        /// Updates score in the HUD
+        /// </summary>
+        public void UpdateHUDScore(int score)
+        {
+            if (_hudManager != null)
+            {
+                _hudManager.UpdateScore(score);
+            }
+        }
+
+        /// <summary>
+        /// Updates player speed stat in the HUD
+        /// </summary>
+        public void UpdateHUDSpeed(float speed)
+        {
+            if (_hudManager != null)
+            {
+                _hudManager.UpdateSpeed(speed);
+            }
+        }
+
+        /// <summary>
+        /// Updates player damage stat in the HUD
+        /// </summary>
+        public void UpdateHUDDamage(int damage)
+        {
+            if (_hudManager != null)
+            {
+                _hudManager.UpdateDamage(damage);
+            }
+        }
+
+        /// <summary>
+        /// Provides direct access to the HUDManager for advanced usage
+        /// </summary>
+        public HUDManager HUD => _hudManager;
         #endregion
 
         #region World Initialization

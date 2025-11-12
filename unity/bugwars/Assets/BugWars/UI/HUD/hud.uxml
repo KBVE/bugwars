@@ -1,0 +1,34 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="hud.uss" />
+
+    <ui:VisualElement name="HUDContainer" class="hud-container">
+        <!-- Top Bar -->
+        <ui:VisualElement name="TopBar" class="hud-top-bar">
+            <!-- Left Section - Player Info -->
+            <ui:VisualElement name="PlayerInfo" class="hud-section player-info">
+                <ui:Label text="Health" name="HealthLabel" class="hud-label" />
+                <ui:VisualElement name="HealthBarContainer" class="health-bar-container">
+                    <ui:VisualElement name="HealthBarFill" class="health-bar-fill" />
+                </ui:VisualElement>
+                <ui:Label text="100 / 100" name="HealthText" class="hud-value" />
+            </ui:VisualElement>
+
+            <!-- Center Section - Game Info -->
+            <ui:VisualElement name="GameInfo" class="hud-section game-info">
+                <ui:Label text="Wave: 1" name="WaveText" class="hud-label" />
+                <ui:Label text="Score: 0" name="ScoreText" class="hud-label" />
+            </ui:VisualElement>
+
+            <!-- Right Section - Stats -->
+            <ui:VisualElement name="PlayerStats" class="hud-section player-stats">
+                <ui:Label text="Speed: 5.0" name="SpeedText" class="hud-stat" />
+                <ui:Label text="Damage: 10" name="DamageText" class="hud-stat" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Bottom Section - could be used for inventory, abilities, etc. later -->
+        <ui:VisualElement name="BottomBar" class="hud-bottom-bar">
+            <!-- Placeholder for future abilities, inventory, etc. -->
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
