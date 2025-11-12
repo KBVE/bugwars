@@ -1,0 +1,81 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="settings.uss" />
+
+    <ui:VisualElement name="SettingsPanelContainer" class="settings-panel-container">
+        <ui:VisualElement name="SettingsPanel" class="settings-panel">
+            <!-- Header -->
+            <ui:VisualElement name="HeaderContainer" class="header-container">
+                <ui:Label text="Settings" name="SettingsTitle" class="settings-title" />
+                <ui:Button name="CloseButton" class="close-button" text="×" />
+            </ui:VisualElement>
+
+            <!-- Settings Content -->
+            <ui:ScrollView name="SettingsScrollView" class="settings-scroll-view">
+                <!-- Audio Settings -->
+                <ui:VisualElement name="AudioSection" class="settings-section">
+                    <ui:Label text="Audio" class="section-title" />
+
+                    <ui:VisualElement name="MasterVolumeContainer" class="setting-row">
+                        <ui:Label text="Master Volume" class="setting-label" />
+                        <ui:Slider name="MasterVolumeSlider" low-value="0" high-value="100" value="100" class="setting-slider" />
+                        <ui:Label name="MasterVolumeValue" text="100%" class="setting-value" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="MusicVolumeContainer" class="setting-row">
+                        <ui:Label text="Music Volume" class="setting-label" />
+                        <ui:Slider name="MusicVolumeSlider" low-value="0" high-value="100" value="80" class="setting-slider" />
+                        <ui:Label name="MusicVolumeValue" text="80%" class="setting-value" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="SFXVolumeContainer" class="setting-row">
+                        <ui:Label text="SFX Volume" class="setting-label" />
+                        <ui:Slider name="SFXVolumeSlider" low-value="0" high-value="100" value="100" class="setting-slider" />
+                        <ui:Label name="SFXVolumeValue" text="100%" class="setting-value" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- Graphics Settings -->
+                <ui:VisualElement name="GraphicsSection" class="settings-section">
+                    <ui:Label text="Graphics" class="section-title" />
+
+                    <ui:VisualElement name="QualityContainer" class="setting-row">
+                        <ui:Label text="Quality" class="setting-label" />
+                        <ui:DropdownField name="QualityDropdown" class="setting-dropdown" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="FullscreenContainer" class="setting-row">
+                        <ui:Label text="Fullscreen" class="setting-label" />
+                        <ui:Toggle name="FullscreenToggle" class="setting-toggle" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="VSyncContainer" class="setting-row">
+                        <ui:Label text="V-Sync" class="setting-label" />
+                        <ui:Toggle name="VSyncToggle" class="setting-toggle" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- Gameplay Settings -->
+                <ui:VisualElement name="GameplaySection" class="settings-section">
+                    <ui:Label text="Gameplay" class="section-title" />
+
+                    <ui:VisualElement name="MouseSensitivityContainer" class="setting-row">
+                        <ui:Label text="Mouse Sensitivity" class="setting-label" />
+                        <ui:Slider name="MouseSensitivitySlider" low-value="1" high-value="10" value="5" class="setting-slider" />
+                        <ui:Label name="MouseSensitivityValue" text="5" class="setting-value" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement name="InvertYAxisContainer" class="setting-row">
+                        <ui:Label text="Invert Y-Axis" class="setting-label" />
+                        <ui:Toggle name="InvertYAxisToggle" class="setting-toggle" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:ScrollView>
+
+            <!-- Footer Buttons -->
+            <ui:VisualElement name="FooterContainer" class="footer-container">
+                <ui:Button text="Apply" name="ApplyButton" class="settings-button apply-button" />
+                <ui:Button text="Reset to Default" name="ResetButton" class="settings-button reset-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
