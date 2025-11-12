@@ -36,6 +36,70 @@ namespace KBVE.Editor
             }
         }
 
+        [MenuItem("KBVE/Quick Actions/Reset Serialized Settings", false, 4)]
+        public static void ResetSerializedSettings()
+        {
+            const string prefabPath = "Assets/BugWars/Prefabs/Core/GameManager.prefab";
+
+            var prefabRoot = PrefabUtility.LoadPrefabContents(prefabPath);
+            if (prefabRoot == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "KBVE – Reset Serialized Settings",
+                    $"Could not load prefab at '{prefabPath}'.",
+                    "OK");
+                return;
+            }
+
+            bool anyChanges = false;
+            try
+            {
+                var components = prefabRoot.GetComponentsInChildren<Component>(true);
+                foreach (var component in components)
+                {
+                    if (component == null)
+                        continue;
+
+                    if (component is Transform || component is RectTransform)
+                        continue;
+
+                    var componentType = component.GetType();
+                    var tempGameObject = new GameObject("KBVE_ResetTemp", componentType);
+                    var templateComponent = tempGameObject.GetComponent(componentType);
+
+                    if (UnityEditorInternal.ComponentUtility.CopyComponent(templateComponent))
+                    {
+                        UnityEditorInternal.ComponentUtility.PasteComponentValues(component);
+                        EditorUtility.SetDirty(component);
+                        anyChanges = true;
+                    }
+
+                    Object.DestroyImmediate(tempGameObject);
+                }
+
+                if (anyChanges)
+                {
+                    PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath);
+                    AssetDatabase.SaveAssets();
+                    EditorUtility.DisplayDialog(
+                        "KBVE – Reset Serialized Settings",
+                        "All serialized component settings in the GameManager prefab have been reset to their script defaults.",
+                        "OK");
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog(
+                        "KBVE – Reset Serialized Settings",
+                        "No components were reset.",
+                        "OK");
+                }
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(prefabRoot);
+            }
+        }
+
         [MenuItem("KBVE/Quick Actions/Delete PlayerPrefs", false, 20)]
         public static void DeletePlayerPrefs()
         {
