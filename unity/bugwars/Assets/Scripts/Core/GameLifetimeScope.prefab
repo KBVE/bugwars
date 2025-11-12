@@ -49,7 +49,10 @@ MonoBehaviour:
   playerPrefab: {fileID: 3244544186479847998, guid: 044a69cd0754645118da0bc8604128eb, type: 3}
   autoSpawnPlayer: 1
   playerSpawnPosition: {x: 0, y: 10, z: 0}
+  autoCameraFollow: 1
   playerEntity: {fileID: 752621112871938939, guid: 044a69cd0754645118da0bc8604128eb, type: 3}
+  enableTerrainStreaming: 1
+  terrainStreamingInterval: 1
 --- !u!1 &2572028443775040931
 GameObject:
   m_ObjectHideFlags: 0
@@ -168,6 +171,18 @@ MonoBehaviour:
   OnMainMenuClosed:
     m_PersistentCalls:
       m_Calls: []
+  OnCameraFollowRequested:
+    m_PersistentCalls:
+      m_Calls: []
+  OnCameraStopFollowRequested:
+    m_PersistentCalls:
+      m_Calls: []
+  OnCameraLookInput:
+    m_PersistentCalls:
+      m_Calls: []
+  OnCameraZoomInput:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &5658335548533922212
 GameObject:
   m_ObjectHideFlags: 0
@@ -257,8 +272,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BugWars.Core.CameraManager
   debugMode: 1
+  preferOrthographic: 0
   autoDiscoverCameras: 1
   includeInactiveCameras: 0
+  perspectiveFov: 55
+  minZoomDistance: 3.5
+  maxZoomDistance: 9
+  zoomStep: 0.4
+  zoomSmoothing: 0.35
+  lookSensitivityX: 1
+  lookSensitivityY: 1
+  invertY: 1
+  defaultTiltAngle: 30
+  defaultPanOffset: 0
 --- !u!1 &7897882360276293766
 GameObject:
   m_ObjectHideFlags: 0
@@ -371,6 +397,7 @@ MonoBehaviour:
   autoRun: 1
   autoInjectGameObjects: []
   mainMenuVisualTree: {fileID: 9197481963319205126, guid: 32c65dfa2efc6468b8cf007cedb3e0e8, type: 3}
+  hudVisualTree: {fileID: 9197481963319205126, guid: b8f9e0d3c4b5a6f7e8d9c0b1a2f3e4d5, type: 3}
   panelSettings: {fileID: 11400000, guid: cd8b68efaab914636a10ab6f6fa7a9cb, type: 2}
   eventManager: {fileID: 5771495303729330465}
   webGLBridge: {fileID: 6911909644627603942}
@@ -424,3 +451,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BugWars.Core.InputManager
   debugMode: 1
+  cameraLookSensitivity: 0.1
+  cameraZoomSensitivity: 0.1
+  invertCameraY: 1
+  cameraInputCaptured: 0
