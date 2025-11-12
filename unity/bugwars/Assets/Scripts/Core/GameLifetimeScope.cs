@@ -204,6 +204,9 @@ namespace BugWars.Core
             var existingManager = FindFirstObjectByType<MainMenuManager>();
             if (existingManager != null)
             {
+                // Wire up the settings panel reference for existing manager
+                SetSettingsPanelReference(existingManager, settingsPanelManager);
+                Debug.Log("[GameLifetimeScope] Using existing MainMenuManager from scene");
                 return existingManager;
             }
 
@@ -234,11 +237,25 @@ namespace BugWars.Core
             // Now add MainMenuManager component (UIDocument is already configured)
             var mainMenuManager = menuObject.AddComponent<MainMenuManager>();
 
-            // Wire up the SettingsPanelManager reference using reflection (since it's a private serialized field)
-            if (settingsPanelManager != null)
+            // Wire up the SettingsPanelManager reference
+            SetSettingsPanelReference(mainMenuManager, settingsPanelManager);
+
+            return mainMenuManager;
+        }
+
+        /// <summary>
+        /// Sets the SettingsPanelManager reference in MainMenuManager using reflection
+        /// </summary>
+        private void SetSettingsPanelReference(MainMenuManager mainMenuManager, SettingsPanelManager settingsPanelManager)
+        {
+            if (mainMenuManager == null || settingsPanelManager == null)
             {
-                var fieldInfo = typeof(MainMenuManager).GetField("_settingsPanelManager",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                Debug.LogWarning("[GameLifetimeScope] Cannot set SettingsPanelManager reference - one of the managers is null");
+                return;
+            }
+
+            var fieldInfo = typeof(MainMenuManager).GetField("_settingsPanelManager",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
                 if (fieldInfo != null)
                 {
