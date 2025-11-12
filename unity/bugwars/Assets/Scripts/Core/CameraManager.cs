@@ -78,9 +78,18 @@ namespace BugWars.Core
             // Desired pivot position
             Vector3 desired = player.position + headRoom + shoulder + (moveDir * lead);
 
-            // Chase with critically damped feel
-            transform.position = Vector3.SmoothDamp(transform.position, desired, ref _pivotVel, extraSmoothing,
-                                                     Mathf.Infinity, Time.deltaTime);
+            // Snap immediately when the player is nearly stationary to avoid spring-back
+            if (speed < 0.15f)
+            {
+                transform.position = desired;
+                _pivotVel = Vector3.zero;
+            }
+            else
+            {
+                // Chase with critically damped feel
+                transform.position = Vector3.SmoothDamp(transform.position, desired, ref _pivotVel, extraSmoothing,
+                                                         Mathf.Infinity, Time.deltaTime);
+            }
 
             // Keep pivot upright (helps if you read its forward elsewhere)
             transform.rotation = Quaternion.identity;
@@ -471,13 +480,13 @@ namespace BugWars.Core
 
         private void ForceCameraDefaults()
         {
-            orbitShoulderOffset = new Vector3(0.45f, 1.5f, 0f);
-            orbitCameraDistance = 7.0f;
+            orbitShoulderOffset = new Vector3(0.2f, 1.45f, 0f);
+            orbitCameraDistance = 7.5f;
             orbitPositionDamping = Vector3.zero;
             orbitPitchClamp = new Vector2(5f, 65f);
             pivotHeadRoom = new Vector3(0f, 1.2f, 0f);
-            pivotShoulderRight = 0.35f;
-            defaultTiltAngle = -30f;
+            pivotShoulderRight = 0f;
+            defaultTiltAngle = -32f;
             defaultPanOffset = 0f;
         }
 
@@ -1358,10 +1367,12 @@ namespace BugWars.Core
 
             // Create/get lead pivot
             CameraLeadPivot pivot = GetOrCreateLeadPivot(config.target);
-            pivot.maxLeadDistance = 3.0f;
-            pivot.maxSpeedForLead = 7.5f;
+            pivot.maxLeadDistance = 0f;
+            pivot.maxSpeedForLead = 0f;
             pivot.shoulderRight = pivotShoulderRight;
+            pivot.shoulderBlend = 0f;
             pivot.headRoom = pivotHeadRoom;
+            pivot.extraSmoothing = 0f;
             if (teleport) pivot.TeleportToPlayer();
 
             // Body: ThirdPersonFollow
