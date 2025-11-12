@@ -1,0 +1,5318 @@
+{
+  "meta": {
+    "version": "1.0",
+    "size": {
+      "w": 2048,
+      "h": 512
+    },
+    "frameSize": 64,
+    "frameCount": 240,
+    "characterType": "4-directional",
+    "directions": [
+      "Down",
+      "Left",
+      "Right",
+      "Up"
+    ]
+  },
+  "frames": {
+    "Attack_Down_0": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Down",
+      "action": "Attack",
+      "direction": "Down",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.0,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.03125,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Down_1": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Down",
+      "action": "Attack",
+      "direction": "Down",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.03125,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.0625,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Down_2": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Down",
+      "action": "Attack",
+      "direction": "Down",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.0625,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.09375,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Down_3": {
+      "x": 192,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Down",
+      "action": "Attack",
+      "direction": "Down",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.09375,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.125,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Down_4": {
+      "x": 256,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Down",
+      "action": "Attack",
+      "direction": "Down",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.125,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.15625,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Down_5": {
+      "x": 320,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Down",
+      "action": "Attack",
+      "direction": "Down",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.15625,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.1875,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Down_6": {
+      "x": 384,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Down",
+      "action": "Attack",
+      "direction": "Down",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.1875,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.21875,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Down_7": {
+      "x": 448,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Down",
+      "action": "Attack",
+      "direction": "Down",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.21875,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.25,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Left_0": {
+      "x": 512,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Left",
+      "action": "Attack",
+      "direction": "Left",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.25,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.28125,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Left_1": {
+      "x": 576,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Left",
+      "action": "Attack",
+      "direction": "Left",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.28125,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.3125,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Left_2": {
+      "x": 640,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Left",
+      "action": "Attack",
+      "direction": "Left",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.3125,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.34375,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Left_3": {
+      "x": 704,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Left",
+      "action": "Attack",
+      "direction": "Left",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.34375,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.375,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Left_4": {
+      "x": 768,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Left",
+      "action": "Attack",
+      "direction": "Left",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.375,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.40625,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Left_5": {
+      "x": 832,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Left",
+      "action": "Attack",
+      "direction": "Left",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.40625,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.4375,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Left_6": {
+      "x": 896,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Left",
+      "action": "Attack",
+      "direction": "Left",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.4375,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.46875,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Left_7": {
+      "x": 960,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Left",
+      "action": "Attack",
+      "direction": "Left",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.46875,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.5,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Right_0": {
+      "x": 1024,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Right",
+      "action": "Attack",
+      "direction": "Right",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.5,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.53125,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Right_1": {
+      "x": 1088,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Right",
+      "action": "Attack",
+      "direction": "Right",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.53125,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.5625,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Right_2": {
+      "x": 1152,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Right",
+      "action": "Attack",
+      "direction": "Right",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.5625,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.59375,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Right_3": {
+      "x": 1216,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Right",
+      "action": "Attack",
+      "direction": "Right",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.59375,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.625,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Right_4": {
+      "x": 1280,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Right",
+      "action": "Attack",
+      "direction": "Right",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.625,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.65625,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Right_5": {
+      "x": 1344,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Right",
+      "action": "Attack",
+      "direction": "Right",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.65625,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.6875,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Right_6": {
+      "x": 1408,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Right",
+      "action": "Attack",
+      "direction": "Right",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.6875,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.71875,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Right_7": {
+      "x": 1472,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Right",
+      "action": "Attack",
+      "direction": "Right",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.71875,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.75,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Up_0": {
+      "x": 1536,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Up",
+      "action": "Attack",
+      "direction": "Up",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.75,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.78125,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Up_1": {
+      "x": 1600,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Up",
+      "action": "Attack",
+      "direction": "Up",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.78125,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.8125,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Up_2": {
+      "x": 1664,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Up",
+      "action": "Attack",
+      "direction": "Up",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.8125,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.84375,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Up_3": {
+      "x": 1728,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Up",
+      "action": "Attack",
+      "direction": "Up",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.84375,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.875,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Up_4": {
+      "x": 1792,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Up",
+      "action": "Attack",
+      "direction": "Up",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.875,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.90625,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Up_5": {
+      "x": 1856,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Up",
+      "action": "Attack",
+      "direction": "Up",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.90625,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.9375,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Up_6": {
+      "x": 1920,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Up",
+      "action": "Attack",
+      "direction": "Up",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.9375,
+          "y": 0.875
+        },
+        "max": {
+          "x": 0.96875,
+          "y": 1.0
+        }
+      }
+    },
+    "Attack_Up_7": {
+      "x": 1984,
+      "y": 0,
+      "w": 64,
+      "h": 64,
+      "animation": "Attack_Up",
+      "action": "Attack",
+      "direction": "Up",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.96875,
+          "y": 0.875
+        },
+        "max": {
+          "x": 1.0,
+          "y": 1.0
+        }
+      }
+    },
+    "Death_Down_0": {
+      "x": 0,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Down",
+      "action": "Death",
+      "direction": "Down",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.0,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.03125,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Down_1": {
+      "x": 64,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Down",
+      "action": "Death",
+      "direction": "Down",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.03125,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.0625,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Down_2": {
+      "x": 128,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Down",
+      "action": "Death",
+      "direction": "Down",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.0625,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.09375,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Down_3": {
+      "x": 192,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Down",
+      "action": "Death",
+      "direction": "Down",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.09375,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.125,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Down_4": {
+      "x": 256,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Down",
+      "action": "Death",
+      "direction": "Down",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.125,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.15625,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Down_5": {
+      "x": 320,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Down",
+      "action": "Death",
+      "direction": "Down",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.15625,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.1875,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Down_6": {
+      "x": 384,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Down",
+      "action": "Death",
+      "direction": "Down",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.1875,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.21875,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Left_0": {
+      "x": 448,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Left",
+      "action": "Death",
+      "direction": "Left",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.21875,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.25,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Left_1": {
+      "x": 512,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Left",
+      "action": "Death",
+      "direction": "Left",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.25,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.28125,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Left_2": {
+      "x": 576,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Left",
+      "action": "Death",
+      "direction": "Left",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.28125,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.3125,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Left_3": {
+      "x": 640,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Left",
+      "action": "Death",
+      "direction": "Left",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.3125,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.34375,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Left_4": {
+      "x": 704,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Left",
+      "action": "Death",
+      "direction": "Left",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.34375,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.375,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Left_5": {
+      "x": 768,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Left",
+      "action": "Death",
+      "direction": "Left",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.375,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.40625,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Left_6": {
+      "x": 832,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Left",
+      "action": "Death",
+      "direction": "Left",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.40625,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.4375,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Right_0": {
+      "x": 896,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Right",
+      "action": "Death",
+      "direction": "Right",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.4375,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.46875,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Right_1": {
+      "x": 960,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Right",
+      "action": "Death",
+      "direction": "Right",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.46875,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.5,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Right_2": {
+      "x": 1024,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Right",
+      "action": "Death",
+      "direction": "Right",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.5,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.53125,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Right_3": {
+      "x": 1088,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Right",
+      "action": "Death",
+      "direction": "Right",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.53125,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.5625,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Right_4": {
+      "x": 1152,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Right",
+      "action": "Death",
+      "direction": "Right",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.5625,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.59375,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Right_5": {
+      "x": 1216,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Right",
+      "action": "Death",
+      "direction": "Right",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.59375,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.625,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Right_6": {
+      "x": 1280,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Right",
+      "action": "Death",
+      "direction": "Right",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.625,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.65625,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Up_0": {
+      "x": 1344,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Up",
+      "action": "Death",
+      "direction": "Up",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.65625,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.6875,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Up_1": {
+      "x": 1408,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Up",
+      "action": "Death",
+      "direction": "Up",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.6875,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.71875,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Up_2": {
+      "x": 1472,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Up",
+      "action": "Death",
+      "direction": "Up",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.71875,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.75,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Up_3": {
+      "x": 1536,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Up",
+      "action": "Death",
+      "direction": "Up",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.75,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.78125,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Up_4": {
+      "x": 1600,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Up",
+      "action": "Death",
+      "direction": "Up",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.78125,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.8125,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Up_5": {
+      "x": 1664,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Up",
+      "action": "Death",
+      "direction": "Up",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.8125,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.84375,
+          "y": 0.875
+        }
+      }
+    },
+    "Death_Up_6": {
+      "x": 1728,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Death_Up",
+      "action": "Death",
+      "direction": "Up",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.84375,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.875,
+          "y": 0.875
+        }
+      }
+    },
+    "Hurt_Down_0": {
+      "x": 1792,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Down",
+      "action": "Hurt",
+      "direction": "Down",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.875,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.90625,
+          "y": 0.875
+        }
+      }
+    },
+    "Hurt_Down_1": {
+      "x": 1856,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Down",
+      "action": "Hurt",
+      "direction": "Down",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.90625,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.9375,
+          "y": 0.875
+        }
+      }
+    },
+    "Hurt_Down_2": {
+      "x": 1920,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Down",
+      "action": "Hurt",
+      "direction": "Down",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.9375,
+          "y": 0.75
+        },
+        "max": {
+          "x": 0.96875,
+          "y": 0.875
+        }
+      }
+    },
+    "Hurt_Down_3": {
+      "x": 1984,
+      "y": 64,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Down",
+      "action": "Hurt",
+      "direction": "Down",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.96875,
+          "y": 0.75
+        },
+        "max": {
+          "x": 1.0,
+          "y": 0.875
+        }
+      }
+    },
+    "Hurt_Down_4": {
+      "x": 0,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Down",
+      "action": "Hurt",
+      "direction": "Down",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.0,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.03125,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Left_0": {
+      "x": 64,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Left",
+      "action": "Hurt",
+      "direction": "Left",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.03125,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.0625,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Left_1": {
+      "x": 128,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Left",
+      "action": "Hurt",
+      "direction": "Left",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.0625,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.09375,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Left_2": {
+      "x": 192,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Left",
+      "action": "Hurt",
+      "direction": "Left",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.09375,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.125,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Left_3": {
+      "x": 256,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Left",
+      "action": "Hurt",
+      "direction": "Left",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.125,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.15625,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Left_4": {
+      "x": 320,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Left",
+      "action": "Hurt",
+      "direction": "Left",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.15625,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.1875,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Right_0": {
+      "x": 384,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Right",
+      "action": "Hurt",
+      "direction": "Right",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.1875,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.21875,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Right_1": {
+      "x": 448,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Right",
+      "action": "Hurt",
+      "direction": "Right",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.21875,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.25,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Right_2": {
+      "x": 512,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Right",
+      "action": "Hurt",
+      "direction": "Right",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.25,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.28125,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Right_3": {
+      "x": 576,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Right",
+      "action": "Hurt",
+      "direction": "Right",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.28125,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.3125,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Right_4": {
+      "x": 640,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Right",
+      "action": "Hurt",
+      "direction": "Right",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.3125,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.34375,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Up_0": {
+      "x": 704,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Up",
+      "action": "Hurt",
+      "direction": "Up",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.34375,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.375,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Up_1": {
+      "x": 768,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Up",
+      "action": "Hurt",
+      "direction": "Up",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.375,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.40625,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Up_2": {
+      "x": 832,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Up",
+      "action": "Hurt",
+      "direction": "Up",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.40625,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.4375,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Up_3": {
+      "x": 896,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Up",
+      "action": "Hurt",
+      "direction": "Up",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.4375,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.46875,
+          "y": 0.75
+        }
+      }
+    },
+    "Hurt_Up_4": {
+      "x": 960,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Hurt_Up",
+      "action": "Hurt",
+      "direction": "Up",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.46875,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.5,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_0": {
+      "x": 1024,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.5,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.53125,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_1": {
+      "x": 1088,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.53125,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.5625,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_2": {
+      "x": 1152,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.5625,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.59375,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_3": {
+      "x": 1216,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.59375,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.625,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_4": {
+      "x": 1280,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.625,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.65625,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_5": {
+      "x": 1344,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.65625,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.6875,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_6": {
+      "x": 1408,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.6875,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.71875,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_7": {
+      "x": 1472,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.71875,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.75,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_8": {
+      "x": 1536,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 8,
+      "uv": {
+        "min": {
+          "x": 0.75,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.78125,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_9": {
+      "x": 1600,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 9,
+      "uv": {
+        "min": {
+          "x": 0.78125,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.8125,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_10": {
+      "x": 1664,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 10,
+      "uv": {
+        "min": {
+          "x": 0.8125,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.84375,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Down_11": {
+      "x": 1728,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Down",
+      "action": "Idle",
+      "direction": "Down",
+      "index": 11,
+      "uv": {
+        "min": {
+          "x": 0.84375,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.875,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Left_0": {
+      "x": 1792,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.875,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.90625,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Left_1": {
+      "x": 1856,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.90625,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.9375,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Left_2": {
+      "x": 1920,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.9375,
+          "y": 0.625
+        },
+        "max": {
+          "x": 0.96875,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Left_3": {
+      "x": 1984,
+      "y": 128,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.96875,
+          "y": 0.625
+        },
+        "max": {
+          "x": 1.0,
+          "y": 0.75
+        }
+      }
+    },
+    "Idle_Left_4": {
+      "x": 0,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.0,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.03125,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Left_5": {
+      "x": 64,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.03125,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.0625,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Left_6": {
+      "x": 128,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.0625,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.09375,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Left_7": {
+      "x": 192,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.09375,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.125,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Left_8": {
+      "x": 256,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 8,
+      "uv": {
+        "min": {
+          "x": 0.125,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.15625,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Left_9": {
+      "x": 320,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 9,
+      "uv": {
+        "min": {
+          "x": 0.15625,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.1875,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Left_10": {
+      "x": 384,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 10,
+      "uv": {
+        "min": {
+          "x": 0.1875,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.21875,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Left_11": {
+      "x": 448,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Left",
+      "action": "Idle",
+      "direction": "Left",
+      "index": 11,
+      "uv": {
+        "min": {
+          "x": 0.21875,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.25,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_0": {
+      "x": 512,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.25,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.28125,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_1": {
+      "x": 576,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.28125,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.3125,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_2": {
+      "x": 640,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.3125,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.34375,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_3": {
+      "x": 704,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.34375,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.375,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_4": {
+      "x": 768,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.375,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.40625,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_5": {
+      "x": 832,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.40625,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.4375,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_6": {
+      "x": 896,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.4375,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.46875,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_7": {
+      "x": 960,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.46875,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.5,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_8": {
+      "x": 1024,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 8,
+      "uv": {
+        "min": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.53125,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_9": {
+      "x": 1088,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 9,
+      "uv": {
+        "min": {
+          "x": 0.53125,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.5625,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_10": {
+      "x": 1152,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 10,
+      "uv": {
+        "min": {
+          "x": 0.5625,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.59375,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Right_11": {
+      "x": 1216,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Right",
+      "action": "Idle",
+      "direction": "Right",
+      "index": 11,
+      "uv": {
+        "min": {
+          "x": 0.59375,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.625,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_0": {
+      "x": 1280,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.625,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.65625,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_1": {
+      "x": 1344,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.65625,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.6875,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_2": {
+      "x": 1408,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.6875,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.71875,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_3": {
+      "x": 1472,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.71875,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.75,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_4": {
+      "x": 1536,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.75,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.78125,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_5": {
+      "x": 1600,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.78125,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.8125,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_6": {
+      "x": 1664,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.8125,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.84375,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_7": {
+      "x": 1728,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.84375,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.875,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_8": {
+      "x": 1792,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 8,
+      "uv": {
+        "min": {
+          "x": 0.875,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.90625,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_9": {
+      "x": 1856,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 9,
+      "uv": {
+        "min": {
+          "x": 0.90625,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.9375,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_10": {
+      "x": 1920,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 10,
+      "uv": {
+        "min": {
+          "x": 0.9375,
+          "y": 0.5
+        },
+        "max": {
+          "x": 0.96875,
+          "y": 0.625
+        }
+      }
+    },
+    "Idle_Up_11": {
+      "x": 1984,
+      "y": 192,
+      "w": 64,
+      "h": 64,
+      "animation": "Idle_Up",
+      "action": "Idle",
+      "direction": "Up",
+      "index": 11,
+      "uv": {
+        "min": {
+          "x": 0.96875,
+          "y": 0.5
+        },
+        "max": {
+          "x": 1.0,
+          "y": 0.625
+        }
+      }
+    },
+    "Run_Attack_Down_0": {
+      "x": 0,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Down",
+      "action": "Run_Attack",
+      "direction": "Down",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.0,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.03125,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Down_1": {
+      "x": 64,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Down",
+      "action": "Run_Attack",
+      "direction": "Down",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.03125,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.0625,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Down_2": {
+      "x": 128,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Down",
+      "action": "Run_Attack",
+      "direction": "Down",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.0625,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.09375,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Down_3": {
+      "x": 192,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Down",
+      "action": "Run_Attack",
+      "direction": "Down",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.09375,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.125,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Down_4": {
+      "x": 256,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Down",
+      "action": "Run_Attack",
+      "direction": "Down",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.125,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.15625,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Down_5": {
+      "x": 320,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Down",
+      "action": "Run_Attack",
+      "direction": "Down",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.15625,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.1875,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Down_6": {
+      "x": 384,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Down",
+      "action": "Run_Attack",
+      "direction": "Down",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.1875,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.21875,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Down_7": {
+      "x": 448,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Down",
+      "action": "Run_Attack",
+      "direction": "Down",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.21875,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.25,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Left_0": {
+      "x": 512,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Left",
+      "action": "Run_Attack",
+      "direction": "Left",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.25,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.28125,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Left_1": {
+      "x": 576,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Left",
+      "action": "Run_Attack",
+      "direction": "Left",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.28125,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.3125,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Left_2": {
+      "x": 640,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Left",
+      "action": "Run_Attack",
+      "direction": "Left",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.3125,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.34375,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Left_3": {
+      "x": 704,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Left",
+      "action": "Run_Attack",
+      "direction": "Left",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.34375,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.375,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Left_4": {
+      "x": 768,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Left",
+      "action": "Run_Attack",
+      "direction": "Left",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.375,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.40625,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Left_5": {
+      "x": 832,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Left",
+      "action": "Run_Attack",
+      "direction": "Left",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.40625,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.4375,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Left_6": {
+      "x": 896,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Left",
+      "action": "Run_Attack",
+      "direction": "Left",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.4375,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.46875,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Left_7": {
+      "x": 960,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Left",
+      "action": "Run_Attack",
+      "direction": "Left",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.46875,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Right_0": {
+      "x": 1024,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Right",
+      "action": "Run_Attack",
+      "direction": "Right",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.5,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.53125,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Right_1": {
+      "x": 1088,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Right",
+      "action": "Run_Attack",
+      "direction": "Right",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.53125,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.5625,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Right_2": {
+      "x": 1152,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Right",
+      "action": "Run_Attack",
+      "direction": "Right",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.5625,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.59375,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Right_3": {
+      "x": 1216,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Right",
+      "action": "Run_Attack",
+      "direction": "Right",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.59375,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.625,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Right_4": {
+      "x": 1280,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Right",
+      "action": "Run_Attack",
+      "direction": "Right",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.625,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.65625,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Right_5": {
+      "x": 1344,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Right",
+      "action": "Run_Attack",
+      "direction": "Right",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.65625,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.6875,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Right_6": {
+      "x": 1408,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Right",
+      "action": "Run_Attack",
+      "direction": "Right",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.6875,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.71875,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Right_7": {
+      "x": 1472,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Right",
+      "action": "Run_Attack",
+      "direction": "Right",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.71875,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.75,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Up_0": {
+      "x": 1536,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Up",
+      "action": "Run_Attack",
+      "direction": "Up",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.75,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.78125,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Up_1": {
+      "x": 1600,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Up",
+      "action": "Run_Attack",
+      "direction": "Up",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.78125,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.8125,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Up_2": {
+      "x": 1664,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Up",
+      "action": "Run_Attack",
+      "direction": "Up",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.8125,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.84375,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Up_3": {
+      "x": 1728,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Up",
+      "action": "Run_Attack",
+      "direction": "Up",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.84375,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.875,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Up_4": {
+      "x": 1792,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Up",
+      "action": "Run_Attack",
+      "direction": "Up",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.875,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.90625,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Up_5": {
+      "x": 1856,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Up",
+      "action": "Run_Attack",
+      "direction": "Up",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.90625,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.9375,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Up_6": {
+      "x": 1920,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Up",
+      "action": "Run_Attack",
+      "direction": "Up",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.9375,
+          "y": 0.375
+        },
+        "max": {
+          "x": 0.96875,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Attack_Up_7": {
+      "x": 1984,
+      "y": 256,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Attack_Up",
+      "action": "Run_Attack",
+      "direction": "Up",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.96875,
+          "y": 0.375
+        },
+        "max": {
+          "x": 1.0,
+          "y": 0.5
+        }
+      }
+    },
+    "Run_Down_0": {
+      "x": 0,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Down",
+      "action": "Run",
+      "direction": "Down",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.0,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.03125,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Down_1": {
+      "x": 64,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Down",
+      "action": "Run",
+      "direction": "Down",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.03125,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.0625,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Down_2": {
+      "x": 128,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Down",
+      "action": "Run",
+      "direction": "Down",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.0625,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.09375,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Down_3": {
+      "x": 192,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Down",
+      "action": "Run",
+      "direction": "Down",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.09375,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.125,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Down_4": {
+      "x": 256,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Down",
+      "action": "Run",
+      "direction": "Down",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.125,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.15625,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Down_5": {
+      "x": 320,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Down",
+      "action": "Run",
+      "direction": "Down",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.15625,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.1875,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Down_6": {
+      "x": 384,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Down",
+      "action": "Run",
+      "direction": "Down",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.1875,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.21875,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Down_7": {
+      "x": 448,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Down",
+      "action": "Run",
+      "direction": "Down",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.21875,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.25,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Left_0": {
+      "x": 512,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Left",
+      "action": "Run",
+      "direction": "Left",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.25,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.28125,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Left_1": {
+      "x": 576,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Left",
+      "action": "Run",
+      "direction": "Left",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.28125,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.3125,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Left_2": {
+      "x": 640,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Left",
+      "action": "Run",
+      "direction": "Left",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.3125,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.34375,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Left_3": {
+      "x": 704,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Left",
+      "action": "Run",
+      "direction": "Left",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.34375,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.375,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Left_4": {
+      "x": 768,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Left",
+      "action": "Run",
+      "direction": "Left",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.375,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.40625,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Left_5": {
+      "x": 832,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Left",
+      "action": "Run",
+      "direction": "Left",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.40625,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.4375,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Left_6": {
+      "x": 896,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Left",
+      "action": "Run",
+      "direction": "Left",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.4375,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.46875,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Left_7": {
+      "x": 960,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Left",
+      "action": "Run",
+      "direction": "Left",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.46875,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.5,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Right_0": {
+      "x": 1024,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Right",
+      "action": "Run",
+      "direction": "Right",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.5,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.53125,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Right_1": {
+      "x": 1088,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Right",
+      "action": "Run",
+      "direction": "Right",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.53125,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.5625,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Right_2": {
+      "x": 1152,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Right",
+      "action": "Run",
+      "direction": "Right",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.5625,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.59375,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Right_3": {
+      "x": 1216,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Right",
+      "action": "Run",
+      "direction": "Right",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.59375,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.625,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Right_4": {
+      "x": 1280,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Right",
+      "action": "Run",
+      "direction": "Right",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.625,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.65625,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Right_5": {
+      "x": 1344,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Right",
+      "action": "Run",
+      "direction": "Right",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.65625,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.6875,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Right_6": {
+      "x": 1408,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Right",
+      "action": "Run",
+      "direction": "Right",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.6875,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.71875,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Right_7": {
+      "x": 1472,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Right",
+      "action": "Run",
+      "direction": "Right",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.71875,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.75,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Up_0": {
+      "x": 1536,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Up",
+      "action": "Run",
+      "direction": "Up",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.75,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.78125,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Up_1": {
+      "x": 1600,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Up",
+      "action": "Run",
+      "direction": "Up",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.78125,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.8125,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Up_2": {
+      "x": 1664,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Up",
+      "action": "Run",
+      "direction": "Up",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.8125,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.84375,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Up_3": {
+      "x": 1728,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Up",
+      "action": "Run",
+      "direction": "Up",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.84375,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.875,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Up_4": {
+      "x": 1792,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Up",
+      "action": "Run",
+      "direction": "Up",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.875,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.90625,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Up_5": {
+      "x": 1856,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Up",
+      "action": "Run",
+      "direction": "Up",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.90625,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.9375,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Up_6": {
+      "x": 1920,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Up",
+      "action": "Run",
+      "direction": "Up",
+      "index": 6,
+      "uv": {
+        "min": {
+          "x": 0.9375,
+          "y": 0.25
+        },
+        "max": {
+          "x": 0.96875,
+          "y": 0.375
+        }
+      }
+    },
+    "Run_Up_7": {
+      "x": 1984,
+      "y": 320,
+      "w": 64,
+      "h": 64,
+      "animation": "Run_Up",
+      "action": "Run",
+      "direction": "Up",
+      "index": 7,
+      "uv": {
+        "min": {
+          "x": 0.96875,
+          "y": 0.25
+        },
+        "max": {
+          "x": 1.0,
+          "y": 0.375
+        }
+      }
+    },
+    "Walk_Attack_Down_0": {
+      "x": 0,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Down",
+      "action": "Walk_Attack",
+      "direction": "Down",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.0,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.03125,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Down_1": {
+      "x": 64,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Down",
+      "action": "Walk_Attack",
+      "direction": "Down",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.03125,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.0625,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Down_2": {
+      "x": 128,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Down",
+      "action": "Walk_Attack",
+      "direction": "Down",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.0625,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.09375,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Down_3": {
+      "x": 192,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Down",
+      "action": "Walk_Attack",
+      "direction": "Down",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.09375,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.125,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Down_4": {
+      "x": 256,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Down",
+      "action": "Walk_Attack",
+      "direction": "Down",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.125,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.15625,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Down_5": {
+      "x": 320,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Down",
+      "action": "Walk_Attack",
+      "direction": "Down",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.15625,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.1875,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Left_0": {
+      "x": 384,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Left",
+      "action": "Walk_Attack",
+      "direction": "Left",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.1875,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.21875,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Left_1": {
+      "x": 448,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Left",
+      "action": "Walk_Attack",
+      "direction": "Left",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.21875,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.25,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Left_2": {
+      "x": 512,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Left",
+      "action": "Walk_Attack",
+      "direction": "Left",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.25,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.28125,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Left_3": {
+      "x": 576,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Left",
+      "action": "Walk_Attack",
+      "direction": "Left",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.28125,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.3125,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Left_4": {
+      "x": 640,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Left",
+      "action": "Walk_Attack",
+      "direction": "Left",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.3125,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.34375,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Left_5": {
+      "x": 704,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Left",
+      "action": "Walk_Attack",
+      "direction": "Left",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.34375,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.375,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Right_0": {
+      "x": 768,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Right",
+      "action": "Walk_Attack",
+      "direction": "Right",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.375,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.40625,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Right_1": {
+      "x": 832,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Right",
+      "action": "Walk_Attack",
+      "direction": "Right",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.40625,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.4375,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Right_2": {
+      "x": 896,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Right",
+      "action": "Walk_Attack",
+      "direction": "Right",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.4375,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.46875,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Right_3": {
+      "x": 960,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Right",
+      "action": "Walk_Attack",
+      "direction": "Right",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.46875,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.5,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Right_4": {
+      "x": 1024,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Right",
+      "action": "Walk_Attack",
+      "direction": "Right",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.5,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.53125,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Right_5": {
+      "x": 1088,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Right",
+      "action": "Walk_Attack",
+      "direction": "Right",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.53125,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.5625,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Up_0": {
+      "x": 1152,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Up",
+      "action": "Walk_Attack",
+      "direction": "Up",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.5625,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.59375,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Up_1": {
+      "x": 1216,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Up",
+      "action": "Walk_Attack",
+      "direction": "Up",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.59375,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.625,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Up_2": {
+      "x": 1280,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Up",
+      "action": "Walk_Attack",
+      "direction": "Up",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.625,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.65625,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Up_3": {
+      "x": 1344,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Up",
+      "action": "Walk_Attack",
+      "direction": "Up",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.65625,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.6875,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Up_4": {
+      "x": 1408,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Up",
+      "action": "Walk_Attack",
+      "direction": "Up",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.6875,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.71875,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Attack_Up_5": {
+      "x": 1472,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Attack_Up",
+      "action": "Walk_Attack",
+      "direction": "Up",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.71875,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.75,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Down_0": {
+      "x": 1536,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Down",
+      "action": "Walk",
+      "direction": "Down",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.75,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.78125,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Down_1": {
+      "x": 1600,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Down",
+      "action": "Walk",
+      "direction": "Down",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.78125,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.8125,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Down_2": {
+      "x": 1664,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Down",
+      "action": "Walk",
+      "direction": "Down",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.8125,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.84375,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Down_3": {
+      "x": 1728,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Down",
+      "action": "Walk",
+      "direction": "Down",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.84375,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.875,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Down_4": {
+      "x": 1792,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Down",
+      "action": "Walk",
+      "direction": "Down",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.875,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.90625,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Down_5": {
+      "x": 1856,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Down",
+      "action": "Walk",
+      "direction": "Down",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.90625,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.9375,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Left_0": {
+      "x": 1920,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Left",
+      "action": "Walk",
+      "direction": "Left",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.9375,
+          "y": 0.125
+        },
+        "max": {
+          "x": 0.96875,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Left_1": {
+      "x": 1984,
+      "y": 384,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Left",
+      "action": "Walk",
+      "direction": "Left",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.96875,
+          "y": 0.125
+        },
+        "max": {
+          "x": 1.0,
+          "y": 0.25
+        }
+      }
+    },
+    "Walk_Left_2": {
+      "x": 0,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Left",
+      "action": "Walk",
+      "direction": "Left",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.03125,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Left_3": {
+      "x": 64,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Left",
+      "action": "Walk",
+      "direction": "Left",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.03125,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.0625,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Left_4": {
+      "x": 128,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Left",
+      "action": "Walk",
+      "direction": "Left",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.0625,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.09375,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Left_5": {
+      "x": 192,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Left",
+      "action": "Walk",
+      "direction": "Left",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.09375,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.125,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Right_0": {
+      "x": 256,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Right",
+      "action": "Walk",
+      "direction": "Right",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.125,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.15625,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Right_1": {
+      "x": 320,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Right",
+      "action": "Walk",
+      "direction": "Right",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.15625,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.1875,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Right_2": {
+      "x": 384,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Right",
+      "action": "Walk",
+      "direction": "Right",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.1875,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.21875,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Right_3": {
+      "x": 448,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Right",
+      "action": "Walk",
+      "direction": "Right",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.21875,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.25,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Right_4": {
+      "x": 512,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Right",
+      "action": "Walk",
+      "direction": "Right",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.25,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.28125,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Right_5": {
+      "x": 576,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Right",
+      "action": "Walk",
+      "direction": "Right",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.28125,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.3125,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Up_0": {
+      "x": 640,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Up",
+      "action": "Walk",
+      "direction": "Up",
+      "index": 0,
+      "uv": {
+        "min": {
+          "x": 0.3125,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.34375,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Up_1": {
+      "x": 704,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Up",
+      "action": "Walk",
+      "direction": "Up",
+      "index": 1,
+      "uv": {
+        "min": {
+          "x": 0.34375,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.375,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Up_2": {
+      "x": 768,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Up",
+      "action": "Walk",
+      "direction": "Up",
+      "index": 2,
+      "uv": {
+        "min": {
+          "x": 0.375,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.40625,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Up_3": {
+      "x": 832,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Up",
+      "action": "Walk",
+      "direction": "Up",
+      "index": 3,
+      "uv": {
+        "min": {
+          "x": 0.40625,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.4375,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Up_4": {
+      "x": 896,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Up",
+      "action": "Walk",
+      "direction": "Up",
+      "index": 4,
+      "uv": {
+        "min": {
+          "x": 0.4375,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.46875,
+          "y": 0.125
+        }
+      }
+    },
+    "Walk_Up_5": {
+      "x": 960,
+      "y": 448,
+      "w": 64,
+      "h": 64,
+      "animation": "Walk_Up",
+      "action": "Walk",
+      "direction": "Up",
+      "index": 5,
+      "uv": {
+        "min": {
+          "x": 0.46875,
+          "y": 0.0
+        },
+        "max": {
+          "x": 0.5,
+          "y": 0.125
+        }
+      }
+    }
+  },
+  "animations": {
+    "Attack_Down": {
+      "frames": [
+        "Attack_Down_0",
+        "Attack_Down_1",
+        "Attack_Down_2",
+        "Attack_Down_3",
+        "Attack_Down_4",
+        "Attack_Down_5",
+        "Attack_Down_6",
+        "Attack_Down_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Attack",
+      "direction": "Down"
+    },
+    "Attack_Left": {
+      "frames": [
+        "Attack_Left_0",
+        "Attack_Left_1",
+        "Attack_Left_2",
+        "Attack_Left_3",
+        "Attack_Left_4",
+        "Attack_Left_5",
+        "Attack_Left_6",
+        "Attack_Left_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Attack",
+      "direction": "Left"
+    },
+    "Attack_Right": {
+      "frames": [
+        "Attack_Right_0",
+        "Attack_Right_1",
+        "Attack_Right_2",
+        "Attack_Right_3",
+        "Attack_Right_4",
+        "Attack_Right_5",
+        "Attack_Right_6",
+        "Attack_Right_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Attack",
+      "direction": "Right"
+    },
+    "Attack_Up": {
+      "frames": [
+        "Attack_Up_0",
+        "Attack_Up_1",
+        "Attack_Up_2",
+        "Attack_Up_3",
+        "Attack_Up_4",
+        "Attack_Up_5",
+        "Attack_Up_6",
+        "Attack_Up_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Attack",
+      "direction": "Up"
+    },
+    "Death_Down": {
+      "frames": [
+        "Death_Down_0",
+        "Death_Down_1",
+        "Death_Down_2",
+        "Death_Down_3",
+        "Death_Down_4",
+        "Death_Down_5",
+        "Death_Down_6"
+      ],
+      "frameCount": 7,
+      "fps": 8,
+      "action": "Death",
+      "direction": "Down"
+    },
+    "Death_Left": {
+      "frames": [
+        "Death_Left_0",
+        "Death_Left_1",
+        "Death_Left_2",
+        "Death_Left_3",
+        "Death_Left_4",
+        "Death_Left_5",
+        "Death_Left_6"
+      ],
+      "frameCount": 7,
+      "fps": 8,
+      "action": "Death",
+      "direction": "Left"
+    },
+    "Death_Right": {
+      "frames": [
+        "Death_Right_0",
+        "Death_Right_1",
+        "Death_Right_2",
+        "Death_Right_3",
+        "Death_Right_4",
+        "Death_Right_5",
+        "Death_Right_6"
+      ],
+      "frameCount": 7,
+      "fps": 8,
+      "action": "Death",
+      "direction": "Right"
+    },
+    "Death_Up": {
+      "frames": [
+        "Death_Up_0",
+        "Death_Up_1",
+        "Death_Up_2",
+        "Death_Up_3",
+        "Death_Up_4",
+        "Death_Up_5",
+        "Death_Up_6"
+      ],
+      "frameCount": 7,
+      "fps": 8,
+      "action": "Death",
+      "direction": "Up"
+    },
+    "Hurt_Down": {
+      "frames": [
+        "Hurt_Down_0",
+        "Hurt_Down_1",
+        "Hurt_Down_2",
+        "Hurt_Down_3",
+        "Hurt_Down_4"
+      ],
+      "frameCount": 5,
+      "fps": 12,
+      "action": "Hurt",
+      "direction": "Down"
+    },
+    "Hurt_Left": {
+      "frames": [
+        "Hurt_Left_0",
+        "Hurt_Left_1",
+        "Hurt_Left_2",
+        "Hurt_Left_3",
+        "Hurt_Left_4"
+      ],
+      "frameCount": 5,
+      "fps": 12,
+      "action": "Hurt",
+      "direction": "Left"
+    },
+    "Hurt_Right": {
+      "frames": [
+        "Hurt_Right_0",
+        "Hurt_Right_1",
+        "Hurt_Right_2",
+        "Hurt_Right_3",
+        "Hurt_Right_4"
+      ],
+      "frameCount": 5,
+      "fps": 12,
+      "action": "Hurt",
+      "direction": "Right"
+    },
+    "Hurt_Up": {
+      "frames": [
+        "Hurt_Up_0",
+        "Hurt_Up_1",
+        "Hurt_Up_2",
+        "Hurt_Up_3",
+        "Hurt_Up_4"
+      ],
+      "frameCount": 5,
+      "fps": 12,
+      "action": "Hurt",
+      "direction": "Up"
+    },
+    "Idle_Down": {
+      "frames": [
+        "Idle_Down_0",
+        "Idle_Down_1",
+        "Idle_Down_2",
+        "Idle_Down_3",
+        "Idle_Down_4",
+        "Idle_Down_5",
+        "Idle_Down_6",
+        "Idle_Down_7",
+        "Idle_Down_8",
+        "Idle_Down_9",
+        "Idle_Down_10",
+        "Idle_Down_11"
+      ],
+      "frameCount": 12,
+      "fps": 8,
+      "action": "Idle",
+      "direction": "Down"
+    },
+    "Idle_Left": {
+      "frames": [
+        "Idle_Left_0",
+        "Idle_Left_1",
+        "Idle_Left_2",
+        "Idle_Left_3",
+        "Idle_Left_4",
+        "Idle_Left_5",
+        "Idle_Left_6",
+        "Idle_Left_7",
+        "Idle_Left_8",
+        "Idle_Left_9",
+        "Idle_Left_10",
+        "Idle_Left_11"
+      ],
+      "frameCount": 12,
+      "fps": 8,
+      "action": "Idle",
+      "direction": "Left"
+    },
+    "Idle_Right": {
+      "frames": [
+        "Idle_Right_0",
+        "Idle_Right_1",
+        "Idle_Right_2",
+        "Idle_Right_3",
+        "Idle_Right_4",
+        "Idle_Right_5",
+        "Idle_Right_6",
+        "Idle_Right_7",
+        "Idle_Right_8",
+        "Idle_Right_9",
+        "Idle_Right_10",
+        "Idle_Right_11"
+      ],
+      "frameCount": 12,
+      "fps": 8,
+      "action": "Idle",
+      "direction": "Right"
+    },
+    "Idle_Up": {
+      "frames": [
+        "Idle_Up_0",
+        "Idle_Up_1",
+        "Idle_Up_2",
+        "Idle_Up_3",
+        "Idle_Up_4",
+        "Idle_Up_5",
+        "Idle_Up_6",
+        "Idle_Up_7",
+        "Idle_Up_8",
+        "Idle_Up_9",
+        "Idle_Up_10",
+        "Idle_Up_11"
+      ],
+      "frameCount": 12,
+      "fps": 8,
+      "action": "Idle",
+      "direction": "Up"
+    },
+    "Run_Attack_Down": {
+      "frames": [
+        "Run_Attack_Down_0",
+        "Run_Attack_Down_1",
+        "Run_Attack_Down_2",
+        "Run_Attack_Down_3",
+        "Run_Attack_Down_4",
+        "Run_Attack_Down_5",
+        "Run_Attack_Down_6",
+        "Run_Attack_Down_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Run_Attack",
+      "direction": "Down"
+    },
+    "Run_Attack_Left": {
+      "frames": [
+        "Run_Attack_Left_0",
+        "Run_Attack_Left_1",
+        "Run_Attack_Left_2",
+        "Run_Attack_Left_3",
+        "Run_Attack_Left_4",
+        "Run_Attack_Left_5",
+        "Run_Attack_Left_6",
+        "Run_Attack_Left_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Run_Attack",
+      "direction": "Left"
+    },
+    "Run_Attack_Right": {
+      "frames": [
+        "Run_Attack_Right_0",
+        "Run_Attack_Right_1",
+        "Run_Attack_Right_2",
+        "Run_Attack_Right_3",
+        "Run_Attack_Right_4",
+        "Run_Attack_Right_5",
+        "Run_Attack_Right_6",
+        "Run_Attack_Right_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Run_Attack",
+      "direction": "Right"
+    },
+    "Run_Attack_Up": {
+      "frames": [
+        "Run_Attack_Up_0",
+        "Run_Attack_Up_1",
+        "Run_Attack_Up_2",
+        "Run_Attack_Up_3",
+        "Run_Attack_Up_4",
+        "Run_Attack_Up_5",
+        "Run_Attack_Up_6",
+        "Run_Attack_Up_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Run_Attack",
+      "direction": "Up"
+    },
+    "Run_Down": {
+      "frames": [
+        "Run_Down_0",
+        "Run_Down_1",
+        "Run_Down_2",
+        "Run_Down_3",
+        "Run_Down_4",
+        "Run_Down_5",
+        "Run_Down_6",
+        "Run_Down_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Run",
+      "direction": "Down"
+    },
+    "Run_Left": {
+      "frames": [
+        "Run_Left_0",
+        "Run_Left_1",
+        "Run_Left_2",
+        "Run_Left_3",
+        "Run_Left_4",
+        "Run_Left_5",
+        "Run_Left_6",
+        "Run_Left_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Run",
+      "direction": "Left"
+    },
+    "Run_Right": {
+      "frames": [
+        "Run_Right_0",
+        "Run_Right_1",
+        "Run_Right_2",
+        "Run_Right_3",
+        "Run_Right_4",
+        "Run_Right_5",
+        "Run_Right_6",
+        "Run_Right_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Run",
+      "direction": "Right"
+    },
+    "Run_Up": {
+      "frames": [
+        "Run_Up_0",
+        "Run_Up_1",
+        "Run_Up_2",
+        "Run_Up_3",
+        "Run_Up_4",
+        "Run_Up_5",
+        "Run_Up_6",
+        "Run_Up_7"
+      ],
+      "frameCount": 8,
+      "fps": 15,
+      "action": "Run",
+      "direction": "Up"
+    },
+    "Walk_Attack_Down": {
+      "frames": [
+        "Walk_Attack_Down_0",
+        "Walk_Attack_Down_1",
+        "Walk_Attack_Down_2",
+        "Walk_Attack_Down_3",
+        "Walk_Attack_Down_4",
+        "Walk_Attack_Down_5"
+      ],
+      "frameCount": 6,
+      "fps": 15,
+      "action": "Walk_Attack",
+      "direction": "Down"
+    },
+    "Walk_Attack_Left": {
+      "frames": [
+        "Walk_Attack_Left_0",
+        "Walk_Attack_Left_1",
+        "Walk_Attack_Left_2",
+        "Walk_Attack_Left_3",
+        "Walk_Attack_Left_4",
+        "Walk_Attack_Left_5"
+      ],
+      "frameCount": 6,
+      "fps": 15,
+      "action": "Walk_Attack",
+      "direction": "Left"
+    },
+    "Walk_Attack_Right": {
+      "frames": [
+        "Walk_Attack_Right_0",
+        "Walk_Attack_Right_1",
+        "Walk_Attack_Right_2",
+        "Walk_Attack_Right_3",
+        "Walk_Attack_Right_4",
+        "Walk_Attack_Right_5"
+      ],
+      "frameCount": 6,
+      "fps": 15,
+      "action": "Walk_Attack",
+      "direction": "Right"
+    },
+    "Walk_Attack_Up": {
+      "frames": [
+        "Walk_Attack_Up_0",
+        "Walk_Attack_Up_1",
+        "Walk_Attack_Up_2",
+        "Walk_Attack_Up_3",
+        "Walk_Attack_Up_4",
+        "Walk_Attack_Up_5"
+      ],
+      "frameCount": 6,
+      "fps": 15,
+      "action": "Walk_Attack",
+      "direction": "Up"
+    },
+    "Walk_Down": {
+      "frames": [
+        "Walk_Down_0",
+        "Walk_Down_1",
+        "Walk_Down_2",
+        "Walk_Down_3",
+        "Walk_Down_4",
+        "Walk_Down_5"
+      ],
+      "frameCount": 6,
+      "fps": 12,
+      "action": "Walk",
+      "direction": "Down"
+    },
+    "Walk_Left": {
+      "frames": [
+        "Walk_Left_0",
+        "Walk_Left_1",
+        "Walk_Left_2",
+        "Walk_Left_3",
+        "Walk_Left_4",
+        "Walk_Left_5"
+      ],
+      "frameCount": 6,
+      "fps": 12,
+      "action": "Walk",
+      "direction": "Left"
+    },
+    "Walk_Right": {
+      "frames": [
+        "Walk_Right_0",
+        "Walk_Right_1",
+        "Walk_Right_2",
+        "Walk_Right_3",
+        "Walk_Right_4",
+        "Walk_Right_5"
+      ],
+      "frameCount": 6,
+      "fps": 12,
+      "action": "Walk",
+      "direction": "Right"
+    },
+    "Walk_Up": {
+      "frames": [
+        "Walk_Up_0",
+        "Walk_Up_1",
+        "Walk_Up_2",
+        "Walk_Up_3",
+        "Walk_Up_4",
+        "Walk_Up_5"
+      ],
+      "frameCount": 6,
+      "fps": 12,
+      "action": "Walk",
+      "direction": "Up"
+    }
+  }
+}
