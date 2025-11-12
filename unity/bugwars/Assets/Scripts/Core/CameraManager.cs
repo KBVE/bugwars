@@ -39,10 +39,29 @@ namespace BugWars.Core
         Vector3 _pivotVel;
         Vector3 _smoothedVel;
 
+        [Header("Yaw Follow")]
+        [Tooltip("If true, pivot rotates to match the player's facing direction (Y axis only)")]
+        public bool followPlayerYaw = false;
+        [Tooltip("Degrees per second when rotating toward the player's facing direction")]
+        public float followYawSpeed = 360f;
+
         public void TeleportToPlayer()
         {
             if (!player) return;
             transform.position = player.position + headRoom;
+            if (followPlayerYaw && player != null)
+            {
+                Vector3 flatForward = Vector3.ProjectOnPlane(player.forward, Vector3.up);
+                if (flatForward.sqrMagnitude < 0.0001f)
+                {
+                    flatForward = Vector3.forward;
+                }
+                transform.rotation = Quaternion.LookRotation(flatForward.normalized, Vector3.up);
+            }
+            else
+            {
+                transform.rotation = Quaternion.identity;
+            }
         }
 
         void LateUpdate()
@@ -82,8 +101,21 @@ namespace BugWars.Core
             transform.position = Vector3.SmoothDamp(transform.position, desired, ref _pivotVel, extraSmoothing,
                                                      Mathf.Infinity, Time.deltaTime);
 
-            // Keep pivot upright (helps if you read its forward elsewhere)
-            transform.rotation = Quaternion.identity;
+            if (followPlayerYaw && player != null)
+            {
+                Vector3 flatForward = Vector3.ProjectOnPlane(player.forward, Vector3.up);
+                if (flatForward.sqrMagnitude > 0.0001f)
+                {
+                    Quaternion targetRotation = Quaternion.LookRotation(flatForward.normalized, Vector3.up);
+                    float yawSpeed = Mathf.Max(1f, followYawSpeed);
+                    transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, yawSpeed * Time.deltaTime);
+                }
+            }
+            else
+            {
+                // Keep pivot upright (helps if you read its forward elsewhere)
+                transform.rotation = Quaternion.identity;
+            }
         }
     }
 
@@ -365,6 +397,21 @@ namespace BugWars.Core
         [SerializeField] [Tooltip("Default yaw offset relative to the target forward when camera initialises")]
         private float defaultPanOffset = 0f;
 
+        [Header("Camera Preset")]
+        [SerializeField] private CameraFramingPreset framingPreset = CameraFramingPreset.Centered;
+        [SerializeField] private AutoAlignMode autoAlignMode = AutoAlignMode.AlwaysBehind;
+        [SerializeField] private float autoAlignSpeed = 360f;
+
+        private Vector3 orbitShoulderOffset;
+        private float orbitCameraDistance;
+        private Vector3 orbitPositionDamping;
+        private Vector2 orbitPitchClamp;
+        private Vector3 pivotHeadRoom;
+        private float pivotShoulderRight;
+        private float orbitCameraSide;
+
+        private CameraFollowConfig _activeFollowConfig;
+        private bool _hasActiveFollowConfig;
         private readonly Dictionary<string, CinemachinePanTilt> _panTiltCache = new Dictionary<string, CinemachinePanTilt>();
 
         /// <summary>
@@ -444,6 +491,84 @@ namespace BugWars.Core
             {
                 Debug.Log($"[CameraManager] Main camera found: {_mainCamera.name}");
             }
+        }
+
+        private void Reset()
+        {
+            ForceCameraDefaults();
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (!Application.isPlaying)
+            {
+                ForceCameraDefaults();
+            }
+        }
+#endif
+
+        private void ForceCameraDefaults()
+        {
+            ApplyFramingPreset(framingPreset, force: true);
+        }
+
+        public void ApplyFramingPreset(CameraFramingPreset preset, bool force = false)
+        {
+            framingPreset = preset;
+
+            switch (preset)
+            {
+                case CameraFramingPreset.OverShoulder:
+                    orbitShoulderOffset = new Vector3(0.45f, 1.3f, 0f);
+                    orbitCameraDistance = 6.6f;
+                    orbitPositionDamping = Vector3.zero;
+                    orbitPitchClamp = new Vector2(8f, 65f);
+                    defaultTiltAngle = -34f;
+                    pivotHeadRoom = new Vector3(0f, 1.15f, 0f);
+                    pivotShoulderRight = 0.35f;
+                    orbitCameraSide = 0.35f;
+                    break;
+
+                case CameraFramingPreset.Centered:
+                default:
+                    orbitShoulderOffset = new Vector3(0f, 2.0f, 0f);
+                    orbitCameraDistance = 8.2f;
+                    orbitPositionDamping = Vector3.zero;
+                    orbitPitchClamp = new Vector2(12f, 55f);
+                    defaultTiltAngle = -28f;
+                    pivotHeadRoom = new Vector3(0f, 1.6f, 0f);
+                    pivotShoulderRight = 0f;
+                    orbitCameraSide = 0.5f;
+                    defaultPanOffset = 0f;
+                    break;
+            }
+
+            defaultPanOffset = 0f;
+
+            if (!force)
+            {
+                ReapplyActiveFollowConfig();
+            }
+        }
+
+        private void ReapplyActiveFollowConfig()
+        {
+            if (!_hasActiveFollowConfig)
+            {
+                return;
+            }
+
+            var config = _activeFollowConfig;
+            config.cameraDistance = orbitCameraDistance;
+            config.shoulderOffset = orbitShoulderOffset;
+            config.positionDamping = orbitPositionDamping;
+            config.pitchClamp = orbitPitchClamp;
+            config.screenX = orbitCameraSide;
+            config.screenY = framingPreset == CameraFramingPreset.Centered ? 0.45f : 0.5f;
+            config.immediate = true;
+
+            HandleCameraFollowRequest(config);
         }
 
         private void Start()
@@ -563,6 +688,17 @@ namespace BugWars.Core
 
             if (virtualCamera != null)
             {
+                // Override with inspector-tuned orbit settings
+                config.cameraDistance = orbitCameraDistance;
+                config.shoulderOffset = orbitShoulderOffset;
+                config.positionDamping = orbitPositionDamping;
+                config.pitchClamp = orbitPitchClamp;
+                config.screenX = orbitCameraSide;
+                config.screenY = framingPreset == CameraFramingPreset.Centered ? 0.45f : 0.5f;
+
+                _activeFollowConfig = config;
+                _hasActiveFollowConfig = true;
+
                 // Use lead pivot system for better readability
                 if (preferOrthographic)
                 {
@@ -598,6 +734,7 @@ namespace BugWars.Core
             {
                 camera.Follow = null;
                 camera.LookAt = null;
+                _hasActiveFollowConfig = false;
 
                 if (debugMode)
                     Debug.Log($"[CameraManager] Camera '{camera.name}' stopped following");
@@ -1189,6 +1326,18 @@ namespace BugWars.Core
             Massive  // Extreme shake (massive explosions, boss attacks)
         }
 
+        public enum CameraFramingPreset
+        {
+            Centered,
+            OverShoulder
+        }
+
+        public enum AutoAlignMode
+        {
+            Disabled,
+            AlwaysBehind
+        }
+
         /// <summary>
         /// Modifies camera FOV (useful for sprint/dash effects)
         /// </summary>
@@ -1259,6 +1408,8 @@ namespace BugWars.Core
             pivot.maxSpeedForLead = 7.5f;
             pivot.shoulderRight = 0.35f;
             pivot.headRoom = new Vector3(0, 1.05f, 0);
+            pivot.followPlayerYaw = autoAlignMode == AutoAlignMode.AlwaysBehind;
+            pivot.followYawSpeed = autoAlignSpeed;
             if (teleport) pivot.TeleportToPlayer();
 
             // Body: PositionComposer (Framing Transposer)
@@ -1317,10 +1468,24 @@ namespace BugWars.Core
 
             // Create/get lead pivot
             CameraLeadPivot pivot = GetOrCreateLeadPivot(config.target);
-            pivot.maxLeadDistance = 3.0f;
-            pivot.maxSpeedForLead = 7.5f;
-            pivot.shoulderRight = 0.3f;
-            pivot.headRoom = new Vector3(0, 1.1f, 0);
+            if (framingPreset == CameraFramingPreset.OverShoulder)
+            {
+                pivot.maxLeadDistance = 0.4f;
+                pivot.maxSpeedForLead = 6f;
+                pivot.extraSmoothing = 0.05f;
+                pivot.shoulderBlend = 0.1f;
+            }
+            else
+            {
+                pivot.maxLeadDistance = 0f;
+                pivot.maxSpeedForLead = 0f;
+                pivot.extraSmoothing = 0f;
+                pivot.shoulderBlend = 0f;
+            }
+            pivot.shoulderRight = pivotShoulderRight;
+            pivot.headRoom = pivotHeadRoom;
+            pivot.followPlayerYaw = autoAlignMode == AutoAlignMode.AlwaysBehind;
+            pivot.followYawSpeed = autoAlignSpeed;
             if (teleport) pivot.TeleportToPlayer();
 
             // Body: ThirdPersonFollow
@@ -1335,8 +1500,8 @@ namespace BugWars.Core
             tpf.CameraDistance = desiredDistance;
             tpf.ShoulderOffset = config.shoulderOffset;
             tpf.VerticalArmLength = config.verticalArmLength;
-            tpf.CameraSide = 0.5f;
-            tpf.Damping = new Vector3(0.35f, 0.35f, 0.55f);
+            tpf.CameraSide = orbitCameraSide;
+            tpf.Damping = orbitPositionDamping;
 
             // Collision detection
             var deoc = vcam.GetComponent<CinemachineDeoccluder>();
@@ -1535,7 +1700,9 @@ namespace BugWars.Core
             if (panTilt == null)
                 return;
 
-            panTilt.ReferenceFrame = CinemachinePanTilt.ReferenceFrames.ParentObject;
+            panTilt.ReferenceFrame = autoAlignMode == AutoAlignMode.AlwaysBehind
+                ? CinemachinePanTilt.ReferenceFrames.FollowTarget
+                : CinemachinePanTilt.ReferenceFrames.ParentObject;
             panTilt.RecenterTarget = CinemachinePanTilt.RecenterTargetModes.AxisCenter;
 
             var panAxis = panTilt.PanAxis;
