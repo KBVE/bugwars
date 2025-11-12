@@ -26,7 +26,7 @@ RUN pnpm run build
 
 # Download and extract Unity WebGL game into dist
 RUN apk add --no-cache wget unzip && \
-    wget -O /tmp/webgl.zip https://unity-bw.kbve.com/webgl.zip && \
+    wget -O /tmp/webgl.zip https://unity-bw.kbve.com/webgl.zip?new && \
     mkdir -p /app/astro/dist/assets/game && \
     unzip -q /tmp/webgl.zip -d /app/astro/dist/assets/game && \
     rm /tmp/webgl.zip && \

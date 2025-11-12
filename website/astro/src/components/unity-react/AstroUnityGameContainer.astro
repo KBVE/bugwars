@@ -61,9 +61,9 @@ const {
   class={`astro-unity-game-container ${className}`}
   style={`width: ${width}; height: ${height}; position: relative;`}
 >
-  <SupaProvider client:load>
+  <SupaProvider client:only="react">
     <ReactUnity
-      client:load
+      client:only="react"
       config={config}
       canvasId={canvasId}
       showFullscreenButton={showFullscreenButton}

@@ -173,6 +173,13 @@ namespace BugWars.Characters.Editor
                             if (material.HasProperty("_TexturePixelation"))
                                 material.SetFloat("_TexturePixelation", 16f);  // Moderate texture pixelation
 
+                            // Set subtle outline parameters (inspired by Three.js normalEdgeStrength)
+                            if (material.HasProperty("_OutlineStrength"))
+                                material.SetFloat("_OutlineStrength", 0.3f);  // Subtle edge detection (0.3 default)
+
+                            if (material.HasProperty("_OutlineColor"))
+                                material.SetColor("_OutlineColor", Color.black);  // Black outlines
+
                             EditorUtility.SetDirty(material);
                             fullReport.AppendLine($"✓ Applied pixel shader to: {materialName}");
                             shaderAppliedCount++;
@@ -851,6 +858,13 @@ namespace BugWars.Characters.Editor
                     // Set pixel art parameters for balanced retro look
                     if (material.HasProperty("_TexturePixelation"))
                         material.SetFloat("_TexturePixelation", 16f);  // Moderate texture pixelation
+
+                    // Set subtle outline parameters (inspired by Three.js normalEdgeStrength)
+                    if (material.HasProperty("_OutlineStrength"))
+                        material.SetFloat("_OutlineStrength", 0.3f);  // Subtle edge detection (0.3 default)
+
+                    if (material.HasProperty("_OutlineColor"))
+                        material.SetColor("_OutlineColor", Color.black);  // Black outlines
 
                     EditorUtility.SetDirty(material);
                     updatedCount++;

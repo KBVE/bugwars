@@ -4,61 +4,54 @@ Custom Unity shader that transforms 3D character models into retro pixel art aes
 
 ## Overview
 
-This shader gives 3D models a pixelated, retro look similar to classic pixel art games, while maintaining the flexibility and efficiency of 3D rendering. It uses a two-pass rendering system to create outlines and applies various quantization and pixelation effects.
+This shader gives 3D models a pixelated, retro look similar to classic pixel art games, while maintaining the flexibility and efficiency of 3D rendering. It uses texture pixelation, toon-style lighting, and Fresnel-based edge detection to create subtle outlines without overdoing it.
 
 ## Technical Details
 
-### Rendering Passes
+### Rendering Features
 
-#### Pass 1: Outline (Front-face culling)
-- **Purpose**: Creates a solid outline around the character
-- **Method**: Vertex expansion along normals with front-face culling
-- **Customizable**: Outline width and color
+#### Single-Pass Rendering (Forward Lit)
+- **UV Pixelation**: Quantizes texture coordinates for retro texture look
+- **Toon Lighting**: 4-step quantized lighting (0.6 ambient minimum)
+- **Fresnel Edge Detection**: Detects edges where surface normals face away from camera
+  - Inspired by Three.js `normalEdgeStrength` parameter
+  - Configurable strength (default 0.3 for subtle effect)
+  - Power function (^3) to sharpen edge detection
+- **Lighting Support**: Fully lit with URP lighting system
 
-#### Pass 2: Main Rendering (Back-face culling)
-- **Purpose**: Renders the pixelated character with lighting
-- **Includes**:
-  - Vertex quantization for blocky geometry
-  - UV pixelation for retro textures
-  - Toon-style stepped lighting (4 levels)
-  - Color palette quantization (16 levels per channel)
-  - Shadow support via `AutoLight.cginc`
+### Key Techniques
 
-### Key Functions
-
-#### `QuantizePosition(float3 pos, float gridSize)`
-Snaps vertex positions to a grid, creating a blocky low-poly aesthetic:
-```glsl
-return floor(pos / gridSize) * gridSize;
-```
-
-#### `PixelateUV(float2 uv, float pixelation)`
+#### UV Pixelation
 Reduces texture resolution for pixel art look:
-```glsl
-return floor(uv * pixelation) / pixelation;
+```hlsl
+float2 pixelatedUV = floor(input.uv * _TexturePixelation) / _TexturePixelation;
 ```
 
-#### `ToonShading(float3 normal, float3 lightDir, int steps)`
+#### Toon Lighting (4-Step Quantization)
 Creates stepped lighting with discrete levels:
-```glsl
-float lighting = max(0.0, NdotL);
-lighting = floor(lighting * steps) / steps;
+```hlsl
+float lighting = max(0.6, NdotL);
+lighting = floor(lighting * 4.0) / 4.0;
+```
+
+#### Fresnel Edge Detection
+Detects edges based on view angle to surface normal:
+```hlsl
+float fresnel = 1.0 - saturate(dot(normalWS, viewDirWS));
+fresnel = pow(fresnel, 3.0);  // Sharpen edges
+float edgeFactor = step(1.0 - _OutlineStrength, fresnel);
+color = lerp(color, _OutlineColor.rgb, edgeFactor * _OutlineStrength);
 ```
 
 ## Shader Properties
 
 | Property | Type | Range | Default | Description |
 |----------|------|-------|---------|-------------|
-| `_MainTex` | Texture2D | - | white | Character texture |
-| `_Color` | Color | - | (1,1,1,1) | Tint color |
-| `_PixelSize` | Float | 0.001 - 0.1 | 0.02 | Overall pixelation amount |
-| `_TexturePixelation` | Float | 1 - 64 | 8 | Texture pixelation level |
-| `_OutlineWidth` | Float | 0 - 0.1 | 0.01 | Outline thickness |
+| `_BaseMap` | Texture2D | - | white | Character texture (URP) |
+| `_BaseColor` | Color | - | (1,1,1,1) | Tint color (URP) |
+| `_TexturePixelation` | Float | 1 - 64 | 16 | Texture pixelation level |
+| `_OutlineStrength` | Float | 0 - 1 | 0.3 | Edge detection strength (Fresnel-based) |
 | `_OutlineColor` | Color | - | (0,0,0,1) | Outline color |
-| `_VertexQuantization` | Float | 0 - 1 | 0.5 | Amount of vertex snapping |
-| `_QuantizationSize` | Float | 0.01 - 1.0 | 0.1 | Grid cell size for snapping |
-| `_AmbientStrength` | Float | 0 - 1 | 0.3 | Ambient light contribution |
-| `_DiffuseStrength` | Float | 0 - 1 | 0.7 | Directional light contribution |
 
 ## Usage
 
@@ -77,22 +70,21 @@ KBVE > Characters > Sync Adventurers
 ### Tuning Tips
 
 **For more pixelated look:**
-- Increase `_TexturePixelation` (e.g., 16 or 32)
-- Increase `_VertexQuantization` (closer to 1.0)
-- Increase `_QuantizationSize` (e.g., 0.2 or 0.3)
+- Increase `_TexturePixelation` (e.g., 32 or 64)
 
 **For smoother look:**
-- Decrease `_TexturePixelation` (e.g., 4 or 2)
-- Decrease `_VertexQuantization` (closer to 0.0)
-- Decrease `_QuantizationSize` (e.g., 0.05)
+- Decrease `_TexturePixelation` (e.g., 8 or 4)
 
 **For thicker outlines:**
-- Increase `_OutlineWidth` (e.g., 0.02 or 0.03)
+- Increase `_OutlineStrength` (e.g., 0.5 or 0.7)
+- Note: Uses Fresnel-based edge detection (inspired by Three.js normalEdgeStrength)
+
+**For subtler outlines:**
+- Decrease `_OutlineStrength` (e.g., 0.1 or 0.2)
 
 **For different lighting styles:**
-- Adjust `_AmbientStrength` for base brightness
-- Adjust `_DiffuseStrength` for light/shadow contrast
-- Modify the `steps` parameter in `ToonShading()` function (currently 4)
+- Currently uses 4-step quantized lighting with 0.6 ambient
+- Modify lighting steps in shader code for different toon shading levels
 
 ## Shader Tags
 
@@ -106,16 +98,17 @@ Tags { "RenderType"="Opaque" "Queue"="Geometry" }
 
 ## Compatibility
 
-- **Unity Version**: Compatible with Unity's built-in render pipeline
-- **Lighting**: ForwardBase lighting mode with shadow support
-- **Platform**: Works on all platforms that support CG/HLSL shaders
+- **Unity Version**: Requires URP (Universal Render Pipeline)
+- **Lighting**: UniversalForward lighting mode
+- **Platform**: Works on all platforms that support URP and HLSL shaders
 
 ## Performance Considerations
 
-- Two-pass rendering (outline + main) has moderate performance cost
-- Quantization operations are simple and efficient
-- Shadow support included via `SHADOW_ATTENUATION`
+- Single-pass rendering (efficient)
+- Simple mathematical operations (floor, pow, lerp)
+- No expensive texture lookups beyond base map
 - Suitable for mobile with moderate poly counts
+- URP Forward rendering path
 
 ## Related Files
 
@@ -126,7 +119,7 @@ Tags { "RenderType"="Opaque" "Queue"="Geometry" }
 
 ## Inspiration
 
-Based on retro pixel art aesthetics and Three.js WebGL postprocessing techniques, adapted for Unity's built-in render pipeline with real-time 3D character rendering.
+Based on retro pixel art aesthetics and Three.js WebGL postprocessing techniques (specifically the `normalEdgeStrength` parameter from RenderPixelatedPass), adapted for Unity's URP with real-time 3D character rendering using Fresnel-based edge detection.
 
 ## License
 

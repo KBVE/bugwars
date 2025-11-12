@@ -5,6 +5,8 @@ Shader "BugWars/PixelArtCharacter"
         [MainTexture] _BaseMap("Texture", 2D) = "white" {}
         [MainColor] _BaseColor("Color", Color) = (1, 1, 1, 1)
         _TexturePixelation("Texture Pixelation", Range(1, 64)) = 16
+        _OutlineStrength("Outline Strength", Range(0, 1)) = 0.3
+        _OutlineColor("Outline Color", Color) = (0, 0, 0, 1)
     }
 
     SubShader
@@ -43,6 +45,7 @@ Shader "BugWars/PixelArtCharacter"
             {
                 float2 uv : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
+                float3 viewDirWS : TEXCOORD2;
                 float4 positionCS : SV_POSITION;
             };
 
@@ -53,6 +56,8 @@ Shader "BugWars/PixelArtCharacter"
                 float4 _BaseMap_ST;
                 half4 _BaseColor;
                 float _TexturePixelation;
+                float _OutlineStrength;
+                half4 _OutlineColor;
             CBUFFER_END
 
             Varyings LitPassVertex(Attributes input)
@@ -64,6 +69,7 @@ Shader "BugWars/PixelArtCharacter"
 
                 output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
                 output.normalWS = normalInput.normalWS;
+                output.viewDirWS = GetWorldSpaceViewDir(vertexInput.positionWS);
                 output.positionCS = vertexInput.positionCS;
 
                 return output;
@@ -93,6 +99,19 @@ Shader "BugWars/PixelArtCharacter"
 
                 // Apply lighting
                 half3 color = albedo.rgb * lighting * mainLight.color;
+
+                // Subtle edge detection using Fresnel effect (similar to Three.js normalEdgeStrength)
+                float3 viewDirWS = normalize(input.viewDirWS);
+                float fresnel = 1.0 - saturate(dot(normalWS, viewDirWS));
+
+                // Sharpen the edge detection (power controls thickness)
+                fresnel = pow(fresnel, 3.0);
+
+                // Apply outline only at edges based on strength parameter
+                float edgeFactor = step(1.0 - _OutlineStrength, fresnel);
+
+                // Blend outline color with lit color
+                color = lerp(color, _OutlineColor.rgb, edgeFactor * _OutlineStrength);
 
                 return half4(color, albedo.a);
             }

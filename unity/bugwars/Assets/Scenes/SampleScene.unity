@@ -171,10 +171,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 8462317456789012347, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
-      propertyPath: hudVisualTree
-      value: 
-      objectReference: {fileID: 9197481963319205126, guid: b8f9e0d3c4b5a6f7e8d9c0b1a2f3e4d5, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
