@@ -1532,8 +1532,9 @@ namespace BugWars.Core
                 follow = vcam.gameObject.AddComponent<CinemachineFollow>();
                 Debug.Log($"[CameraManager] Added CinemachineFollow for perspective rig to '{vcam.name}'");
             }
-
-            follow.FollowOffset = new Vector3(0f, 0f, -orbitCameraDistance);
+ 
+            float followHeight = Mathf.Max(0.5f, orbitShoulderOffset.y - pivot.headRoom.y * 0.5f);
+            follow.FollowOffset = new Vector3(orbitShoulderOffset.x, followHeight, -orbitCameraDistance);
             follow.TrackerSettings.BindingMode = Unity.Cinemachine.TargetTracking.BindingMode.LazyFollow;
             follow.TrackerSettings.PositionDamping = orbitPositionDamping;
             follow.TrackerSettings.RotationDamping = Vector3.zero;
@@ -1565,42 +1566,42 @@ namespace BugWars.Core
             {
                 Destroy(follow);
             }
-
+ 
             var panTilt = vcam.GetComponent<CinemachinePanTilt>();
             if (panTilt != null)
             {
                 Destroy(panTilt);
             }
-
+ 
             var tpf = vcam.GetComponent<CinemachineThirdPersonFollow>();
             if (tpf == null)
             {
                 tpf = vcam.gameObject.AddComponent<CinemachineThirdPersonFollow>();
                 Debug.Log($"[CameraManager] Added ThirdPersonFollow for perspective rig to '{vcam.name}'");
             }
-
+ 
             tpf.CameraDistance = orbitCameraDistance;
             tpf.ShoulderOffset = orbitShoulderOffset;
-            tpf.VerticalArmLength = config.verticalArmLength;
+            tpf.VerticalArmLength = Mathf.Max(0.25f, config.verticalArmLength - 0.5f);
             tpf.CameraSide = 0.5f;
             tpf.Damping = orbitPositionDamping;
-
+ 
             var deoc = vcam.GetComponent<CinemachineDeoccluder>();
             if (deoc == null)
             {
                 deoc = vcam.gameObject.AddComponent<CinemachineDeoccluder>();
                 Debug.Log($"[CameraManager] Added Deoccluder for collision to '{vcam.name}'");
             }
-
+ 
             deoc.CollideAgainst = LayerMask.GetMask("Default", "Environment", "Terrain");
             deoc.MinimumDistanceFromTarget = 0.8f;
             deoc.AvoidObstacles.Enabled = true;
             deoc.AvoidObstacles.CameraRadius = 0.2f;
             deoc.AvoidObstacles.DistanceLimit = tpf.CameraDistance + 1.5f;
-
+ 
             vcam.Follow = pivot.transform;
             vcam.LookAt = pivot.transform;
-
+ 
             if (debugMode)
             {
                 Debug.Log($"[CameraManager] Built Perspective Lite Rig (Locked):");
@@ -1608,6 +1609,28 @@ namespace BugWars.Core
                 Debug.Log($"  - ShoulderOffset: {orbitShoulderOffset}");
                 Debug.Log($"  - Using ThirdPersonFollow for orbital lock");
             }
+        }
+
+        internal void ApplyAutoAlign(CameraLeadPivot pivot, Vector3 moveDir, Transform player)
+        {
+            if (pivot == null || player == null)
+                return;
+
+            if (!pivot.followPlayerYaw)
+                return;
+
+            Vector3 direction = moveDir.sqrMagnitude > 0.0001f
+                ? moveDir
+                : Vector3.ProjectOnPlane(player.forward, Vector3.up);
+
+            if (direction.sqrMagnitude < 0.0001f)
+                return;
+
+            float angle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
+            float snapped = SnapToCardinal(angle);
+            Quaternion targetRotation = Quaternion.Euler(0f, snapped, 0f);
+            float yawSpeed = Mathf.Max(1f, pivot.followYawSpeed);
+            pivot.transform.rotation = Quaternion.RotateTowards(pivot.transform.rotation, targetRotation, yawSpeed * Time.deltaTime);
         }
 
         /// <summary>
