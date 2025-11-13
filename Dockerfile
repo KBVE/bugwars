@@ -20,20 +20,12 @@ COPY website/astro/astro.config.mjs website/astro/tsconfig.json website/astro/ta
 # Copy source directories
 COPY website/astro/src ./src
 COPY website/astro/public ./public
+COPY website/astro/scripts ./scripts
 
-# Copy fetch script for Unity WebGL build
-COPY website/astro/scripts/fetch-webgl.sh ./scripts/fetch-webgl.sh
-
-# Install bash and curl for the fetch script
+# Install runtime dependencies for build scripts
 RUN apk add --no-cache bash curl unzip
 
-# Build argument for expected version (passed from CI)
-ARG EXPECTED_VERSION=""
-
-# Set environment variable for fetch script
-ENV EXPECTED_VERSION=${EXPECTED_VERSION}
-
-# Build Astro site (prebuild script will fetch Unity WebGL files)
+# Build Astro site
 RUN pnpm run build
 
 # Precompress all static assets with gzip -9 and remove originals
