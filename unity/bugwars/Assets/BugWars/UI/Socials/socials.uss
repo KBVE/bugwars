@@ -1,0 +1,179 @@
+/* Socials container - can be positioned anywhere */
+.socials-container {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    min-width: 300px;
+    max-width: 500px;
+    align-items: flex-end;
+}
+
+/* Socials panel - main container with Zinc background */
+.socials-panel {
+    background-color: rgba(39, 39, 42, 0.98); /* Zinc 800 */
+    border-width: 2px;
+    border-color: rgb(82, 82, 91); /* Zinc 600 */
+    border-radius: 12px;
+    padding: 20px;
+    transition-property: scale, border-color;
+    transition-duration: 0.3s;
+}
+
+.socials-panel:hover {
+    border-color: rgb(113, 113, 122); /* Zinc 500 - lighter border on hover */
+}
+
+/* Header container */
+.header-container {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+/* Header title with Lime accent */
+.header-title {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: rgb(190, 242, 100); /* Lime 300 */
+    text-shadow: 0 0 10px rgba(132, 204, 22, 0.4); /* Lime 500 glow */
+}
+
+/* Close button */
+.close-button {
+    width: 30px;
+    height: 30px;
+    font-size: 24px;
+    -unity-font-style: bold;
+    background-color: rgba(82, 52, 52, 0.6); /* Red-zinc mix */
+    border-width: 2px;
+    border-color: rgb(113, 63, 63);
+    border-radius: 6px;
+    color: rgb(255, 255, 255);
+    padding: 0;
+    margin: 0;
+    transition-property: background-color, border-color, scale;
+    transition-duration: 0.2s;
+}
+
+.close-button:hover {
+    background-color: rgb(153, 77, 77);
+    border-color: rgb(200, 120, 120);
+    scale: 1.1;
+}
+
+.close-button:active {
+    background-color: rgb(120, 60, 60);
+    scale: 1.0;
+}
+
+/* Button container - supports both horizontal and vertical layouts */
+.button-container {
+    flex-direction: row; /* Default horizontal, can be changed via script */
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    gap: 10px; /* Spacing between buttons */
+}
+
+/* Social buttons - base styling */
+.social-button {
+    min-width: 120px;
+    height: 45px;
+    font-size: 16px;
+    -unity-font-style: bold;
+    border-width: 2px;
+    border-radius: 8px;
+    color: rgb(255, 255, 255);
+    padding: 0 15px;
+    flex-grow: 1; /* Allow buttons to grow to fill space */
+
+    /* Smooth transitions */
+    transition-property: scale, translate, border-width, background-color;
+    transition-duration: 0.25s;
+    transition-timing-function: ease-out;
+}
+
+.social-button:hover {
+    scale: 1.05;
+    translate: 0 -2px;
+    border-width: 3px;
+}
+
+.social-button:active {
+    scale: 1.0;
+    translate: 0 0;
+}
+
+/* Platform-specific button colors (fallback if not set via script) */
+
+/* Discord - Blurple */
+.social-discord {
+    background-color: rgb(88, 101, 242); /* Discord Blurple */
+    border-color: rgb(71, 82, 196);
+}
+
+.social-discord:hover {
+    background-color: rgb(114, 137, 218); /* Lighter Discord blue */
+    border-color: rgb(134, 157, 238);
+}
+
+.social-discord:active {
+    background-color: rgb(71, 82, 196);
+}
+
+/* Twitch - Purple */
+.social-twitch {
+    background-color: rgb(145, 70, 255); /* Twitch Purple */
+    border-color: rgb(121, 56, 214);
+}
+
+.social-twitch:hover {
+    background-color: rgb(184, 128, 255); /* Lighter Twitch purple */
+    border-color: rgb(204, 158, 255);
+}
+
+.social-twitch:active {
+    background-color: rgb(121, 56, 214);
+}
+
+/* Twitter/X - Blue */
+.social-twitter {
+    background-color: rgb(29, 161, 242); /* Twitter Blue */
+    border-color: rgb(21, 130, 196);
+}
+
+.social-twitter:hover {
+    background-color: rgb(88, 181, 245);
+    border-color: rgb(118, 196, 248);
+}
+
+.social-twitter:active {
+    background-color: rgb(21, 130, 196);
+}
+
+/* YouTube - Red */
+.social-youtube {
+    background-color: rgb(255, 0, 0); /* YouTube Red */
+    border-color: rgb(204, 0, 0);
+}
+
+.social-youtube:hover {
+    background-color: rgb(255, 51, 51);
+    border-color: rgb(255, 102, 102);
+}
+
+.social-youtube:active {
+    background-color: rgb(204, 0, 0);
+}
+
+/* Responsive adjustments for vertical layout */
+.button-container.vertical {
+    flex-direction: column;
+}
+
+.button-container.vertical .social-button {
+    width: 100%;
+}
