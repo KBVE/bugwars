@@ -1,18 +1,18 @@
 using UnityEngine;
+using BugWars.Entity.Player;
 
 namespace BugWars.Characters
 {
     /// <summary>
     /// Character controller for adventurer characters (Knight, Mage, Rogue, Barbarian, Ranger)
-    /// Manages character properties, animation, and basic movement
+    /// Manages character properties, animation, and 3D model rendering
+    /// Extends Player to integrate with the entity system
     /// </summary>
-    public class AdventurerCharacter : MonoBehaviour
+    public class AdventurerCharacter : Player
     {
-        [Header("Character Properties")]
+        [Header("Adventurer Properties")]
         [SerializeField] private string characterClass = "Knight";
-        [SerializeField] private float moveSpeed = 5f;
-        [SerializeField] private float rotationSpeed = 10f;
-        
+
         [Header("Animation")]
         [SerializeField] private Animator animator;
 
@@ -28,28 +28,34 @@ namespace BugWars.Characters
         [Header("Rendering")]
         [SerializeField] private SkinnedMeshRenderer meshRenderer;
         [SerializeField] private Material characterMaterial;
-        
-        private Vector3 moveDirection;
+
         private bool isInitialized = false;
-        
-        void Awake()
+
+        protected override void Awake()
         {
+            // Disable billboarding since we're using 3D models, not 2D sprites
+            enableBillboard = false;
+
+            base.Awake(); // Call Entity/Player initialization
             InitializeComponents();
+            entityName = characterClass; // Set entity name to character class
         }
-        
-        void Start()
+
+        protected override void Start()
         {
+            base.Start(); // Call Player/Entity start (handles EntityManager registration)
+
             // Apply the character material to all mesh renderers if set
             if (characterMaterial != null)
             {
                 ApplyMaterialToAllMeshes();
             }
         }
-        
+
         void Update()
         {
             if (!isInitialized) return;
-            
+
             // Basic update logic - can be expanded for movement
             UpdateAnimation();
         }
@@ -80,23 +86,17 @@ namespace BugWars.Characters
         private void UpdateAnimation()
         {
             if (animator == null) return;
-            
-            // Set animator parameters if available
-            bool isMoving = moveDirection.magnitude > 0.01f;
+
+            // Get velocity from rigidbody (inherited from Entity)
+            bool isMoving = rb != null && rb.linearVelocity.magnitude > 0.01f;
+            float speed = rb != null ? new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude : 0f;
+
             if (animator.parameters.Length > 0)
             {
                 // Common animator parameters
                 animator.SetBool("IsMoving", isMoving);
-                animator.SetFloat("Speed", moveDirection.magnitude);
+                animator.SetFloat("Speed", speed);
             }
-        }
-        
-        /// <summary>
-        /// Set the movement direction for the character
-        /// </summary>
-        public void SetMoveDirection(Vector3 direction)
-        {
-            moveDirection = direction;
         }
         
         /// <summary>
@@ -151,11 +151,13 @@ namespace BugWars.Characters
         {
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireSphere(transform.position, 0.5f);
-            
-            if (moveDirection.magnitude > 0)
+
+            // Visualize movement direction from rigidbody velocity
+            if (rb != null && rb.linearVelocity.magnitude > 0.01f)
             {
                 Gizmos.color = Color.yellow;
-                Gizmos.DrawRay(transform.position, moveDirection * 2f);
+                Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
+                Gizmos.DrawRay(transform.position, horizontalVelocity.normalized * 2f);
             }
         }
         #endif

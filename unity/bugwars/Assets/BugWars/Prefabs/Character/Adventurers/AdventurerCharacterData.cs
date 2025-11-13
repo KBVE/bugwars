@@ -50,20 +50,27 @@ namespace BugWars.Characters
         
         /// <summary>
         /// Apply this character data to an AdventurerCharacter component
+        /// Since AdventurerCharacter now inherits from Player/Entity, we can set base class properties too
         /// </summary>
         public void ApplyToCharacter(AdventurerCharacter character)
         {
             if (character == null) return;
-            
+
+            // Apply visual properties
             if (characterMaterial != null)
             {
                 character.SetMaterial(characterMaterial);
             }
-            
+
             if (animatorController != null)
             {
                 character.SetAnimator(animatorController);
             }
+
+            // Note: Base Entity properties (health, moveSpeed, etc.) are set via serialized fields
+            // or can be set programmatically if needed:
+            // character.maxHealth = maxHealth;
+            // character.moveSpeed = moveSpeed;
         }
         
         /// <summary>
