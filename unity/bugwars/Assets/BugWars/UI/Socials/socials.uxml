@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="socials.uss" />
+
+    <ui:VisualElement name="SocialsContainer" class="socials-container">
+        <ui:VisualElement name="SocialsPanel" class="socials-panel">
+            <!-- Header -->
+            <ui:VisualElement name="HeaderContainer" class="header-container">
+                <ui:Label text="Connect With Us" name="HeaderTitle" class="header-title" />
+                <ui:Button text="×" name="CloseButton" class="close-button" />
+            </ui:VisualElement>
+
+            <!-- Social Buttons Container (buttons will be dynamically added here) -->
+            <ui:VisualElement name="ButtonContainer" class="button-container">
+                <!-- Buttons are created dynamically by SocialsManager -->
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
