@@ -167,3 +167,7 @@ unity/bugwars/Assets/PythonTools.asset
 unity/bugwars/UserSettings/Layouts/default-6000.dwlt
 
 .vsconfig
+
+# Generated version files (regenerated from Cargo.toml during CI/CD)
+unity/bugwars/Assets/StreamingAssets/version.json
+website/astro/public/version.json
