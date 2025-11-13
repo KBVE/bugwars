@@ -31,20 +31,22 @@ RUN apk add --no-cache wget unzip bash grep
 # Build argument for expected version (passed from CI)
 ARG EXPECTED_VERSION=""
 
-# Copy webgl.zip if available (from CI artifact), otherwise will download
-# The || true ensures build doesn't fail if file doesn't exist (for local builds)
-COPY tmp-docker-context/webgl.zi[p] /tmp/ 2>/dev/null || true
+# Copy webgl.zip if available (from CI artifact)
+# Using wildcard pattern - if file doesn't exist, COPY will include only .gitkeep
+# The RUN command below checks if webgl.zip exists before using it
+COPY tmp-docker-context/* /tmp/docker-artifacts/
 
 # Copy verification script
 COPY scripts/verify-webgl-build.sh /tmp/verify-webgl-build.sh
 RUN chmod +x /tmp/verify-webgl-build.sh
 
 # Check if webgl.zip exists locally (from CI), otherwise download and verify
-RUN if [ -f "/tmp/webgl.zip" ]; then \
+RUN if [ -f "/tmp/docker-artifacts/webgl.zip" ]; then \
         echo "╔══════════════════════════════════════════════════════════╗"; \
         echo "║  Using pre-downloaded Unity WebGL build (CI artifact)   ║"; \
         echo "╚══════════════════════════════════════════════════════════╝"; \
-        ls -lh /tmp/webgl.zip; \
+        ls -lh /tmp/docker-artifacts/webgl.zip; \
+        mv /tmp/docker-artifacts/webgl.zip /tmp/webgl.zip; \
     else \
         echo "╔══════════════════════════════════════════════════════════╗"; \
         echo "║  Downloading Unity WebGL build from GitHub Pages        ║"; \
