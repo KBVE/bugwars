@@ -16,6 +16,9 @@ namespace BugWars.UI
         private VisualElement _root;
         private VisualElement _hudContainer;
 
+        // Player Identity elements
+        private Label _playerNameText;
+
         // Health UI elements
         private Label _healthLabel;
         private Label _healthText;
@@ -24,16 +27,23 @@ namespace BugWars.UI
         // Game Info elements
         private Label _waveText;
         private Label _scoreText;
+        private Label _playTimeText;
 
         // Player Stats elements
+        private Label _levelText;
+        private Label _experienceText;
         private Label _speedText;
         private Label _damageText;
 
         // Current values (for future integration with game systems)
+        private string _currentPlayerName = "Player";
         private float _currentHealth = 100f;
         private float _maxHealth = 100f;
         private int _currentWave = 1;
         private int _currentScore = 0;
+        private int _currentLevel = 1;
+        private int _currentExperience = 0;
+        private float _currentPlayTime = 0f;
         private float _currentSpeed = 5.0f;
         private int _currentDamage = 10;
         #endregion
@@ -88,6 +98,9 @@ namespace BugWars.UI
                 return;
             }
 
+            // Get Player Identity references
+            _playerNameText = _root.Q<Label>("PlayerNameText");
+
             // Get Health UI references
             _healthLabel = _root.Q<Label>("HealthLabel");
             _healthText = _root.Q<Label>("HealthText");
@@ -96,16 +109,23 @@ namespace BugWars.UI
             // Get Game Info references
             _waveText = _root.Q<Label>("WaveText");
             _scoreText = _root.Q<Label>("ScoreText");
+            _playTimeText = _root.Q<Label>("PlayTimeText");
 
             // Get Player Stats references
+            _levelText = _root.Q<Label>("LevelText");
+            _experienceText = _root.Q<Label>("ExperienceText");
             _speedText = _root.Q<Label>("SpeedText");
             _damageText = _root.Q<Label>("DamageText");
 
             // Verify all elements were found
+            if (_playerNameText == null) Debug.LogWarning("[HUDManager] PlayerNameText not found in UXML!");
             if (_healthText == null) Debug.LogWarning("[HUDManager] HealthText not found in UXML!");
             if (_healthBarFill == null) Debug.LogWarning("[HUDManager] HealthBarFill not found in UXML!");
             if (_waveText == null) Debug.LogWarning("[HUDManager] WaveText not found in UXML!");
             if (_scoreText == null) Debug.LogWarning("[HUDManager] ScoreText not found in UXML!");
+            if (_playTimeText == null) Debug.LogWarning("[HUDManager] PlayTimeText not found in UXML!");
+            if (_levelText == null) Debug.LogWarning("[HUDManager] LevelText not found in UXML!");
+            if (_experienceText == null) Debug.LogWarning("[HUDManager] ExperienceText not found in UXML!");
             if (_speedText == null) Debug.LogWarning("[HUDManager] SpeedText not found in UXML!");
             if (_damageText == null) Debug.LogWarning("[HUDManager] DamageText not found in UXML!");
 
@@ -164,6 +184,19 @@ namespace BugWars.UI
         #endregion
 
         #region Public Methods - Update Data
+        /// <summary>
+        /// Updates the player name display
+        /// </summary>
+        /// <param name="playerName">Player's name</param>
+        public void UpdatePlayerName(string playerName)
+        {
+            _currentPlayerName = playerName;
+            if (_playerNameText != null)
+            {
+                _playerNameText.text = _currentPlayerName;
+            }
+        }
+
         /// <summary>
         /// Updates the health display
         /// </summary>
@@ -242,13 +275,62 @@ namespace BugWars.UI
         }
 
         /// <summary>
+        /// Updates the level display
+        /// </summary>
+        /// <param name="level">Current level</param>
+        public void UpdateLevel(int level)
+        {
+            _currentLevel = level;
+            if (_levelText != null)
+            {
+                _levelText.text = $"Level: {_currentLevel}";
+            }
+        }
+
+        /// <summary>
+        /// Updates the experience display
+        /// </summary>
+        /// <param name="currentXP">Current experience points</param>
+        /// <param name="level">Current level (used to calculate XP needed)</param>
+        public void UpdateExperience(int currentXP, int level)
+        {
+            _currentExperience = currentXP;
+            _currentLevel = level;
+            if (_experienceText != null)
+            {
+                int xpForNextLevel = level * 100; // Matches PlayerData calculation
+                _experienceText.text = $"XP: {_currentExperience}/{xpForNextLevel}";
+            }
+        }
+
+        /// <summary>
+        /// Updates the play time display
+        /// </summary>
+        /// <param name="playTime">Current play time in seconds</param>
+        public void UpdatePlayTime(float playTime)
+        {
+            _currentPlayTime = playTime;
+            if (_playTimeText != null)
+            {
+                int hours = Mathf.FloorToInt(playTime / 3600f);
+                int minutes = Mathf.FloorToInt((playTime % 3600f) / 60f);
+                int seconds = Mathf.FloorToInt(playTime % 60f);
+                _playTimeText.text = $"Time: {hours:00}:{minutes:00}:{seconds:00}";
+            }
+        }
+
+        /// <summary>
         /// Updates all UI elements with current values
         /// </summary>
         public void UpdateAllUI()
         {
+            UpdatePlayerName(_currentPlayerName);
             UpdateHealth(_currentHealth, _maxHealth);
             UpdateWave(_currentWave);
             UpdateScore(_currentScore);
+            UpdateLevel(_currentLevel);
+            UpdateExperience(_currentExperience, _currentLevel);
+            UpdatePlayTime(_currentPlayTime);
             UpdateSpeed(_currentSpeed);
             UpdateDamage(_currentDamage);
         }

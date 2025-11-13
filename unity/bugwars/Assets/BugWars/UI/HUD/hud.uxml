@@ -6,6 +6,7 @@
         <ui:VisualElement name="TopBar" class="hud-top-bar">
             <!-- Left Section - Player Info -->
             <ui:VisualElement name="PlayerInfo" class="hud-section player-info">
+                <ui:Label text="Player" name="PlayerNameText" class="hud-label player-name" />
                 <ui:Label text="Health" name="HealthLabel" class="hud-label" />
                 <ui:VisualElement name="HealthBarContainer" class="health-bar-container">
                     <ui:VisualElement name="HealthBarFill" class="health-bar-fill" />
@@ -17,10 +18,13 @@
             <ui:VisualElement name="GameInfo" class="hud-section game-info">
                 <ui:Label text="Wave: 1" name="WaveText" class="hud-label" />
                 <ui:Label text="Score: 0" name="ScoreText" class="hud-label" />
+                <ui:Label text="Time: 00:00:00" name="PlayTimeText" class="hud-label" />
             </ui:VisualElement>
 
             <!-- Right Section - Stats -->
             <ui:VisualElement name="PlayerStats" class="hud-section player-stats">
+                <ui:Label text="Level: 1" name="LevelText" class="hud-stat" />
+                <ui:Label text="XP: 0/100" name="ExperienceText" class="hud-stat" />
                 <ui:Label text="Speed: 5.0" name="SpeedText" class="hud-stat" />
                 <ui:Label text="Damage: 10" name="DamageText" class="hud-stat" />
             </ui:VisualElement>
