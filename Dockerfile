@@ -24,13 +24,39 @@ COPY website/astro/public ./public
 # Build Astro site
 RUN pnpm run build
 
-# Download and extract Unity WebGL game into dist
-RUN apk add --no-cache wget unzip && \
-    wget -O /tmp/webgl.zip https://unity-bw.kbve.com/webgl.zip?new && \
-    mkdir -p /app/astro/dist/assets/game && \
+# Download and extract Unity WebGL game into dist with verification
+# Install required tools
+RUN apk add --no-cache wget unzip bash grep
+
+# Build argument for expected version (passed from CI)
+ARG EXPECTED_VERSION=""
+
+# Copy webgl.zip if available (from CI artifact), otherwise will download
+# The || true ensures build doesn't fail if file doesn't exist (for local builds)
+COPY tmp-docker-context/webgl.zi[p] /tmp/ 2>/dev/null || true
+
+# Copy verification script
+COPY scripts/verify-webgl-build.sh /tmp/verify-webgl-build.sh
+RUN chmod +x /tmp/verify-webgl-build.sh
+
+# Check if webgl.zip exists locally (from CI), otherwise download and verify
+RUN if [ -f "/tmp/webgl.zip" ]; then \
+        echo "╔══════════════════════════════════════════════════════════╗"; \
+        echo "║  Using pre-downloaded Unity WebGL build (CI artifact)   ║"; \
+        echo "╚══════════════════════════════════════════════════════════╝"; \
+        ls -lh /tmp/webgl.zip; \
+    else \
+        echo "╔══════════════════════════════════════════════════════════╗"; \
+        echo "║  Downloading Unity WebGL build from GitHub Pages        ║"; \
+        echo "╚══════════════════════════════════════════════════════════╝"; \
+        /tmp/verify-webgl-build.sh "https://unity-bw.kbve.com/webgl.zip?new" "$EXPECTED_VERSION"; \
+    fi
+
+# Extract to dist directory
+RUN mkdir -p /app/astro/dist/assets/game && \
     unzip -q /tmp/webgl.zip -d /app/astro/dist/assets/game && \
-    rm /tmp/webgl.zip && \
-    echo "Unity WebGL extracted to /app/astro/dist/assets/game" && \
+    rm /tmp/webgl.zip /tmp/verify-webgl-build.sh && \
+    echo "✓ Unity WebGL extracted to /app/astro/dist/assets/game" && \
     ls -lah /app/astro/dist/assets/game
 
 # Precompress all static assets with gzip -9 and remove originals

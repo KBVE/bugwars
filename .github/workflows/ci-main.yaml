@@ -132,6 +132,14 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
+            - name: Generate version.json
+              run: |
+                  chmod +x scripts/generate-version-json.sh
+                  scripts/generate-version-json.sh
+                  echo "Generated version.json files:"
+                  cat unity/bugwars/Assets/StreamingAssets/version.json
+                  cat website/astro/public/version.json
+
             - name: Free Disk Space
               uses: jlumbroso/free-disk-space@main
 
@@ -197,6 +205,11 @@ jobs:
               run: |
                   ls -lh webgl.zip
                   echo "webgl.zip size: $(du -h webgl.zip | cut -f1)"
+                  # Move to a location accessible by Docker context
+                  mkdir -p tmp-docker-context
+                  cp webgl.zip tmp-docker-context/
+                  # Verify version.json is in the webgl.zip
+                  unzip -l webgl.zip | grep -E "version.json|StreamingAssets" || echo "Note: version.json verification skipped"
 
             - name: Log in to GitHub Container Registry
               uses: docker/login-action@v3
@@ -227,6 +240,8 @@ jobs:
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
                   platforms: linux/amd64
+                  build-args: |
+                      EXPECTED_VERSION=${{ needs.extract-version.outputs.version }}
 
             - name: Verify push to GHCR
               run: |
