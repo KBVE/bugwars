@@ -21,45 +21,20 @@ COPY website/astro/astro.config.mjs website/astro/tsconfig.json website/astro/ta
 COPY website/astro/src ./src
 COPY website/astro/public ./public
 
-# Build Astro site
-RUN pnpm run build
+# Copy fetch script for Unity WebGL build
+COPY website/astro/scripts/fetch-webgl.sh ./scripts/fetch-webgl.sh
 
-# Download and extract Unity WebGL game into dist with verification
-# Install required tools
-RUN apk add --no-cache wget unzip bash grep
+# Install bash and curl for the fetch script
+RUN apk add --no-cache bash curl unzip
 
 # Build argument for expected version (passed from CI)
 ARG EXPECTED_VERSION=""
 
-# Copy webgl.zip if available (from CI artifact)
-# Using wildcard pattern - if file doesn't exist, COPY will include only .gitkeep
-# The RUN command below checks if webgl.zip exists before using it
-COPY tmp-docker-context/* /tmp/docker-artifacts/
+# Set environment variable for fetch script
+ENV EXPECTED_VERSION=${EXPECTED_VERSION}
 
-# Copy verification script
-COPY scripts/verify-webgl-build.sh /tmp/verify-webgl-build.sh
-RUN chmod +x /tmp/verify-webgl-build.sh
-
-# Check if webgl.zip exists locally (from CI), otherwise download and verify
-RUN if [ -f "/tmp/docker-artifacts/webgl.zip" ]; then \
-        echo "╔══════════════════════════════════════════════════════════╗"; \
-        echo "║  Using pre-downloaded Unity WebGL build (CI artifact)   ║"; \
-        echo "╚══════════════════════════════════════════════════════════╝"; \
-        ls -lh /tmp/docker-artifacts/webgl.zip; \
-        mv /tmp/docker-artifacts/webgl.zip /tmp/webgl.zip; \
-    else \
-        echo "╔══════════════════════════════════════════════════════════╗"; \
-        echo "║  Downloading Unity WebGL build from GitHub Pages        ║"; \
-        echo "╚══════════════════════════════════════════════════════════╝"; \
-        /tmp/verify-webgl-build.sh "https://unity-bw.kbve.com/webgl.zip?new" "$EXPECTED_VERSION"; \
-    fi
-
-# Extract to dist directory
-RUN mkdir -p /app/astro/dist/assets/game && \
-    unzip -q /tmp/webgl.zip -d /app/astro/dist/assets/game && \
-    rm /tmp/webgl.zip /tmp/verify-webgl-build.sh && \
-    echo "✓ Unity WebGL extracted to /app/astro/dist/assets/game" && \
-    ls -lah /app/astro/dist/assets/game
+# Build Astro site (prebuild script will fetch Unity WebGL files)
+RUN pnpm run build
 
 # Precompress all static assets with gzip -9 and remove originals
 # We keep Askama templates uncompressed (they're used for server-side rendering)

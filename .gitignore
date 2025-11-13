@@ -162,6 +162,8 @@ node_modules/
 website/axum/templates/dist/**
 website/astro/dist/**
 website/astro/.astro/**
+# Unity WebGL build (fetched at build time)
+website/astro/public/assets/game/**
 
 unity/bugwars/Assets/PythonTools.asset
 unity/bugwars/UserSettings/Layouts/default-6000.dwlt
