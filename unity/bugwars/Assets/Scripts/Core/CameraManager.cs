@@ -383,7 +383,7 @@ namespace BugWars.Core
 
         #region Settings
         [Header("Settings")]
-        [SerializeField] private bool debugMode = false;
+        [SerializeField] private bool debugMode = true; // Enabled for debugging camera setup
         [SerializeField] [Tooltip("Use orthographic projection (better readability) or perspective (depth)")]
         private bool preferOrthographic = false;
 
@@ -427,7 +427,7 @@ namespace BugWars.Core
         [SerializeField] [Tooltip("Invert the Y axis for camera look input")]
         private bool invertY = true;
         [SerializeField] [Tooltip("Default downward tilt (in degrees) applied when the camera is initialised")]
-        private float defaultTiltAngle = -25f;
+        private float defaultTiltAngle = 25f; // Positive = looking down from above
         [SerializeField] [Tooltip("Default yaw offset relative to the target forward when camera initialises")]
         private float defaultPanOffset = 0f;
 
@@ -553,7 +553,7 @@ namespace BugWars.Core
                     orbitCameraDistance = 7.5f;
                     orbitPositionDamping = Vector3.zero;
                     orbitPitchClamp = new Vector2(5f, 65f);
-                    defaultTiltAngle = -32f;
+                    defaultTiltAngle = 32f; // Positive = looking down from above
                     pivotHeadRoom = new Vector3(0f, 1.2f, 0f);
                     pivotShoulderRight = 0f;
                     orbitCameraSide = 0.5f;
@@ -566,7 +566,7 @@ namespace BugWars.Core
                     orbitCameraDistance = 8.2f;
                     orbitPositionDamping = Vector3.zero;
                     orbitPitchClamp = new Vector2(12f, 55f);
-                    defaultTiltAngle = -28f;
+                    defaultTiltAngle = 28f; // Positive = looking down from above
                     pivotHeadRoom = new Vector3(0f, 1.6f, 0f);
                     pivotShoulderRight = 0f;
                     orbitCameraSide = 0.5f;
@@ -714,15 +714,20 @@ namespace BugWars.Core
 
             if (virtualCamera != null)
             {
-                // Use lead pivot system for better readability
-                if (preferOrthographic)
+                // Set camera targets directly
+                virtualCamera.Follow = config.target;
+                virtualCamera.LookAt = config.target;
+
+                // Ensure virtual camera starts above the player, not below
+                if (config.target != null && virtualCamera.transform.position.y < config.target.position.y)
                 {
-                    BuildOrthoRig(virtualCamera, config.target, teleport: !config.immediate);
+                    Vector3 startPos = config.target.position + Vector3.up * 5f + Vector3.back * 5f;
+                    virtualCamera.transform.position = startPos;
+                    Debug.Log($"[CameraManager] Repositioned virtual camera above player: {startPos}");
                 }
-                else
-                {
-                    BuildPerspectiveLiteRig(virtualCamera, config, teleport: !config.immediate);
-                }
+
+                // Configure camera components based on character type
+                ConfigureThirdPersonFollow(virtualCamera, config);
 
                 // Activate this camera
                 ActivateCamera(virtualCamera, true);
@@ -732,7 +737,7 @@ namespace BugWars.Core
                 _hasActiveFollowConfig = true;
 
                 if (debugMode)
-                    Debug.Log($"[CameraManager] Camera '{virtualCamera.name}' now following '{config.target.name}' via lead pivot ({(preferOrthographic ? "Ortho" : "Perspective")})");
+                    Debug.Log($"[CameraManager] Camera '{virtualCamera.name}' now following '{config.target.name}' (Mode: {(config.shoulderOffset.x > 0.2f ? "FreeLookOrbit" : "CinematicFollow")})");
             }
             else
             {

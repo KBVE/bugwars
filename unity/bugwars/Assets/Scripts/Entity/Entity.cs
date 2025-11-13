@@ -220,11 +220,38 @@ namespace BugWars.Entity
             movement.y = rb.linearVelocity.y; // Preserve vertical velocity for gravity
             rb.linearVelocity = movement;
 
-            // Auto-flip sprite based on movement direction
-            if (autoFlipSprite && direction.magnitude > 0.1f)
+            // Handle rotation and sprite flipping based on character type
+            if (direction.magnitude > 0.1f)
             {
-                UpdateFacingDirection(direction);
+                if (enableBillboard && autoFlipSprite)
+                {
+                    // Billboard sprite characters: flip sprite based on movement direction
+                    UpdateFacingDirection(direction);
+                }
+                else
+                {
+                    // 3D model characters: rotate the GameObject to face movement direction
+                    RotateTowardsMovement(direction);
+                }
             }
+        }
+
+        /// <summary>
+        /// Rotates the character to face the movement direction (for 3D models)
+        /// </summary>
+        protected virtual void RotateTowardsMovement(Vector3 direction)
+        {
+            if (direction.sqrMagnitude < 0.01f) return;
+
+            // Calculate target rotation based on movement direction
+            Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
+
+            // Smoothly rotate towards target
+            transform.rotation = Quaternion.RotateTowards(
+                transform.rotation,
+                targetRotation,
+                rotationSpeed * Time.deltaTime
+            );
         }
 
         /// <summary>
