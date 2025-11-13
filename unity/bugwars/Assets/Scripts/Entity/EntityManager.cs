@@ -9,6 +9,7 @@ namespace BugWars.Entity
     /// <summary>
     /// Manages all entities in the game (Players, NPCs, etc.)
     /// Provides centralized access to all entities
+    /// Tracks player data (name, level, score, play time, etc.)
     /// Integrates with CameraManager for player camera tracking
     /// </summary>
     public class EntityManager : MonoBehaviour
@@ -51,6 +52,10 @@ namespace BugWars.Entity
         [SerializeField] private Entity playerEntity;
         public Entity Player => playerEntity;
 
+        [Header("Player Data")]
+        [SerializeField] private PlayerData playerData;
+        public PlayerData PlayerData => playerData;
+
         private bool playerSpawned = false;
 
         // Dependency Injection
@@ -84,6 +89,12 @@ namespace BugWars.Entity
             instance = this;
             DontDestroyOnLoad(gameObject);
 
+            // Initialize player data if not already set
+            if (playerData == null)
+            {
+                playerData = new PlayerData();
+            }
+
             if (autoRegisterEntities)
             {
                 RegisterAllEntitiesInScene();
@@ -102,6 +113,16 @@ namespace BugWars.Entity
 
         private void Update()
         {
+            // Update player data (play time and position)
+            if (playerEntity != null && playerData != null)
+            {
+                // Track play time
+                playerData.PlayTime += Time.deltaTime;
+
+                // Update last known position
+                playerData.LastKnownPosition = playerEntity.transform.position;
+            }
+
             // Update terrain chunks based on player movement
             if (enableTerrainStreaming && playerEntity != null && _terrainManager != null)
             {
@@ -161,7 +182,7 @@ namespace BugWars.Entity
 
             // Instantiate player
             GameObject playerObj = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
-            playerObj.name = "Player";
+            playerObj.name = playerData != null ? playerData.PlayerName : "Player";
 
             // Get Entity component
             Entity entity = playerObj.GetComponent<Entity>();
@@ -170,6 +191,19 @@ namespace BugWars.Entity
                 // Set as player (will auto-register if not already)
                 SetPlayer(entity, false); // Don't log during spawn
                 playerSpawned = true;
+
+                // Sync player data name with entity
+                if (playerData != null)
+                {
+                    // If player data has a name, use it for the entity
+                    // Otherwise, use entity name for player data
+                    if (!string.IsNullOrEmpty(playerData.PlayerName))
+                    {
+                        entity.GetType().GetField("entityName",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                            ?.SetValue(entity, playerData.PlayerName);
+                    }
+                }
 
                 // Set up camera to follow player using event system
                 if (autoCameraFollow)
@@ -460,6 +494,169 @@ namespace BugWars.Entity
                 return playerEntity.transform.position;
             }
             return Vector3.zero;
+        }
+
+        #endregion
+
+        #region Player Data Management
+
+        /// <summary>
+        /// Get the current player data
+        /// </summary>
+        public PlayerData GetPlayerData()
+        {
+            return playerData;
+        }
+
+        /// <summary>
+        /// Set player data (useful for loading saved data)
+        /// </summary>
+        public void SetPlayerData(PlayerData data)
+        {
+            if (data == null)
+            {
+                Debug.LogWarning("[EntityManager] Attempted to set null player data");
+                return;
+            }
+
+            playerData = data;
+
+            // Sync entity name if player entity exists
+            if (playerEntity != null)
+            {
+                playerEntity.GetType().GetField("entityName",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    ?.SetValue(playerEntity, playerData.PlayerName);
+            }
+        }
+
+        /// <summary>
+        /// Set player name
+        /// </summary>
+        public void SetPlayerName(string name)
+        {
+            if (playerData == null)
+            {
+                playerData = new PlayerData();
+            }
+
+            playerData.PlayerName = name;
+
+            // Sync entity name if player entity exists
+            if (playerEntity != null)
+            {
+                playerEntity.GetType().GetField("entityName",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    ?.SetValue(playerEntity, name);
+            }
+        }
+
+        /// <summary>
+        /// Get player name
+        /// </summary>
+        public string GetPlayerName()
+        {
+            if (playerData != null)
+            {
+                return playerData.PlayerName;
+            }
+            return playerEntity != null ? playerEntity.GetEntityName() : "Unknown";
+        }
+
+        /// <summary>
+        /// Add experience to player
+        /// </summary>
+        /// <returns>True if player leveled up</returns>
+        public bool AddPlayerExperience(int amount)
+        {
+            if (playerData == null) return false;
+
+            bool leveledUp = playerData.AddExperience(amount);
+
+            if (leveledUp)
+            {
+                Debug.Log($"[EntityManager] {playerData.PlayerName} leveled up to level {playerData.Level}!");
+            }
+
+            return leveledUp;
+        }
+
+        /// <summary>
+        /// Add score to player
+        /// </summary>
+        public void AddPlayerScore(int points)
+        {
+            if (playerData != null)
+            {
+                playerData.AddScore(points);
+            }
+        }
+
+        /// <summary>
+        /// Get player level
+        /// </summary>
+        public int GetPlayerLevel()
+        {
+            return playerData?.Level ?? 1;
+        }
+
+        /// <summary>
+        /// Get player experience
+        /// </summary>
+        public int GetPlayerExperience()
+        {
+            return playerData?.Experience ?? 0;
+        }
+
+        /// <summary>
+        /// Get player score
+        /// </summary>
+        public int GetPlayerScore()
+        {
+            return playerData?.Score ?? 0;
+        }
+
+        /// <summary>
+        /// Get player play time
+        /// </summary>
+        public float GetPlayerPlayTime()
+        {
+            return playerData?.PlayTime ?? 0f;
+        }
+
+        /// <summary>
+        /// Get formatted player play time (HH:MM:SS)
+        /// </summary>
+        public string GetFormattedPlayerPlayTime()
+        {
+            return playerData?.GetFormattedPlayTime() ?? "00:00:00";
+        }
+
+        /// <summary>
+        /// Reset player data to defaults
+        /// </summary>
+        public void ResetPlayerData()
+        {
+            if (playerData != null)
+            {
+                playerData.Reset();
+                Debug.Log("[EntityManager] Player data reset to defaults");
+            }
+        }
+
+        /// <summary>
+        /// Log current player data to console (useful for debugging)
+        /// </summary>
+        public void LogPlayerData()
+        {
+            if (playerData != null)
+            {
+                Debug.Log($"[EntityManager] {playerData.ToString()}");
+            }
+            else
+            {
+                Debug.LogWarning("[EntityManager] No player data available");
+            }
         }
 
         #endregion

@@ -47,7 +47,7 @@ namespace BugWars.JavaScriptBridge
 
         /// <summary>
         /// Called from JavaScript when session data is available.
-        /// JavaScript: sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({userId, email}))
+        /// JavaScript: sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({userId, email, username, displayName}))
         /// </summary>
         public void OnSessionUpdate(string sessionJson)
         {
@@ -55,6 +55,20 @@ namespace BugWars.JavaScriptBridge
             {
                 Debug.Log($"[WebGLBridge] Received session update: {sessionJson}");
                 var sessionData = JsonUtility.FromJson<SessionData>(sessionJson);
+
+                // Update player name in EntityManager if available
+                if (!string.IsNullOrEmpty(sessionData.displayName) || !string.IsNullOrEmpty(sessionData.username))
+                {
+                    string playerName = !string.IsNullOrEmpty(sessionData.displayName)
+                        ? sessionData.displayName
+                        : sessionData.username;
+
+                    if (BugWars.Entity.EntityManager.Instance != null)
+                    {
+                        BugWars.Entity.EntityManager.Instance.SetPlayerName(playerName);
+                        Debug.Log($"[WebGLBridge] Set player name to: {playerName}");
+                    }
+                }
 
                 // Broadcast event through the game's event system
                 _eventManager?.TriggerEvent("SessionUpdated", sessionData);
@@ -66,6 +80,67 @@ namespace BugWars.JavaScriptBridge
             {
                 Debug.LogError($"[WebGLBridge] Error parsing session data: {e.Message}");
                 SendErrorToWebSafe($"Failed to parse session data: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Called from JavaScript when player profile data is available.
+        /// JavaScript: sendMessage('WebGLBridge', 'OnPlayerProfile', JSON.stringify({username, displayName, level, avatarUrl}))
+        /// </summary>
+        public void OnPlayerProfile(string profileJson)
+        {
+            try
+            {
+                Debug.Log($"[WebGLBridge] Received player profile: {profileJson}");
+                var profileData = JsonUtility.FromJson<PlayerProfileData>(profileJson);
+
+                if (BugWars.Entity.EntityManager.Instance != null)
+                {
+                    // Set player name (prefer displayName, fallback to username)
+                    string playerName = !string.IsNullOrEmpty(profileData.displayName)
+                        ? profileData.displayName
+                        : profileData.username;
+
+                    if (!string.IsNullOrEmpty(playerName))
+                    {
+                        BugWars.Entity.EntityManager.Instance.SetPlayerName(playerName);
+                        Debug.Log($"[WebGLBridge] Updated player name to: {playerName}");
+                    }
+
+                    // Update player data if provided
+                    var playerData = BugWars.Entity.EntityManager.Instance.GetPlayerData();
+                    if (playerData != null)
+                    {
+                        if (profileData.level > 0)
+                        {
+                            playerData.Level = profileData.level;
+                            Debug.Log($"[WebGLBridge] Updated player level to: {profileData.level}");
+                        }
+
+                        if (profileData.experience > 0)
+                        {
+                            playerData.Experience = profileData.experience;
+                            Debug.Log($"[WebGLBridge] Updated player experience to: {profileData.experience}");
+                        }
+
+                        if (profileData.score > 0)
+                        {
+                            playerData.Score = profileData.score;
+                            Debug.Log($"[WebGLBridge] Updated player score to: {profileData.score}");
+                        }
+                    }
+                }
+
+                // Broadcast event through the game's event system
+                _eventManager?.TriggerEvent("PlayerProfileUpdated", profileData);
+
+                // Acknowledge receipt
+                SendToWeb("ProfileReceived", new { success = true, username = profileData.username });
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[WebGLBridge] Error parsing player profile: {e.Message}");
+                SendErrorToWebSafe($"Failed to parse player profile: {e.Message}");
             }
         }
 
@@ -274,6 +349,36 @@ namespace BugWars.JavaScriptBridge
             SendToWeb("DataSave", new { table = table, data = data });
         }
 
+        /// <summary>
+        /// Request player profile from JavaScript/Supabase.
+        /// </summary>
+        public void RequestPlayerProfile()
+        {
+            SendToWeb("PlayerProfileRequest", new { timestamp = DateTime.UtcNow.ToString("o") });
+        }
+
+        /// <summary>
+        /// Send current player data to JavaScript/Supabase for saving.
+        /// </summary>
+        public void SavePlayerData()
+        {
+            if (BugWars.Entity.EntityManager.Instance != null)
+            {
+                var playerData = BugWars.Entity.EntityManager.Instance.GetPlayerData();
+                if (playerData != null)
+                {
+                    SendToWeb("PlayerDataSave", new
+                    {
+                        playerName = playerData.PlayerName,
+                        level = playerData.Level,
+                        experience = playerData.Experience,
+                        score = playerData.Score,
+                        playTime = playerData.PlayTime
+                    });
+                }
+            }
+        }
+
         #endregion
     }
 
@@ -284,6 +389,20 @@ namespace BugWars.JavaScriptBridge
     {
         public string userId;
         public string email;
+        public string username;
+        public string displayName;
+        public string avatarUrl;
+    }
+
+    [Serializable]
+    public class PlayerProfileData
+    {
+        public string username;
+        public string displayName;
+        public string avatarUrl;
+        public int level;
+        public int experience;
+        public int score;
     }
 
     [Serializable]
