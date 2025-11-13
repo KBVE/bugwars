@@ -1,10 +1,12 @@
 using UnityEngine;
+using BugWars.Core;
 
 namespace BugWars.Entity.Player
 {
     /// <summary>
     /// Player entity class - represents the player-controlled character
     /// Now supports billboard 2D sprites in 3D environment
+    /// Receives movement input from InputManager via EventManager
     /// </summary>
     public class Player : Entity
     {
@@ -23,13 +25,26 @@ namespace BugWars.Entity.Player
         protected override void Start()
         {
             base.Start();
+
             // Register with EntityManager
             EntityManager.Instance.RegisterEntity(this);
+
+            // Subscribe to movement input events
+            EventManager eventManager = FindFirstObjectByType<EventManager>();
+            if (eventManager != null)
+            {
+                eventManager.OnPlayerMovementInput.AddListener(OnMovementInput);
+            }
+            else
+            {
+                Debug.LogWarning("[Player] EventManager not found! Movement input will not work.");
+            }
         }
 
-        private void Update()
+        protected virtual void Update()
         {
-            HandleInput();
+            // Movement is now handled via event subscription
+            // Derived classes can still override this for additional logic
         }
 
         private void FixedUpdate()
@@ -37,13 +52,13 @@ namespace BugWars.Entity.Player
             MovePlayer();
         }
 
-        private void HandleInput()
+        /// <summary>
+        /// Event handler for movement input from InputManager
+        /// </summary>
+        private void OnMovementInput(Vector2 input)
         {
-            // Get input for movement
-            float horizontal = Input.GetAxisRaw("Horizontal"); // A/D or Left/Right
-            float vertical = Input.GetAxisRaw("Vertical");     // W/S or Up/Down
-
-            moveDirection = new Vector3(horizontal, 0, vertical);
+            // Convert 2D input (x, y) to 3D movement direction (x, 0, y)
+            moveDirection = new Vector3(input.x, 0, input.y);
         }
 
         private void MovePlayer()
@@ -70,6 +85,13 @@ namespace BugWars.Entity.Player
 
         private void OnDestroy()
         {
+            // Unsubscribe from movement input events
+            EventManager eventManager = FindFirstObjectByType<EventManager>();
+            if (eventManager != null)
+            {
+                eventManager.OnPlayerMovementInput.RemoveListener(OnMovementInput);
+            }
+
             // Unregister from EntityManager when destroyed
             if (EntityManager.Instance != null)
             {

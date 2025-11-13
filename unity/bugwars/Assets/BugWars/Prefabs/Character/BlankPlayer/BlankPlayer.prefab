@@ -104,7 +104,7 @@ GameObject:
   - component: {fileID: 2377253821357156730}
   m_Layer: 0
   m_Name: BlankPlayer
-  m_TagString: Untagged
+  m_TagString: CameraBillboard
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

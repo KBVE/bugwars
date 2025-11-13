@@ -1,5 +1,6 @@
 using UnityEngine;
 using BugWars.Entity.Player;
+using BugWars.Core;
 
 namespace BugWars.Characters
 {
@@ -7,8 +8,9 @@ namespace BugWars.Characters
     /// Character controller for adventurer characters (Knight, Mage, Rogue, Barbarian, Ranger)
     /// Manages character properties, animation, and 3D model rendering
     /// Extends Player to integrate with the entity system
+    /// Implements ICameraPreference for 3D camera configuration
     /// </summary>
-    public class AdventurerCharacter : Player
+    public class AdventurerCharacter : Player, ICameraPreference
     {
         [Header("Adventurer Properties")]
         [SerializeField] private string characterClass = "Knight";
@@ -56,7 +58,10 @@ namespace BugWars.Characters
         {
             if (!isInitialized) return;
 
-            // Basic update logic - can be expanded for movement
+            // Call base.Update() for any base Player class logic
+            base.Update();
+
+            // Update animation based on movement
             UpdateAnimation();
         }
         
@@ -142,7 +147,39 @@ namespace BugWars.Characters
                 animator.runtimeAnimatorController = controller;
             }
         }
-        
+
+        #region ICameraPreference Implementation
+
+        /// <summary>
+        /// Get preferred camera configuration for 3D adventurer characters
+        /// Uses perspective camera with free-look orbit controls
+        /// </summary>
+        public CameraFollowConfig GetPreferredCameraConfig(Transform target)
+        {
+            // Use FreeLookOrbit for 3D characters - mouse-driven third-person camera
+            // with shoulder offset, collision detection, and smooth follow
+            var config = CameraFollowConfig.FreeLookOrbit(target);
+
+            // Optionally customize for adventurer characters
+            // Could adjust based on character class (e.g., melee vs ranged)
+            return config;
+        }
+
+        /// <summary>
+        /// Expected camera tag for 3D characters
+        /// </summary>
+        public string GetExpectedCameraTag()
+        {
+            return CameraTags.Camera3D;
+        }
+
+        /// <summary>
+        /// Adventurer characters use 3D models, not billboarding
+        /// </summary>
+        public bool UsesBillboarding => false;
+
+        #endregion
+
         #if UNITY_EDITOR
         /// <summary>
         /// Editor helper to visualize character in scene

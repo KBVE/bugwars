@@ -1886,4 +1886,59 @@ namespace BugWars.Core
             follow.CameraDistance = Mathf.Lerp(follow.CameraDistance, targetDistance, zoomSmoothing);
         }
     }
+
+    #region Camera Preference System
+
+    /// <summary>
+    /// Interface for entities that want to specify their preferred camera configuration
+    /// Allows characters to define custom camera behavior (3D follow, billboard, etc.)
+    /// Implement this on player character classes (e.g., AdventurerCharacter, Samurai)
+    /// </summary>
+    public interface ICameraPreference
+    {
+        /// <summary>
+        /// Get the preferred camera configuration for this character
+        /// </summary>
+        /// <param name="target">The transform to follow (usually the character itself)</param>
+        /// <returns>Camera configuration that best suits this character type</returns>
+        CameraFollowConfig GetPreferredCameraConfig(Transform target);
+
+        /// <summary>
+        /// Get the camera type tag for validation
+        /// Should match Unity tags: "Camera3D" or "CameraBillboard"
+        /// </summary>
+        /// <returns>The expected camera tag for this character</returns>
+        string GetExpectedCameraTag();
+
+        /// <summary>
+        /// Whether this character uses billboarding (2D sprite facing camera)
+        /// </summary>
+        bool UsesBillboarding { get; }
+    }
+
+    /// <summary>
+    /// Camera type tags for validation and categorization
+    /// Used by ICameraPreference and EntityManager for player detection
+    /// </summary>
+    public static class CameraTags
+    {
+        /// <summary>
+        /// Tag for 3D characters (e.g., AdventurerCharacter)
+        /// Uses perspective camera with FreeLookOrbit controls
+        /// </summary>
+        public const string Camera3D = "Camera3D";
+
+        /// <summary>
+        /// Tag for billboard sprite characters (e.g., Samurai, BlankPlayer)
+        /// Uses orthographic camera with CinematicFollow and fixed angle
+        /// </summary>
+        public const string CameraBillboard = "CameraBillboard";
+
+        /// <summary>
+        /// Standard Unity player tag
+        /// </summary>
+        public const string Player = "Player";
+    }
+
+    #endregion
 }

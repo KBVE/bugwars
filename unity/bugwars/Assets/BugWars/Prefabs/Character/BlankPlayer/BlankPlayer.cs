@@ -11,8 +11,9 @@ namespace BugWars.Character
     /// BlankPlayer character - 4-directional player character
     /// Extends Player base class and implements frame-based sprite animation using JSON atlas
     /// Supports 4 directions: Down, Left, Right, Up
+    /// Implements ICameraPreference for billboard 2D sprite camera configuration
     /// </summary>
-    public class BlankPlayer : Player
+    public class BlankPlayer : Player, ICameraPreference
     {
         #region Animation State Mapping
 
@@ -513,6 +514,40 @@ namespace BugWars.Character
                 }
             }
         }
+
+        #endregion
+
+        #region ICameraPreference Implementation
+
+        /// <summary>
+        /// Get preferred camera configuration for billboard 2D sprite characters
+        /// Uses cinematic follow with fixed viewing angle for optimal 4-directional sprite visibility
+        /// </summary>
+        public CameraFollowConfig GetPreferredCameraConfig(Transform target)
+        {
+            // Use CinematicFollow for 2D billboard sprites
+            // This provides smooth auto-follow with fixed viewing angle
+            var config = CameraFollowConfig.CinematicFollow(target);
+
+            // Customize for 4-directional sprites
+            config.cameraDistance = 7f;
+            config.shoulderOffset = new Vector3(0, 1.2f, 0);
+
+            return config;
+        }
+
+        /// <summary>
+        /// Expected camera tag for billboard 2D sprite characters
+        /// </summary>
+        public string GetExpectedCameraTag()
+        {
+            return CameraTags.CameraBillboard;
+        }
+
+        /// <summary>
+        /// BlankPlayer uses billboard 2D sprites with 4-directional animations
+        /// </summary>
+        public bool UsesBillboarding => true;
 
         #endregion
     }

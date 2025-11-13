@@ -10,8 +10,9 @@ namespace BugWars.Character
     /// Samurai player character
     /// Extends Entity base class and implements frame-based sprite animation using JSON atlas
     /// Maps universal AnimationState enum to Samurai-specific animations
+    /// Implements ICameraPreference for billboard 2D sprite camera configuration
     /// </summary>
-    public class Samurai : Entity.Entity
+    public class Samurai : Entity.Entity, ICameraPreference
     {
         #region Animation State Mapping
 
@@ -499,6 +500,40 @@ namespace BugWars.Character
                 }
             }
         }
+
+        #endregion
+
+        #region ICameraPreference Implementation
+
+        /// <summary>
+        /// Get preferred camera configuration for billboard 2D sprite characters
+        /// Uses cinematic follow with fixed viewing angle for optimal sprite visibility
+        /// </summary>
+        public CameraFollowConfig GetPreferredCameraConfig(Transform target)
+        {
+            // Use CinematicFollow for 2D billboard sprites - provides smooth auto-follow
+            // with fixed 25-35° downward viewing angle for HD-2D style (like Octopath Traveler)
+            var config = CameraFollowConfig.CinematicFollow(target);
+
+            // Customize for Samurai - slightly closer camera for better sprite detail
+            config.cameraDistance = 7f;
+            config.shoulderOffset = new Vector3(0, 1.2f, 0);
+
+            return config;
+        }
+
+        /// <summary>
+        /// Expected camera tag for billboard 2D sprite characters
+        /// </summary>
+        public string GetExpectedCameraTag()
+        {
+            return CameraTags.CameraBillboard;
+        }
+
+        /// <summary>
+        /// Samurai uses billboard 2D sprites
+        /// </summary>
+        public bool UsesBillboarding => true;
 
         #endregion
 

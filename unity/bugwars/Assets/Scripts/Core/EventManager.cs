@@ -60,9 +60,12 @@ namespace BugWars.Core
         #endregion
 
         #region Event Definitions
-        // Input Events
+        // Input Events - System
         public UnityEvent OnEscapePressed = new UnityEvent();
         public UnityEvent OnPausePressed = new UnityEvent();
+
+        // Input Events - Player Movement
+        public UnityEvent<Vector2> OnPlayerMovementInput = new UnityEvent<Vector2>();
 
         // Game State Events
         public UnityEvent OnGamePaused = new UnityEvent();
@@ -102,6 +105,7 @@ namespace BugWars.Core
             // Clean up all listeners
             OnEscapePressed.RemoveAllListeners();
             OnPausePressed.RemoveAllListeners();
+            OnPlayerMovementInput.RemoveAllListeners();
             OnGamePaused.RemoveAllListeners();
             OnGameResumed.RemoveAllListeners();
             OnSceneLoadStarted.RemoveAllListeners();
@@ -220,6 +224,14 @@ namespace BugWars.Core
         public void TriggerCameraZoom(float delta)
         {
             OnCameraZoomInput?.Invoke(delta);
+        }
+
+        /// <summary>
+        /// Broadcast player movement input (WASD/arrow keys or gamepad stick)
+        /// </summary>
+        public void TriggerPlayerMovementInput(Vector2 movement)
+        {
+            OnPlayerMovementInput?.Invoke(movement);
         }
         #endregion
 

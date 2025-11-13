@@ -33,7 +33,7 @@ namespace BugWars.Core
         [SerializeField] [Tooltip("Invert vertical camera look input")]
         private bool invertCameraY = true;
         [SerializeField] [Tooltip("When enabled, mouse/gamepad look input will drive the camera")]
-        private bool cameraInputCaptured = false;
+        private bool cameraInputCaptured = true; // Enabled for 3D character camera control
         #endregion
 
         #region Unity Lifecycle
@@ -52,10 +52,9 @@ namespace BugWars.Core
 
         private void Update()
         {
-            // Only handle global/system-level inputs
-            // Game-specific inputs should be in respective controllers
             HandleGlobalInputs();
             HandleCameraInputs();
+            HandlePlayerMovementInputs();
         }
         #endregion
 
@@ -128,6 +127,39 @@ namespace BugWars.Core
             {
                 _eventManager.TriggerCameraZoom(scrollDelta * cameraZoomSensitivity);
             }
+        }
+        #endregion
+
+        #region Player Movement Input
+        /// <summary>
+        /// Handles player movement inputs (WASD, arrow keys) and broadcasts to EventManager
+        /// </summary>
+        private void HandlePlayerMovementInputs()
+        {
+            if (_eventManager == null || Keyboard.current == null)
+            {
+                return;
+            }
+
+            // Get movement input
+            float horizontal = 0f;
+            float vertical = 0f;
+
+            // Horizontal: A/D or Left/Right
+            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed)
+                horizontal = -1f;
+            else if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
+                horizontal = 1f;
+
+            // Vertical: W/S or Up/Down
+            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed)
+                vertical = -1f;
+            else if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed)
+                vertical = 1f;
+
+            // Broadcast movement input (always, even if zero for consistent updates)
+            Vector2 movement = new Vector2(horizontal, vertical);
+            _eventManager.TriggerPlayerMovementInput(movement);
         }
         #endregion
 

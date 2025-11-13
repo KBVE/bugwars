@@ -105,7 +105,7 @@ GameObject:
   - component: {fileID: 7469671944002262493}
   m_Layer: 0
   m_Name: Samurai
-  m_TagString: Untagged
+  m_TagString: CameraBillboard
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -200,6 +200,7 @@ MonoBehaviour:
   rotationSpeed: 720
   atlasJSON: {fileID: 4900000, guid: f8140aabe7dcb44239b03c4e07719857, type: 3}
   spriteMaterial: {fileID: 2100000, guid: 3db77be94de8c497792a1e94a6bb4a05, type: 2}
+  movementSmoothTime: 0.1
   debugAnimation: 0
 --- !u!114 &7469671944002262493
 MonoBehaviour:

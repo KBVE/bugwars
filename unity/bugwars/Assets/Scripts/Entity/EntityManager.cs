@@ -36,20 +36,18 @@ namespace BugWars.Entity
         [SerializeField] private List<Entity> allEntities = new List<Entity>();
         [SerializeField] private bool autoRegisterEntities = true;
 
-        [Header("Player Configuration")]
-        [SerializeField] [Tooltip("Player prefab to spawn at game start")]
+        [Header("Player Spawn Configuration")]
+        [SerializeField] [Tooltip("Player prefab to spawn at game start (AdventurerCharacter recommended)")]
         private GameObject playerPrefab;
         [SerializeField] [Tooltip("Auto-spawn player after initialization. Set to false if GameManager controls spawn timing.")]
         private bool autoSpawnPlayer = false;
         [SerializeField] [Tooltip("Spawn position for the player. If zero, spawns at (0, 2, 0)")]
         private Vector3 playerSpawnPosition = Vector3.zero;
-
-        [Header("Camera Follow Configuration")]
         [SerializeField] [Tooltip("Automatically set camera to follow player on spawn")]
         private bool autoCameraFollow = true;
 
-        [Header("Player Reference")]
-        [SerializeField] private Entity playerEntity;
+        // Player Runtime Reference (Auto-Set - Not Serialized)
+        private Entity playerEntity;
         public Entity Player => playerEntity;
 
         [Header("Player Data")]
@@ -266,9 +264,26 @@ namespace BugWars.Entity
             allEntities.Add(entity);
 
             // Check if this is the player entity
-            if (entity.CompareTag("Player") || entity is BugWars.Character.Samurai)
+            // Primary: AdventurerCharacter (inherits from Player)
+            // Legacy support: Samurai and BlankPlayer for backward compatibility
+            bool isPlayer = entity.CompareTag("Player") ||
+                          entity.CompareTag(Core.CameraTags.Camera3D) ||      // 3D characters (AdventurerCharacter)
+                          entity.CompareTag(Core.CameraTags.CameraBillboard) ||  // Billboard sprites (legacy)
+                          entity is BugWars.Entity.Player.Player ||           // ✅ PRIMARY: AdventurerCharacter
+                          entity is BugWars.Character.Samurai ||              // Legacy support
+                          entity is BugWars.Character.BlankPlayer;            // Legacy support
+
+            if (isPlayer)
             {
                 SetPlayer(entity, false);
+
+                // IMPORTANT: Trigger camera follow for manually placed players in scene
+                // (Players spawned by SpawnPlayer() already have camera follow setup)
+                if (autoCameraFollow && !playerSpawned)
+                {
+                    Debug.Log($"[EntityManager] Player detected in scene: {entity.GetEntityName()}. Setting up camera follow.");
+                    RequestCameraFollow(entity.transform);
+                }
             }
         }
 
@@ -397,6 +412,8 @@ namespace BugWars.Entity
         /// <summary>
         /// Request camera to follow player using event system
         /// Decouples EntityManager from CameraManager
+        /// Uses ICameraPreference interface if available, with tag validation
+        /// Falls back to default configuration based on character tags
         /// </summary>
         private void RequestCameraFollow(Transform playerTransform)
         {
@@ -412,13 +429,87 @@ namespace BugWars.Entity
                 return;
             }
 
-            // Create free-look orbit camera configuration for professional third-person camera
-            // Mouse-driven yaw/pitch with shoulder offset and soft follow
-            // Perfect for billboarded 2D sprites in 3D world (like EthrA pixel-art games)
-            var config = Core.CameraFollowConfig.FreeLookOrbit(playerTransform);
+            Core.CameraFollowConfig config;
+            GameObject playerObject = playerTransform.gameObject;
+
+            // Check if the player implements ICameraPreference (Option 1: Interface-based)
+            var cameraPreference = playerObject.GetComponent<Core.ICameraPreference>();
+
+            if (cameraPreference != null)
+            {
+                // Player explicitly defines camera preferences
+                config = cameraPreference.GetPreferredCameraConfig(playerTransform);
+
+                // Validate tags (defensive programming with warnings)
+                ValidateCameraTags(playerObject, cameraPreference);
+
+                Debug.Log($"[EntityManager] Using custom camera config from ICameraPreference for {playerObject.name} " +
+                          $"(Billboard: {cameraPreference.UsesBillboarding}, Expected Tag: {cameraPreference.GetExpectedCameraTag()})");
+            }
+            else
+            {
+                // Fallback: Use tags to determine camera type (Option 2/3: Tag-based)
+                config = DetermineCameraConfigFromTags(playerObject, playerTransform);
+
+                // Warn if character doesn't implement ICameraPreference
+                Debug.LogWarning($"[EntityManager] Player '{playerObject.name}' does not implement ICameraPreference. " +
+                                 $"Using tag-based fallback. Consider implementing ICameraPreference for explicit camera control.");
+            }
 
             // Fire event for CameraManager to handle
             _eventManager.RequestCameraFollow(config);
+        }
+
+        /// <summary>
+        /// Validate that the GameObject has the correct tags matching its camera preferences
+        /// Logs warnings if tags are missing or incorrect
+        /// </summary>
+        private void ValidateCameraTags(GameObject playerObject, Core.ICameraPreference cameraPreference)
+        {
+            string expectedTag = cameraPreference.GetExpectedCameraTag();
+
+            // Check if the expected camera tag exists
+            if (!playerObject.CompareTag(expectedTag))
+            {
+                Debug.LogWarning($"[EntityManager] Tag Mismatch: Player '{playerObject.name}' expects tag '{expectedTag}' " +
+                                 $"but has tag '{playerObject.tag}'. Please update the prefab tags in the Unity Editor.");
+                Debug.LogWarning($"[EntityManager] To fix: Select '{playerObject.name}' prefab and set Tag to '{expectedTag}'");
+            }
+
+            // Ensure Player tag is also present (defensive check)
+            if (!playerObject.CompareTag(Core.CameraTags.Player) && !playerObject.CompareTag(expectedTag))
+            {
+                Debug.LogWarning($"[EntityManager] Player '{playerObject.name}' should be tagged as '{Core.CameraTags.Player}' " +
+                                 $"or '{expectedTag}' for proper identification.");
+            }
+        }
+
+        /// <summary>
+        /// Determine camera configuration from GameObject tags (fallback method)
+        /// Used when ICameraPreference is not implemented
+        /// </summary>
+        private Core.CameraFollowConfig DetermineCameraConfigFromTags(GameObject playerObject, Transform playerTransform)
+        {
+            // Check for Camera3D tag first (PRIMARY: AdventurerCharacter and other 3D characters)
+            if (playerObject.CompareTag(Core.CameraTags.Camera3D))
+            {
+                Debug.Log($"[EntityManager] Detected Camera3D tag - using FreeLookOrbit camera for {playerObject.name}");
+                return Core.CameraFollowConfig.FreeLookOrbit(playerTransform);
+            }
+            // Check for CameraBillboard tag (LEGACY: Samurai, BlankPlayer - 2D billboard sprites)
+            else if (playerObject.CompareTag(Core.CameraTags.CameraBillboard))
+            {
+                Debug.Log($"[EntityManager] Detected CameraBillboard tag - using CinematicFollow camera for {playerObject.name}");
+                return Core.CameraFollowConfig.CinematicFollow(playerTransform);
+            }
+            // Default fallback: Use FreeLookOrbit (optimized for 3D characters like AdventurerCharacter)
+            else
+            {
+                Debug.LogWarning($"[EntityManager] No camera-specific tag found on '{playerObject.name}' (Current tag: '{playerObject.tag}'). " +
+                                 $"Using default FreeLookOrbit camera. Consider adding '{Core.CameraTags.Camera3D}' or " +
+                                 $"'{Core.CameraTags.CameraBillboard}' tag, or implement ICameraPreference.");
+                return Core.CameraFollowConfig.FreeLookOrbit(playerTransform);
+            }
         }
 
         /// <summary>

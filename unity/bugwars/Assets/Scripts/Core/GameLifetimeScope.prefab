@@ -46,11 +46,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BugWars.Entity.EntityManager
   allEntities: []
   autoRegisterEntities: 1
-  playerPrefab: {fileID: 7640939612479983438, guid: 018ae20c784174f86b7fed1426fbbc09, type: 3}
+  playerPrefab: {fileID: 8501742970758102573, guid: 09f0d5a5e1bae49939598a7c9681d89b, type: 3}
   autoSpawnPlayer: 1
   playerSpawnPosition: {x: 0, y: 10, z: 0}
   autoCameraFollow: 1
-  playerEntity: {fileID: 2377253821357156730, guid: 018ae20c784174f86b7fed1426fbbc09, type: 3}
+  playerEntity: {fileID: 916027482582278375, guid: 09f0d5a5e1bae49939598a7c9681d89b, type: 3}
+  playerData:
+    playerName: Player
+    playerId: 84cb97e0-5c59-4ffd-84a7-9e9d785acd81
+    level: 1
+    experience: 0
+    score: 0
+    playTime: 0
+    lastKnownPosition: {x: 0, y: 0, z: 0}
   enableTerrainStreaming: 1
   terrainStreamingInterval: 1
 --- !u!1 &2572028443775040931
