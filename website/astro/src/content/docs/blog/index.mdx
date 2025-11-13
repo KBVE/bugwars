@@ -5,6 +5,7 @@ description: Development updates, technical insights, and behind-the-scenes stor
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
+
 # Bug Wars Development Blog
 
 Welcome to the Bug Wars development blog! This is where we share updates about the game's progress, technical challenges we've overcome, design decisions, and insights into the development process.
@@ -58,6 +59,25 @@ Want to stay updated on Bug Wars development?
     Follow the project on GitHub to see code changes and contribute to the development.
   </Card>
 </CardGrid>
+
+---
+
+
+import AstroMainHero from '@/components/hero/mainhero/AstroMainHero.astro';
+
+<AstroMainHero
+  title="Welcome to BugWars"
+  subtitle="Epic Bug Battles"
+  description="Enter the arena and fight bugs in epic multiplayer battles"
+  ctaText="Play Now"
+  ctaUrl="/play"
+  secondaryCtaText="Learn More"
+  secondaryCtaUrl="/about"
+  backgroundImage="/images/hero-bg.jpg"
+  height="100vh"
+  enableParallax={true}
+  showScrollIndicator={true}
+/>
 
 ---
 

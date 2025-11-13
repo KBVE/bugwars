@@ -37,23 +37,34 @@ Our implementation uses VContainer's `LifetimeScope` to manage singleton manager
 
 [UniTask GitHub Repository](https://github.com/Cysharp/UniTask)
 
-UniTask is a zero-allocation async/await framework specifically designed for Unity, replacing Unity's older Coroutine system with modern C# async/await patterns. Unlike standard .NET Tasks which allocate garbage on every operation, UniTask is a value-type based implementation that provides true zero-allocation asynchronous programming, making it perfect for game development where garbage collection pauses can cause frame drops.
+UniTask is a zero-allocation async/await framework specifically designed for Unity, replacing Unity's older Coroutine system with modern C# async/await patterns.
+Unlike standard .NET Tasks which allocate garbage on every operation, UniTask is a value-type based implementation that provides true zero-allocation asynchronous programming, making it perfect for game development where garbage collection pauses can cause frame drops.
 
-In Bug Wars, UniTask powers all asynchronous operations including scene loading, resource streaming, and complex animation sequences. The `GameManager` uses UniTask extensively for scene management, providing clean async/await syntax instead of callback-based coroutines. This makes our code more readable and maintainable - for example, loading a scene with progress tracking becomes a straightforward async method rather than a complex IEnumerator with nested callbacks. UniTask also integrates seamlessly with Unity's lifecycle, providing PlayerLoop-based task scheduling that respects Unity's frame timing.
+In Bug Wars, UniTask powers all asynchronous operations including scene loading, resource streaming, and complex animation sequences.
+The `GameManager` uses UniTask extensively for scene management, providing clean async/await syntax instead of callback-based coroutines.
+This makes our code more readable and maintainable - for example, loading a scene with progress tracking becomes a straightforward async method rather than a complex IEnumerator with nested callbacks.
+UniTask also integrates seamlessly with Unity's lifecycle, providing PlayerLoop-based task scheduling that respects Unity's frame timing.
 
-The performance benefits of UniTask are substantial - it avoids the heap allocations associated with coroutines and standard Tasks, operates faster than Unity's coroutine system, and provides better debugging support through proper stack traces. UniTask also includes powerful operators for working with Unity's async operations, time-based delays, and cancellation tokens, giving us fine-grained control over asynchronous workflows. This is particularly important for Bug Wars' gameplay systems where we need responsive, non-blocking operations for enemy spawning, animation blending, and networked events.
+The performance benefits of UniTask are substantial - it avoids the heap allocations associated with coroutines and standard Tasks, operates faster than Unity's coroutine system, and provides better debugging support through proper stack traces.
+UniTask also includes powerful operators for working with Unity's async operations, time-based delays, and cancellation tokens, giving us fine-grained control over asynchronous workflows.
+This is particularly important for Bug Wars' gameplay systems where we need responsive, non-blocking operations for enemy spawning, animation blending, and networked events.
 
 ### Cinemachine - Procedural Camera System
 
 [Cinemachine Documentation](https://docs.unity3d.com/Packages/com.unity.cinemachine@latest)
 
-Cinemachine is Unity's powerful procedural camera system that enables AAA-quality camera behaviors without complex manual scripting. Instead of writing custom camera controllers with follow logic, damping, and collision detection, Cinemachine provides a component-based approach where cameras are assembled from modular building blocks called Virtual Cameras. This shifts camera work from programming to design, allowing rapid iteration on camera feel and behavior.
+Cinemachine is Unity's powerful procedural camera system that enables AAA-quality camera behaviors without complex manual scripting.
+Instead of writing custom camera controllers with follow logic, damping, and collision detection, Cinemachine provides a component-based approach where cameras are assembled from modular building blocks called Virtual Cameras.
+This shifts camera work from programming to design, allowing rapid iteration on camera feel and behavior.
 
-In Bug Wars, Cinemachine serves as the foundation for all camera systems, providing dynamic camera control that responds to gameplay situations. The framework's Virtual Camera concept allows us to define multiple camera perspectives (combat camera, boss fight camera, death camera) and seamlessly blend between them based on game state. Each Virtual Camera can have its own priority, follow target, look-at target, and behavioral components, making it trivial to create context-sensitive camera work that enhances the player experience.
+In Bug Wars, Cinemachine serves as the foundation for all camera systems, providing dynamic camera control that responds to gameplay situations.
+The framework's Virtual Camera concept allows us to define multiple camera perspectives (combat camera, boss fight camera, death camera) and seamlessly blend between them based on game state.
+Each Virtual Camera can have its own priority, follow target, look-at target, and behavioral components, making it trivial to create context-sensitive camera work that enhances the player experience.
 
 #### Key Features for Bug Wars:
 
-- **Dynamic Follow & Framing**: Cinemachine's Body components (Transposer, Framing Transposer, Orbital Transposer) provide sophisticated player-following logic with customizable damping, dead zones, and screen composition rules. This ensures the player character stays optimally framed even during intense combat sequences.
+- **Dynamic Follow & Framing**: Cinemachine's Body components (Transposer, Framing Transposer, Orbital Transposer) provide sophisticated player-following logic with customizable damping, dead zones, and screen composition rules.
+This ensures the player character stays optimally framed even during intense combat sequences.
 
 - **Smart Aim Handling**: The Aim components manage where the camera looks, supporting hard look-at, composer-based framing, POV rotation, and more. For Bug Wars' combat scenarios, this allows the camera to intelligently frame both the player and approaching enemy threats.
 

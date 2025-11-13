@@ -1,0 +1,32 @@
+syntax = "proto3"
+
+package bugwards;
+
+
+
+service CombatService {
+  rpc SendAttack(Attack) returns (Combat);
+}
+
+message Attack {
+    uint64 id = 1; # id for the attack.
+    string ulid = 2; # ULID + timestamp
+
+}
+
+
+message Combat {
+    uint64 id = 1; # id could race condition.
+    string ulid = 2; # ULID includes the timestamp
+    string uuid = 3; # UUID of the supabase user.
+
+    uint64 enemy_id = 4; # The if the Enemy? Wait, that could be replaced.
+    uint64 attacker_id = 5; # The attacked id.
+    uint64 damage_ref = 6; # Reference to the damage, basically our pointer.
+    uint64 path_ref = 7; # path refer
+
+    string hash = 8; # hash of the specific location
+
+}
+
+

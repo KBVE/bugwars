@@ -5,6 +5,11 @@
  * Wraps the React MainHero component with skeleton loader
  */
 
+//  TODO: Optimize the hydration so that we include the skeleton loader using the abstract z-index.
+//  TODO: 11-12-2025 - Layout Shift from the Main Astro card needs to be fixed, maybe we could utilize a rotating z index swap.
+//  TODO: 11-12-2025 - Add support for images from unsplash, we could lazy load the images and also off-load them to the shared worker.
+//  TODO: 11-12-2025 - The current issue is the hydration from the react side is too slow, maybe there. might be a better way to handle this.
+
 import { ReactMainHero } from './ReactMainHero';
 import type { MainHeroProps } from './typeMainHero';
 
@@ -41,7 +46,7 @@ const {
   alignment = 'center',
   verticalAlignment = 'center',
   ariaLabel,
-  enableHydration = true,
+  enableHydration = false,
   hydrationStrategy = 'load'
 } = Astro.props;
 

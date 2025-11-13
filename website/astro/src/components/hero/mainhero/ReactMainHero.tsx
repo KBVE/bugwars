@@ -8,6 +8,11 @@ import { useEffect, useState, useRef, type FC } from 'react';
 import { cn } from '@/lib/utils';
 import type { MainHeroProps } from './typeMainHero';
 
+// TODO: Nanostores integration, moving the stores out of the react to nanostores and dexie. With dexie provind us the long term seupport.
+// TODO: Integrate the state management to include a core event system that can be utilized within the rest of the vanilla javascript event loop.
+// TODO: Rotate out the useEffect and setTimeout with a beter eco-system that would work with vanillajs and our core event system. Similar issue to the comment above.
+
+
 /**
  * ReactMainHero Component
  */
@@ -39,6 +44,8 @@ export const ReactMainHero: FC<MainHeroProps> = ({
   const heroRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const isFirstRender = useRef(true);
+
+  // TODO: Similar to how we are using the cm , we would create a better mount system that will work with Astro and the html standard for view transitions.
 
   // Handle scroll for parallax effect
   useEffect(() => {

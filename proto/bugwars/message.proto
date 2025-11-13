@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package bugwars;
+
+message ChatMessage {
+  uint64 id = 1; # id could just be ulid
+  uint64 ulid = 2; # bytes will be the reference .
+  string sender = 2; # uuid for the sender instead of the string/
+  string content = 3; # content should be just another ULID pointer, so that it will be easier to cleanup.
+  uint64 timestamp = 4; # timestamp will not be important.
+}
