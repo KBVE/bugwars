@@ -267,6 +267,9 @@ export interface WebToUnityMessage {
 export interface SessionData {
   userId: string;
   email: string;
+  username?: string;
+  displayName?: string;
+  avatarUrl?: string;
 }
 
 /**

@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.UIElements;
+using VContainer;
+using BugWars.Core;
 
 namespace BugWars.UI
 {
@@ -12,6 +14,8 @@ namespace BugWars.UI
     public class HUDManager : MonoBehaviour
     {
         #region Fields
+        [Inject] private EventManager _eventManager;
+
         private UIDocument _uiDocument;
         private VisualElement _root;
         private VisualElement _hudContainer;
@@ -67,11 +71,21 @@ namespace BugWars.UI
 
             // Start with HUD visible
             ShowHUD();
+
+            // Subscribe to session updates
+            if (_eventManager != null)
+            {
+                _eventManager.AddListener<object>("SessionUpdated", OnSessionUpdated);
+            }
         }
 
         private void OnDestroy()
         {
-            // Cleanup if needed
+            // Unsubscribe from session updates
+            if (_eventManager != null)
+            {
+                _eventManager.RemoveListener<object>("SessionUpdated", OnSessionUpdated);
+            }
         }
         #endregion
 
@@ -359,6 +373,44 @@ namespace BugWars.UI
                 _healthBarFill.AddToClassList("medium-health");
             }
             // Above 50% uses the default Lime color
+        }
+
+        /// <summary>
+        /// Handles session update events from WebGLBridge
+        /// </summary>
+        /// <param name="sessionData">Session data containing user information</param>
+        private void OnSessionUpdated(object sessionData)
+        {
+            try
+            {
+                // SessionData is defined in WebGLBridge.cs
+                // We need to extract the displayName using reflection or dynamic
+                var sessionType = sessionData.GetType();
+                var displayNameField = sessionType.GetField("displayName");
+                var usernameField = sessionType.GetField("username");
+
+                string playerName = null;
+
+                if (displayNameField != null)
+                {
+                    playerName = displayNameField.GetValue(sessionData) as string;
+                }
+
+                if (string.IsNullOrEmpty(playerName) && usernameField != null)
+                {
+                    playerName = usernameField.GetValue(sessionData) as string;
+                }
+
+                if (!string.IsNullOrEmpty(playerName))
+                {
+                    UpdatePlayerName(playerName);
+                    Debug.Log($"[HUDManager] Player name updated to: {playerName}");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[HUDManager] Error processing session update: {e.Message}");
+            }
         }
         #endregion
     }
