@@ -195,22 +195,6 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
-            - name: Download webgl.zip
-              uses: actions/download-artifact@v4
-              with:
-                  name: webgl-zip
-                  path: .
-
-            - name: Verify webgl.zip downloaded
-              run: |
-                  ls -lh webgl.zip
-                  echo "webgl.zip size: $(du -h webgl.zip | cut -f1)"
-                  # Move to a location accessible by Docker context
-                  mkdir -p tmp-docker-context
-                  cp webgl.zip tmp-docker-context/
-                  # Verify version.json is in the webgl.zip
-                  unzip -l webgl.zip | grep -E "version.json|StreamingAssets" || echo "Note: version.json verification skipped"
-
             - name: Log in to GitHub Container Registry
               uses: docker/login-action@v3
               with:
