@@ -718,6 +718,10 @@ namespace BugWars.Core
                 virtualCamera.Follow = config.target;
                 virtualCamera.LookAt = config.target;
 
+                // Debug: Log camera and target positions BEFORE repositioning
+                Debug.Log($"[CameraManager] BEFORE Reposition - Camera Position: {virtualCamera.transform.position} | Target Position: {config.target.position}");
+                Debug.Log($"[CameraManager] Camera Rotation: {virtualCamera.transform.rotation.eulerAngles}");
+
                 // Ensure virtual camera starts above the player, not below
                 if (config.target != null && virtualCamera.transform.position.y < config.target.position.y)
                 {
@@ -725,6 +729,14 @@ namespace BugWars.Core
                     virtualCamera.transform.position = startPos;
                     Debug.Log($"[CameraManager] Repositioned virtual camera above player: {startPos}");
                 }
+
+                // Debug: Log camera position AFTER repositioning
+                Debug.Log($"[CameraManager] AFTER Reposition - Camera Position: {virtualCamera.transform.position}");
+
+                // List all components on the virtual camera
+                var components = virtualCamera.GetComponents<UnityEngine.Component>();
+                string componentList = string.Join(", ", System.Array.ConvertAll(components, c => c.GetType().Name));
+                Debug.Log($"[CameraManager] Virtual Camera Components: {componentList}");
 
                 // Configure camera components based on character type
                 ConfigureThirdPersonFollow(virtualCamera, config);
@@ -817,12 +829,19 @@ namespace BugWars.Core
         /// </summary>
         private void ConfigureFreeLookOrbit(CinemachineCamera camera, CameraFollowConfig config)
         {
+            Debug.Log($"[CameraManager] ===== CONFIGURING FREE-LOOK ORBIT CAMERA =====");
+            Debug.Log($"[CameraManager] Camera: {camera.name} | Target: {(camera.Follow != null ? camera.Follow.name : "NULL")}");
+
             // === BODY COMPONENT: ThirdPersonFollow (fixed orbit radius) ===
             var thirdPersonFollow = camera.GetComponent<CinemachineThirdPersonFollow>();
             if (thirdPersonFollow == null)
             {
                 thirdPersonFollow = camera.gameObject.AddComponent<CinemachineThirdPersonFollow>();
                 Debug.Log($"[CameraManager] Added ThirdPersonFollow for free-look orbit to '{camera.name}'");
+            }
+            else
+            {
+                Debug.Log($"[CameraManager] ThirdPersonFollow already exists on '{camera.name}'");
             }
 
             // Configure orbit parameters
@@ -1797,16 +1816,24 @@ namespace BugWars.Core
                 if (panTilt == null)
                 {
                     panTilt = camera.gameObject.AddComponent<CinemachinePanTilt>();
-                    if (debugMode)
-                        Debug.Log($"[CameraManager] Added CinemachinePanTilt to '{camera.name}'");
+                    Debug.Log($"[CameraManager] Added CinemachinePanTilt to '{camera.name}'");
+                }
+                else
+                {
+                    Debug.Log($"[CameraManager] CinemachinePanTilt already exists on '{camera.name}'");
                 }
                 _panTiltCache[camera.name] = panTilt;
+            }
+            else
+            {
+                Debug.Log($"[CameraManager] Using cached CinemachinePanTilt for '{camera.name}'");
             }
 
             ConfigurePanTilt(panTilt, config);
             if (_currentActiveCamera == camera)
             {
                 _activePanTilt = panTilt;
+                Debug.Log($"[CameraManager] Set active PanTilt for '{camera.name}'");
             }
 
             return panTilt;
@@ -1816,6 +1843,8 @@ namespace BugWars.Core
         {
             if (panTilt == null)
                 return;
+
+            Debug.Log($"[CameraManager] Configuring PanTilt - defaultTiltAngle: {defaultTiltAngle}°");
 
             panTilt.ReferenceFrame = CinemachinePanTilt.ReferenceFrames.ParentObject;
             panTilt.RecenterTarget = CinemachinePanTilt.RecenterTargetModes.AxisCenter;
@@ -1833,6 +1862,7 @@ namespace BugWars.Core
             if (Mathf.Approximately(pitchClamp.x, 0f) && Mathf.Approximately(pitchClamp.y, 0f))
             {
                 pitchClamp = new Vector2(10f, 60f);
+                Debug.Log("[CameraManager] Using default pitch clamp: [10°, 60°]");
             }
 
             float minPitch = Mathf.Clamp(pitchClamp.x, -89f, 89f);
@@ -1850,6 +1880,11 @@ namespace BugWars.Core
             tiltAxis.Center = desiredTilt;
             tiltAxis.Value = desiredTilt;
             panTilt.TiltAxis = tiltAxis;
+
+            Debug.Log($"[CameraManager] PanTilt Configured:");
+            Debug.Log($"  - Pan: {desiredPan}° (Range: {panAxis.Range})");
+            Debug.Log($"  - Tilt: {desiredTilt}° (Range: [{minPitch}°, {maxPitch}°])");
+            Debug.Log($"  - Reference Frame: {panTilt.ReferenceFrame}");
         }
 
         private void OnCameraLookInput(Vector2 delta)

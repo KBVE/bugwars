@@ -220,9 +220,14 @@ namespace BugWars.Entity
             movement.y = rb.linearVelocity.y; // Preserve vertical velocity for gravity
             rb.linearVelocity = movement;
 
-            // Handle rotation and sprite flipping based on character type
-            if (direction.magnitude > 0.1f)
+            // Update animation state based on movement
+            bool isMoving = direction.magnitude > 0.1f;
+            if (isMoving)
             {
+                // Character is moving - set to Walk state
+                SetAnimationState(EntityAnimationState.Walk);
+
+                // Handle rotation and sprite flipping based on character type
                 if (enableBillboard && autoFlipSprite)
                 {
                     // Billboard sprite characters: flip sprite based on movement direction
@@ -233,6 +238,11 @@ namespace BugWars.Entity
                     // 3D model characters: rotate the GameObject to face movement direction
                     RotateTowardsMovement(direction);
                 }
+            }
+            else
+            {
+                // Character is not moving - set to Idle state
+                SetAnimationState(EntityAnimationState.Idle);
             }
         }
 

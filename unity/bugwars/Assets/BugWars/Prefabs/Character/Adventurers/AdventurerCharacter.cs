@@ -75,13 +75,35 @@ namespace BugWars.Characters
             {
                 animator = GetComponentInChildren<Animator>();
             }
-            
+
             // Get SkinnedMeshRenderer
             if (meshRenderer == null)
             {
                 meshRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
             }
-            
+
+            // Debug logging for animation setup
+            if (animator != null)
+            {
+                Debug.Log($"[AdventurerCharacter] Animator found: {animator.name}");
+                Debug.Log($"[AdventurerCharacter] Animator Controller: {(animator.runtimeAnimatorController != null ? animator.runtimeAnimatorController.name : "NULL")}");
+
+                // List all available parameters
+                if (animator.parameters.Length > 0)
+                {
+                    string paramList = string.Join(", ", System.Array.ConvertAll(animator.parameters, p => $"{p.name} ({p.type})"));
+                    Debug.Log($"[AdventurerCharacter] Animator Parameters: {paramList}");
+                }
+                else
+                {
+                    Debug.LogWarning("[AdventurerCharacter] Animator has NO parameters! Animation will not work.");
+                }
+            }
+            else
+            {
+                Debug.LogError("[AdventurerCharacter] Animator NOT found! Animations will not play.");
+            }
+
             isInitialized = true;
         }
         
@@ -90,17 +112,50 @@ namespace BugWars.Characters
         /// </summary>
         private void UpdateAnimation()
         {
-            if (animator == null) return;
+            if (animator == null)
+            {
+                Debug.LogWarning("[AdventurerCharacter] UpdateAnimation() called but animator is null!");
+                return;
+            }
 
             // Get velocity from rigidbody (inherited from Entity)
             bool isMoving = rb != null && rb.linearVelocity.magnitude > 0.01f;
             float speed = rb != null ? new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude : 0f;
 
+            // Debug logging every 60 frames (~1 second) to avoid spam
+            if (Time.frameCount % 60 == 0)
+            {
+                Vector3 velocity = rb != null ? rb.linearVelocity : Vector3.zero;
+                Debug.Log($"[AdventurerCharacter] Animation Update - Velocity: {velocity} | Speed: {speed:F2} | IsMoving: {isMoving} | Animator Params: {animator.parameters.Length}");
+            }
+
             if (animator.parameters.Length > 0)
             {
-                // Common animator parameters
-                animator.SetBool("IsMoving", isMoving);
-                animator.SetFloat("Speed", speed);
+                // Check if parameters exist before setting
+                bool hasIsMoving = System.Array.Exists(animator.parameters, p => p.name == "IsMoving");
+                bool hasSpeed = System.Array.Exists(animator.parameters, p => p.name == "Speed");
+
+                if (hasIsMoving)
+                {
+                    animator.SetBool("IsMoving", isMoving);
+                }
+                else
+                {
+                    Debug.LogWarning("[AdventurerCharacter] Animator missing 'IsMoving' parameter!");
+                }
+
+                if (hasSpeed)
+                {
+                    animator.SetFloat("Speed", speed);
+                }
+                else
+                {
+                    Debug.LogWarning("[AdventurerCharacter] Animator missing 'Speed' parameter!");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[AdventurerCharacter] Animator has no parameters! Cannot control animations.");
             }
         }
         
