@@ -152,9 +152,20 @@ export const ReactUnity: FC<ReactUnityProps> = ({
    */
   useEffect(() => {
     if (isLoaded && sessionReady && session) {
+      const user = session.user;
+      const displayName = user?.user_metadata?.full_name ||
+                         user?.user_metadata?.name ||
+                         user?.email?.split('@')[0] ||
+                         'Player';
+      const username = user?.user_metadata?.username || displayName;
+      const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+
       sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({
-        userId: session.user?.id,
-        email: session.user?.email
+        userId: user?.id,
+        email: user?.email,
+        displayName,
+        username,
+        avatarUrl
       }));
     }
   }, [isLoaded, sessionReady, session, sendMessage]);
