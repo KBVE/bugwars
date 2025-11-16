@@ -43,7 +43,7 @@ namespace BugWars.Entity
 
         [Header("Physics")]
         [SerializeField] protected float moveSpeed = 5f;
-        [SerializeField] protected float rotationSpeed = 720f;
+        [SerializeField] protected float rotationSpeed = 1800f; // Fast rotation for responsive 3D movement
 
         protected bool isAlive = true;
         protected Rigidbody rb;

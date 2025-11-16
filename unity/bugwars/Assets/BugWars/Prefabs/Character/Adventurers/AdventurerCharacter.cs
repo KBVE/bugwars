@@ -1,4 +1,5 @@
 using UnityEngine;
+using BugWars.Entity;
 using BugWars.Entity.Player;
 using BugWars.Core;
 
@@ -126,7 +127,7 @@ namespace BugWars.Characters
             if (Time.frameCount % 60 == 0)
             {
                 Vector3 velocity = rb != null ? rb.linearVelocity : Vector3.zero;
-                Debug.Log($"[AdventurerCharacter] Animation Update - Velocity: {velocity} | Speed: {speed:F2} | IsMoving: {isMoving} | Animator Params: {animator.parameters.Length}");
+                Debug.Log($"[AdventurerCharacter] Animation Update - Velocity: {velocity} | Speed: {speed:F2} | IsMoving: {isMoving} | Current State: {GetAnimationState()} | Animator Params: {animator.parameters.Length}");
             }
 
             if (animator.parameters.Length > 0)
@@ -202,6 +203,58 @@ namespace BugWars.Characters
                 animator.runtimeAnimatorController = controller;
             }
         }
+
+        #region Animation State System
+
+        /// <summary>
+        /// Override from Entity base class - called when animation state changes
+        /// Maps universal EntityAnimationState to Animator parameters
+        /// </summary>
+        protected override void OnAnimationStateChanged(EntityAnimationState previousState, EntityAnimationState newState)
+        {
+            if (animator == null) return;
+
+            Debug.Log($"[AdventurerCharacter] Animation state changed: {previousState} -> {newState}");
+
+            // Map EntityAnimationState to Animator parameters
+            switch (newState)
+            {
+                case EntityAnimationState.Idle:
+                    animator.SetBool("IsMoving", false);
+                    animator.SetFloat("Speed", 0f);
+                    break;
+
+                case EntityAnimationState.Walk:
+                    animator.SetBool("IsMoving", true);
+                    // Speed is set in UpdateAnimation() based on actual velocity
+                    break;
+
+                case EntityAnimationState.Run:
+                    animator.SetBool("IsMoving", true);
+                    // Speed is set in UpdateAnimation() based on actual velocity
+                    break;
+
+                case EntityAnimationState.Jump:
+                    // TODO: Add jump trigger if animator has it
+                    break;
+
+                case EntityAnimationState.Attack_1:
+                case EntityAnimationState.Attack_2:
+                case EntityAnimationState.Attack_3:
+                    // TODO: Add attack triggers if animator has them
+                    break;
+
+                case EntityAnimationState.Hurt:
+                    // TODO: Add hurt trigger if animator has it
+                    break;
+
+                case EntityAnimationState.Dead:
+                    // TODO: Add death trigger if animator has it
+                    break;
+            }
+        }
+
+        #endregion
 
         #region ICameraPreference Implementation
 

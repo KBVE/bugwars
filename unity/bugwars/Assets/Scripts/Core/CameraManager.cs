@@ -323,8 +323,9 @@ namespace BugWars.Core
                 cameraDistance = 6.0f,
                 immediate = immediate,
 
-                // Damping: smooth orbit (X/Y lower, Z slightly higher for depth)
-                positionDamping = Vector3.zero,
+                // Damping: smooth orbit for third-person follow
+                // Non-zero values enable cinematic mode with ThirdPersonFollow + PanTilt
+                positionDamping = new Vector3(1f, 1f, 1f),
 
                 // Screen framing: slightly off-center for shoulder cam
                 screenX = 0.52f,
@@ -342,8 +343,8 @@ namespace BugWars.Core
                 lookaheadTime = 0.15f,
                 lookaheadSmoothing = 0.5f,
 
-                // Pitch clamp: prevent looking under/over billboard sprite
-                pitchClamp = new Vector2(5f, 65f)
+                // Pitch clamp: free vertical rotation, camera position prevents clipping
+                pitchClamp = new Vector2(-89f, 89f)
             };
         }
     }
@@ -635,6 +636,7 @@ namespace BugWars.Core
                 Debug.Log($"[CameraManager] CinemachineBrain found: {CinemachineBrain.name}");
             }
         }
+
 
         private void OnDestroy()
         {
@@ -1861,8 +1863,8 @@ namespace BugWars.Core
             Vector2 pitchClamp = config.pitchClamp;
             if (Mathf.Approximately(pitchClamp.x, 0f) && Mathf.Approximately(pitchClamp.y, 0f))
             {
-                pitchClamp = new Vector2(10f, 60f);
-                Debug.Log("[CameraManager] Using default pitch clamp: [10°, 60°]");
+                pitchClamp = new Vector2(20f, 70f);
+                Debug.Log("[CameraManager] Using default pitch clamp: [20°, 70°]");
             }
 
             float minPitch = Mathf.Clamp(pitchClamp.x, -89f, 89f);

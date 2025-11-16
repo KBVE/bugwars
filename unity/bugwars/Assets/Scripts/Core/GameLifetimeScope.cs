@@ -120,12 +120,14 @@ namespace BugWars.Core
             // TerrainManager for procedural terrain generation
             if (terrainManager != null)
             {
-                builder.RegisterComponent(terrainManager).AsImplementedInterfaces();
+                builder.RegisterComponent(terrainManager).AsImplementedInterfaces().AsSelf();
+                builder.RegisterBuildCallback(container => container.Resolve<TerrainManager>());
             }
             else
             {
                 var registration = builder.RegisterComponentOnNewGameObject<TerrainManager>(Lifetime.Singleton, "TerrainManager");
-                registration.DontDestroyOnLoad().AsImplementedInterfaces();
+                registration.DontDestroyOnLoad().AsImplementedInterfaces().AsSelf();
+                builder.RegisterBuildCallback(container => container.Resolve<TerrainManager>());
             }
 
             // CameraManager for camera control using Cinemachine

@@ -65,10 +65,13 @@ namespace BugWars.Terrain
         /// </summary>
         public async UniTask StartAsync(CancellationToken cancellation)
         {
+            Debug.Log("[TerrainManager] StartAsync called - initializing terrain system");
             InitializeTerrainSystem();
 
+            Debug.Log("[TerrainManager] Generating initial terrain chunks");
             // Generate initial terrain chunks
             await GenerateInitialChunks();
+            Debug.Log($"[TerrainManager] Initial terrain generation complete. Active chunks: {activeChunks.Count}");
         }
 
         private void Update()
@@ -86,22 +89,27 @@ namespace BugWars.Terrain
 
         private void InitializeTerrainSystem()
         {
-            // Create container for all chunks
-            chunksContainer = new GameObject("TerrainChunks");
+            Debug.Log("[TerrainManager] Initializing terrain system");
 
-            // Only set parent if this component has a valid transform
-            if (this != null && gameObject != null)
-            {
-                chunksContainer.transform.SetParent(transform);
-            }
+            // Create container for all chunks as a ROOT GameObject
+            // DontDestroyOnLoad only works on root GameObjects, not children
+            chunksContainer = new GameObject("TerrainChunks");
+            Debug.Log($"[TerrainManager] Created TerrainChunks container");
+
+            // DO NOT parent to TerrainManager - must remain a root GameObject for DontDestroyOnLoad
+            // Instead, mark it as DontDestroyOnLoad so it persists across scene loads
+            DontDestroyOnLoad(chunksContainer);
+            Debug.Log($"[TerrainManager] Set TerrainChunks to DontDestroyOnLoad (root GameObject)");
 
             // Create default material if none assigned
             if (defaultTerrainMaterial == null)
             {
                 defaultTerrainMaterial = CreateDefaultGrasslandMaterial();
+                Debug.Log($"[TerrainManager] Created default grassland material");
             }
 
             isInitialized = true;
+            Debug.Log("[TerrainManager] Terrain system initialized");
         }
 
         /// <summary>
@@ -156,9 +164,17 @@ namespace BugWars.Terrain
                 return;
             }
 
+            // Verify chunksContainer exists
+            if (chunksContainer == null)
+            {
+                Debug.LogError("[TerrainManager] chunksContainer is NULL! Cannot create terrain chunks.");
+                return;
+            }
+
             // Create chunk GameObject
-            GameObject chunkObj = new GameObject();
+            GameObject chunkObj = new GameObject($"TerrainChunk_{chunkCoord.x}_{chunkCoord.y}");
             chunkObj.transform.SetParent(chunksContainer.transform);
+            Debug.Log($"[TerrainManager] Created GameObject for chunk {chunkCoord}, parent: {(chunkObj.transform.parent != null ? chunkObj.transform.parent.name : "NULL")}");
 
             // Add and initialize TerrainChunk component
             TerrainChunk chunk = chunkObj.AddComponent<TerrainChunk>();
@@ -169,6 +185,7 @@ namespace BugWars.Terrain
 
             // Add to active chunks dictionary
             activeChunks[chunkCoord] = chunk;
+            Debug.Log($"[TerrainManager] Chunk {chunkCoord} generated and added to activeChunks. GameObject active: {chunkObj.activeSelf}, GameObject exists: {chunkObj != null}");
         }
 
         /// <summary>

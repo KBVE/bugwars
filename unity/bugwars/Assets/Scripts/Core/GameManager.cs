@@ -448,6 +448,8 @@ namespace BugWars.Core
         /// </summary>
         private async UniTask InitializeWorld()
         {
+            Debug.Log("[GameManager] ===== InitializeWorld() STARTED =====");
+
             if (_terrainManager != null)
             {
                 // Wait for terrain to be ready (TerrainManager's StartAsync handles generation)
@@ -476,6 +478,53 @@ namespace BugWars.Core
             {
                 Debug.LogError("[GameManager] Cannot initialize terrain - TerrainManager is null!");
             }
+        }
+
+        /// <summary>
+        /// Create a simple ground plane - IMMEDIATE FIX for camera seeing void
+        /// This creates a large, solid ground that prevents camera from seeing "under" the world
+        /// </summary>
+        private void CreateGroundPlane()
+        {
+            Debug.Log("[GameManager] Creating ground plane");
+
+            // Create a large plane (Unity plane is 10x10 units by default)
+            GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            ground.name = "GroundPlane";
+            ground.transform.position = new Vector3(0, 0, 0);
+            ground.transform.localScale = new Vector3(100, 1, 100); // 1000x1000 units ground
+
+            // Try URP shader first, fallback to Standard
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null)
+            {
+                shader = Shader.Find("Standard");
+                Debug.Log("[GameManager] Using Standard shader for ground plane");
+            }
+            else
+            {
+                Debug.Log("[GameManager] Using URP/Lit shader for ground plane");
+            }
+
+            if (shader != null)
+            {
+                Material groundMat = new Material(shader);
+                groundMat.color = new Color(0.4f, 0.7f, 0.3f); // Grass green
+
+                var renderer = ground.GetComponent<MeshRenderer>();
+                if (renderer != null)
+                {
+                    renderer.material = groundMat;
+                    renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                    renderer.receiveShadows = true;
+                }
+            }
+            else
+            {
+                Debug.LogError("[GameManager] No shader found! Ground will show purple/pink");
+            }
+
+            Debug.Log("[GameManager] Ground plane created at (0,0,0) with 1000x1000 size");
         }
         #endregion
 
