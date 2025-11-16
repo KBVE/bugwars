@@ -153,11 +153,19 @@ export const ReactUnity: FC<ReactUnityProps> = ({
   useEffect(() => {
     if (isLoaded && sessionReady && session) {
       const user = session.user;
-      const displayName = user?.user_metadata?.full_name ||
-                         user?.user_metadata?.name ||
-                         user?.email?.split('@')[0] ||
-                         'Player';
-      const username = user?.user_metadata?.username || displayName;
+      // Extract username - check all OAuth provider fields
+      // GitHub: user_name, Discord: global_name/name, Twitch: preferred_username
+      const username = user?.user_metadata?.user_name ||           // GitHub
+                      user?.user_metadata?.preferred_username ||  // Twitch
+                      user?.user_metadata?.username ||            // Generic
+                      user?.user_metadata?.global_name ||         // Discord
+                      user?.user_metadata?.name ||                // Discord/Twitch fallback
+                      user?.email?.split('@')[0] ||
+                      'Player';
+
+      // Display name can be full_name or fallback to username
+      const displayName = user?.user_metadata?.full_name || username;
+
       const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
 
       sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({
