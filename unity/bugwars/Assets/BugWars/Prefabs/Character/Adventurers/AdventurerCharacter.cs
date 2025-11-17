@@ -32,6 +32,9 @@ namespace BugWars.Characters
         [SerializeField] private SkinnedMeshRenderer meshRenderer;
         [SerializeField] private Material characterMaterial;
 
+        [Header("Debug")]
+        [SerializeField] private bool animationUpdate = false;
+
         private bool isInitialized = false;
 
         protected override void Awake()
@@ -124,7 +127,7 @@ namespace BugWars.Characters
             float speed = rb != null ? new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z).magnitude : 0f;
 
             // Debug logging every 60 frames (~1 second) to avoid spam
-            if (Time.frameCount % 60 == 0)
+            if (animationUpdate && Time.frameCount % 60 == 0)
             {
                 Vector3 velocity = rb != null ? rb.linearVelocity : Vector3.zero;
                 Debug.Log($"[AdventurerCharacter] Animation Update - Velocity: {velocity} | Speed: {speed:F2} | IsMoving: {isMoving} | Current State: {GetAnimationState()} | Animator Params: {animator.parameters.Length}");
