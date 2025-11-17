@@ -263,13 +263,13 @@ namespace BugWars.Characters
 
         /// <summary>
         /// Get preferred camera configuration for 3D adventurer characters
-        /// Uses perspective camera with free-look orbit controls
+        /// Uses simple third-person follow: camera follows behind player and rotates with player
+        /// Perfect for 3D low-poly characters
         /// </summary>
         public CameraFollowConfig GetPreferredCameraConfig(Transform target)
         {
-            // Use FreeLookOrbit for 3D characters - mouse-driven third-person camera
-            // with shoulder offset, collision detection, and smooth follow
-            var config = CameraFollowConfig.FreeLookOrbit(target);
+            // Use SimpleThirdPerson for 3D characters - follows behind, rotates with player, follows height
+            var config = CameraFollowConfig.SimpleThirdPerson(target);
 
             // Optionally customize for adventurer characters
             // Could adjust based on character class (e.g., melee vs ranged)

@@ -355,6 +355,46 @@ namespace BugWars.Core
                 pitchClamp = new Vector2(-89f, 89f)
             };
         }
+
+        /// <summary>
+        /// Simple third-person follow preset: camera follows behind player and rotates with player
+        /// Perfect for 3D low-poly characters
+        /// Auto-rotates to stay behind player, follows player height, no mouse control needed
+        /// </summary>
+        public static CameraFollowConfig SimpleThirdPerson(Transform target, string cameraName = null, bool immediate = false)
+        {
+            return new CameraFollowConfig
+            {
+                target = target,
+                cameraName = cameraName,
+                shoulderOffset = new Vector3(0f, 1.5f, 0f), // Height offset above player
+                verticalArmLength = 0f,
+                cameraDistance = 9.5f, // Distance behind player (zoomed out more)
+                immediate = immediate,
+
+                // Damping: smooth follow
+                positionDamping = new Vector3(0.2f, 0.2f, 0.2f),
+
+                // Screen framing: centered
+                screenX = 0.5f,
+                screenY = 0.5f,
+
+                // Dead zone: none needed for simple follow
+                deadZoneWidth = 0f,
+                deadZoneHeight = 0f,
+
+                // Soft zone: none needed
+                softZoneWidth = 0f,
+                softZoneHeight = 0f,
+
+                // Lookahead: none needed (camera follows directly)
+                lookaheadTime = 0f,
+                lookaheadSmoothing = 0f,
+
+                // Pitch clamp: moderate downward angle for good visibility
+                pitchClamp = new Vector2(15f, 50f)
+            };
+        }
     }
 
     /// <summary>
@@ -648,6 +688,12 @@ namespace BugWars.Core
         }
 
 
+        private void LateUpdate()
+        {
+            // Handle auto-rotation for simple third-person cameras
+            UpdateSimpleThirdPersonRotation();
+        }
+
         private void OnDestroy()
         {
             if (debugMode)
@@ -796,18 +842,32 @@ namespace BugWars.Core
         /// </summary>
         private void ConfigureThirdPersonFollow(CinemachineCamera camera, CameraFollowConfig config)
         {
-            // Check if we have cinematic parameters configured (non-zero damping indicates cinematic mode)
-            bool useCinematicMode = config.positionDamping.magnitude > 0.01f;
+            // Check if this is SimpleThirdPerson (no lookahead, centered, small damping)
+            bool isSimpleThirdPerson = config.lookaheadTime == 0f && 
+                                       config.shoulderOffset.x == 0f && 
+                                       config.positionDamping.magnitude > 0.01f && 
+                                       config.positionDamping.magnitude < 0.5f;
 
-            if (useCinematicMode)
+            if (isSimpleThirdPerson)
             {
-                // CINEMATIC MODE: Use FramingTransposer (Body) + Composer (Aim) for professional camera feel
-                ConfigureCinematicCamera(camera, config);
+                // SIMPLE THIRD-PERSON: Direct follow behind player, auto-rotates with player
+                ConfigureSimpleThirdPerson(camera, config);
             }
             else
             {
-                // LEGACY MODE: Use ThirdPersonFollow or basic Follow component
-                ConfigureLegacyCamera(camera, config);
+                // Check if we have cinematic parameters configured (non-zero damping indicates cinematic mode)
+                bool useCinematicMode = config.positionDamping.magnitude > 0.01f;
+
+                if (useCinematicMode)
+                {
+                    // CINEMATIC MODE: Use FramingTransposer (Body) + Composer (Aim) for professional camera feel
+                    ConfigureCinematicCamera(camera, config);
+                }
+                else
+                {
+                    // LEGACY MODE: Use ThirdPersonFollow or basic Follow component
+                    ConfigureLegacyCamera(camera, config);
+                }
             }
         }
 
@@ -1039,6 +1099,176 @@ namespace BugWars.Core
                 if (debugMode)
                     Debug.Log($"[CameraManager] Configured CinemachineFollow: FollowOffset={follow.FollowOffset}");
             }
+        }
+
+        /// <summary>
+        /// Configures simple third-person camera: follows directly behind player, rotates with player
+        /// Perfect for 3D low-poly characters
+        /// No pivot system, no lookahead, just direct follow with auto-rotation
+        /// </summary>
+        private void ConfigureSimpleThirdPerson(CinemachineCamera camera, CameraFollowConfig config)
+        {
+            if (camera == null || config.target == null)
+                return;
+
+            Debug.Log($"[CameraManager] ===== CONFIGURING SIMPLE THIRD-PERSON CAMERA =====");
+            Debug.Log($"[CameraManager] Camera: {camera.name} | Target: {config.target.name}");
+
+            // Ensure main camera is perspective (not orthographic)
+            if (MainCamera != null && MainCamera.orthographic)
+            {
+                MainCamera.orthographic = false;
+                MainCamera.fieldOfView = perspectiveFov;
+                Debug.Log($"[CameraManager] Set Main Camera to perspective (FOV: {perspectiveFov}°)");
+            }
+
+            // Remove any pivot-based components
+            var oldPanTilt = camera.GetComponent<CinemachinePanTilt>();
+            if (oldPanTilt != null)
+            {
+                Destroy(oldPanTilt);
+                Debug.Log($"[CameraManager] Removed PanTilt from '{camera.name}' (not needed for simple follow)");
+            }
+
+            var oldLockRot = camera.GetComponent<LockedCameraRotation>();
+            if (oldLockRot != null)
+            {
+                Destroy(oldLockRot);
+                Debug.Log($"[CameraManager] Removed LockedCameraRotation from '{camera.name}' (not needed for 3D)");
+            }
+
+            // === BODY COMPONENT: ThirdPersonFollow ===
+            var thirdPersonFollow = camera.GetComponent<CinemachineThirdPersonFollow>();
+            if (thirdPersonFollow == null)
+            {
+                thirdPersonFollow = camera.gameObject.AddComponent<CinemachineThirdPersonFollow>();
+                Debug.Log($"[CameraManager] Added ThirdPersonFollow to '{camera.name}'");
+            }
+
+            // Configure third-person follow
+            thirdPersonFollow.CameraDistance = config.cameraDistance;
+            thirdPersonFollow.ShoulderOffset = config.shoulderOffset; // Height offset above player
+            thirdPersonFollow.VerticalArmLength = 0f;
+            thirdPersonFollow.CameraSide = 0.5f; // Center (behind player)
+            thirdPersonFollow.Damping = config.positionDamping;
+
+            // === AIM COMPONENT: PanTilt with fixed tilt angle (downward view) ===
+            // Remove RotationComposer if it exists (we need PanTilt for fixed angle)
+            var oldRotationComposer = camera.GetComponent<CinemachineRotationComposer>();
+            if (oldRotationComposer != null)
+            {
+                Destroy(oldRotationComposer);
+                Debug.Log($"[CameraManager] Removed RotationComposer from '{camera.name}'");
+            }
+
+            var panTilt = camera.GetComponent<CinemachinePanTilt>();
+            if (panTilt == null)
+            {
+                panTilt = camera.gameObject.AddComponent<CinemachinePanTilt>();
+                Debug.Log($"[CameraManager] Added PanTilt to '{camera.name}' for fixed downward angle");
+            }
+
+            // Configure PanTilt for fixed downward angle (no mouse input, auto-rotates with player)
+            panTilt.ReferenceFrame = CinemachinePanTilt.ReferenceFrames.ParentObject;
+            panTilt.RecenterTarget = CinemachinePanTilt.RecenterTargetModes.AxisCenter;
+
+            // Pan axis: auto-rotates to stay behind player (no manual input)
+            var panAxis = panTilt.PanAxis;
+            panAxis.Range = new Vector2(-180f, 180f);
+            panAxis.Wrap = true;
+            panAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
+            panAxis.Center = 0f;
+            panAxis.Value = 0f; // Will be updated to follow player facing
+            panTilt.PanAxis = panAxis;
+
+            // Tilt axis: fixed downward angle (35-40 degrees down for better third-person view)
+            float fixedTiltAngle = 38f; // Degrees down from horizontal (steeper angle for better view)
+            var tiltAxis = panTilt.TiltAxis;
+            tiltAxis.Range = new Vector2(fixedTiltAngle, fixedTiltAngle); // Lock to single angle
+            tiltAxis.Wrap = false;
+            tiltAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
+            tiltAxis.Center = fixedTiltAngle;
+            tiltAxis.Value = fixedTiltAngle; // Fixed downward angle
+            panTilt.TiltAxis = tiltAxis;
+
+            // === COLLISION DETECTION: Deoccluder ===
+            var deoccluder = camera.GetComponent<CinemachineDeoccluder>();
+            if (deoccluder == null)
+            {
+                deoccluder = camera.gameObject.AddComponent<CinemachineDeoccluder>();
+                Debug.Log($"[CameraManager] Added Deoccluder for collision detection to '{camera.name}'");
+            }
+
+            deoccluder.CollideAgainst = LayerMask.GetMask("Default", "Environment", "Terrain");
+            deoccluder.MinimumDistanceFromTarget = 0.8f;
+            deoccluder.AvoidObstacles.Enabled = true;
+            deoccluder.AvoidObstacles.DistanceLimit = config.cameraDistance + 1f;
+            deoccluder.AvoidObstacles.CameraRadius = 0.2f;
+
+            // === SET TARGETS: Follow and LookAt the player directly ===
+            camera.Follow = config.target; // Follow player position (includes height)
+            camera.LookAt = config.target; // Look at player
+
+            // Store reference for auto-rotation
+            _activeFollowConfig = config;
+            _hasActiveFollowConfig = true;
+
+            if (debugMode)
+            {
+                Debug.Log($"[CameraManager] Configured Simple Third-Person Camera:");
+                Debug.Log($"  - FOV: {perspectiveFov}°");
+                Debug.Log($"  - Camera Distance: {config.cameraDistance}");
+                Debug.Log($"  - Shoulder Offset: {config.shoulderOffset}");
+                Debug.Log($"  - Damping: {config.positionDamping}");
+                Debug.Log($"  - Following: {config.target.name} (direct, no pivot)");
+                Debug.Log($"  - Auto-rotation: Enabled (follows player facing)");
+            }
+        }
+
+        /// <summary>
+        /// Updates camera rotation to match player's facing direction for simple third-person cameras
+        /// Rotates pan axis to stay behind player as player turns
+        /// </summary>
+        private void UpdateSimpleThirdPersonRotation()
+        {
+            if (!_hasActiveFollowConfig || _currentActiveCamera == null || _activeFollowConfig.target == null)
+                return;
+
+            // Check if this is a simple third-person camera
+            var config = _activeFollowConfig;
+            bool isSimpleThirdPerson = config.lookaheadTime == 0f && 
+                                       config.shoulderOffset.x == 0f && 
+                                       config.positionDamping.magnitude > 0.01f && 
+                                       config.positionDamping.magnitude < 0.5f;
+
+            if (!isSimpleThirdPerson)
+                return;
+
+            // Get PanTilt component
+            var panTilt = _currentActiveCamera.GetComponent<CinemachinePanTilt>();
+            if (panTilt == null)
+                return;
+
+            // Get player's forward direction (projected onto XZ plane)
+            Transform player = config.target;
+            Vector3 playerForward = Vector3.ProjectOnPlane(player.forward, Vector3.up);
+            
+            if (playerForward.sqrMagnitude < 0.0001f)
+                return; // Player has no forward direction
+
+            playerForward.Normalize();
+
+            // Calculate desired pan angle: opposite of player's facing direction (behind player)
+            float desiredPanAngle = Mathf.Atan2(-playerForward.x, -playerForward.z) * Mathf.Rad2Deg;
+
+            // Update pan axis to smoothly rotate behind player
+            var panAxis = panTilt.PanAxis;
+            float currentPan = panAxis.Value;
+            float panSpeed = 180f; // degrees per second
+            float newPan = Mathf.MoveTowardsAngle(currentPan, desiredPanAngle, panSpeed * Time.deltaTime);
+            panAxis.Value = panAxis.ClampValue(newPan);
+            panAxis.Center = panAxis.Value; // Update center to prevent recentering
+            panTilt.PanAxis = panAxis;
         }
         #endregion
 
