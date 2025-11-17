@@ -3,239 +3,10 @@ using VContainer;
 using Unity.Cinemachine;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.InputSystem;
 
 namespace BugWars.Core
 {
-    /// <summary>
-    /// Creates a "smart" pivot that runs ahead of the player based on velocity,
-    /// adds shoulder bias, and vertical head-room. Cinemachine follows this pivot.
-    /// Makes direction immediately obvious for both orthographic and perspective cameras.
-    /// </summary>
-    public class CameraLeadPivot : MonoBehaviour
-    {
-        [Header("Targets")]
-        public Transform player;              // required
-        public Rigidbody playerRb;            // optional (better velocity)
-        public CharacterController cc;        // optional (fallback speed)
-
-        [Header("Look-ahead")]
-        [Tooltip("How far ahead (in meters) at max speed.")]
-        public float maxLeadDistance = 3.5f;
-        [Tooltip("Speed (m/s) considered 'max' for lead computation.")]
-        public float maxSpeedForLead = 8f;
-        [Tooltip("How quickly the pivot chases its target position.")]
-        public float chaseResponsiveness = 12f; // higher = snappier
-
-        [Header("Bias / Readability")]
-        public Vector3 headRoom = new Vector3(0f, 1.1f, 0f);   // small Y up
-        public float shoulderRight = 0.35f;                     // +X (right bias)
-        public float shoulderBlend = 0.25f;                     // 0..1 toward move dir side
-
-        [Header("Smoothing")]
-        [Tooltip("Extra smoothing to kill micro jitter.")]
-        public float extraSmoothing = 0.08f;
-
-        Vector3 _vel;
-        Vector3 _pivotVel;
-        Vector3 _smoothedVel;
-
-        [Header("Yaw Follow")]
-        [Tooltip("If true, pivot rotates to match the player's facing direction (Y axis only)")]
-        public bool followPlayerYaw = false;
-        [Tooltip("Degrees per second when rotating toward the player's facing direction")]
-        public float followYawSpeed = 360f;
-
-        public void TeleportToPlayer()
-        {
-            if (!player) return;
-            transform.position = player.position + headRoom;
-            if (followPlayerYaw && player != null)
-            {
-                Vector3 flatForward = Vector3.ProjectOnPlane(player.forward, Vector3.up);
-                if (flatForward.sqrMagnitude < 0.0001f)
-                {
-                    flatForward = Vector3.forward;
-                }
-                transform.rotation = Quaternion.LookRotation(flatForward.normalized, Vector3.up);
-            }
-            else
-            {
-                transform.rotation = Quaternion.identity;
-            }
-        }
-
-        void LateUpdate()
-        {
-            if (!player) return;
-
-            // Velocity source
-            Vector3 v = Vector3.zero;
-            if (playerRb) v = playerRb.linearVelocity;
-            else if (cc && cc.enabled) v = cc.velocity;
-            else v = (player.position - _vel) / Mathf.Max(Time.deltaTime, 0.0001f); // fallback diff
-
-            _vel = player.position;
-
-            // Smooth velocity for stable heading
-            _smoothedVel = Vector3.Lerp(_smoothedVel, v, 1f - Mathf.Exp(-8f * Time.deltaTime));
-            Vector3 moveDir = _smoothedVel.sqrMagnitude > 0.0004f ? _smoothedVel.normalized : Vector3.zero;
-
-            // Lead distance by speed
-            float speed = _smoothedVel.magnitude;
-            float t = Mathf.Clamp01(speed / Mathf.Max(0.0001f, maxSpeedForLead));
-            float lead = Mathf.Lerp(0f, maxLeadDistance, t);
-
-            // Shoulder side: prefer right side, but bleed toward movement side
-            Vector3 shoulder = Vector3.right * shoulderRight;
-            if (moveDir != Vector3.zero)
-            {
-                // pick side perpendicular to moveDir on XZ plane
-                Vector3 rightOnGround = Vector3.Cross(Vector3.up, moveDir).normalized;
-                shoulder = Vector3.Lerp(shoulder, rightOnGround * shoulderRight, shoulderBlend);
-            }
-
-            // Desired pivot position
-            Vector3 desired = player.position + headRoom + shoulder + (moveDir * lead);
-
-            // Snap immediately when the player is nearly stationary to avoid spring-back
-            if (speed < 0.15f)
-            {
-                transform.position = desired;
-                _pivotVel = Vector3.zero;
-            }
-            else
-            {
-            // Chase with critically damped feel
-            transform.position = Vector3.SmoothDamp(transform.position, desired, ref _pivotVel, extraSmoothing,
-                                                     Mathf.Infinity, Time.deltaTime);
-            }
-
-            var cameraManager = CameraManager.Instance;
-            if (cameraManager != null)
-            {
-                cameraManager.ApplyAutoAlign(this, moveDir, player);
-            }
-            else
-            {
-                if (followPlayerYaw && player != null)
-                {
-                    Vector3 direction = moveDir.sqrMagnitude > 0.0001f
-                        ? moveDir
-                        : Vector3.ProjectOnPlane(player.forward, Vector3.up);
-
-                    if (direction.sqrMagnitude > 0.0001f)
-                    {
-                        float angle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
-                        float snapped = SnapToCardinal(angle);
-                        Quaternion targetRotation = Quaternion.Euler(0f, snapped, 0f);
-                        float yawSpeed = Mathf.Max(1f, followYawSpeed);
-                        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, yawSpeed * Time.deltaTime);
-                    }
-                }
-                else
-                {
-                    // Keep pivot upright (helps if you read its forward elsewhere)
-                    transform.rotation = Quaternion.identity;
-                }
-            }
-        }
-
-        private float SnapToCardinal(float angle)
-        {
-            angle = Mathf.Repeat(angle, 360f);
-            float[] cardinals = { 0f, 90f, 180f, 270f };
-            float nearest = cardinals[0];
-            float minDiff = Mathf.Abs(Mathf.DeltaAngle(angle, cardinals[0]));
-
-            for (int i = 1; i < cardinals.Length; i++)
-            {
-                float diff = Mathf.Abs(Mathf.DeltaAngle(angle, cardinals[i]));
-                if (diff < minDiff)
-                {
-                    minDiff = diff;
-                    nearest = cardinals[i];
-                }
-            }
-
-            return nearest;
-        }
-    }
-
-    /// <summary>
-    /// Cinemachine extension that locks camera rotation to a fixed angle
-    /// Perfect for 2D billboard sprites in 3D world (HD-2D style like Octopath Traveler)
-    /// Prevents camera yaw rotation while maintaining optimal downward viewing angle
-    /// </summary>
-    [SaveDuringPlay]
-    public class LockedCameraRotation : CinemachineExtension
-    {
-        [Header("Rotation Lock Settings")]
-        [Tooltip("Fixed rotation angles (pitch, yaw, roll). For orthographic top-down: (45, 0, 0) recommended")]
-        public Vector3 lockedRotation = new Vector3(45f, 0f, 0f);
-
-        [Tooltip("Lock pitch (X rotation)")]
-        public bool lockPitch = true;
-
-        [Tooltip("Lock yaw (Y rotation) - CRITICAL for 2-directional sprites")]
-        public bool lockYaw = true;
-
-        [Tooltip("Lock roll (Z rotation)")]
-        public bool lockRoll = true;
-
-        [Header("Optional Offset")]
-        [Tooltip("Additional rotation offset relative to locked angles")]
-        public Vector3 rotationOffset = Vector3.zero;
-
-        protected override void PostPipelineStageCallback(
-            CinemachineVirtualCameraBase vcam,
-            CinemachineCore.Stage stage,
-            ref CameraState state,
-            float deltaTime)
-        {
-            // Apply rotation lock at the Finalize stage (after all other calculations)
-            if (stage == CinemachineCore.Stage.Finalize)
-            {
-                // Get current camera rotation
-                Vector3 currentEuler = state.RawOrientation.eulerAngles;
-
-                // Build locked rotation based on settings
-                Vector3 finalRotation = new Vector3(
-                    lockPitch ? lockedRotation.x + rotationOffset.x : currentEuler.x,
-                    lockYaw ? lockedRotation.y + rotationOffset.y : currentEuler.y,
-                    lockRoll ? lockedRotation.z + rotationOffset.z : currentEuler.z
-                );
-
-                // Apply locked rotation
-                state.RawOrientation = Quaternion.Euler(finalRotation);
-            }
-        }
-
-        /// <summary>
-        /// Set the locked rotation at runtime
-        /// </summary>
-        public void SetLockedRotation(Vector3 rotation)
-        {
-            lockedRotation = rotation;
-        }
-
-        /// <summary>
-        /// Set individual rotation axes at runtime
-        /// </summary>
-        public void SetLockedPitch(float pitch)
-        {
-            lockedRotation.x = pitch;
-        }
-
-        public void SetLockedYaw(float yaw)
-        {
-            lockedRotation.y = yaw;
-        }
-
-        public void SetLockedRoll(float roll)
-        {
-            lockedRotation.z = roll;
-        }
-    }
 
     /// <summary>
     /// Camera follow configuration for event-based camera control
@@ -262,100 +33,6 @@ namespace BugWars.Core
         public float lookaheadSmoothing;     // Smooth lookahead (0-1)
         public Vector2 pitchClamp;           // Min/max pitch angles for billboard sprites
 
-        public static CameraFollowConfig ThirdPerson(Transform target, string cameraName = null, bool immediate = false)
-        {
-            return new CameraFollowConfig
-            {
-                target = target,
-                cameraName = cameraName,
-                shoulderOffset = new Vector3(0, 1.5f, 0), // Look slightly above player center
-                verticalArmLength = 0f,
-                cameraDistance = 8f, // 8 units behind player
-                immediate = immediate
-            };
-        }
-
-        /// <summary>
-        /// Cinematic follow preset: smooth, non-twitchy camera with professional feel
-        /// Perfect for billboarded 2D sprites in 3D world
-        /// Auto-follow with lookahead (no mouse control)
-        /// </summary>
-        public static CameraFollowConfig CinematicFollow(Transform target, string cameraName = null, bool immediate = false)
-        {
-            return new CameraFollowConfig
-            {
-                target = target,
-                cameraName = cameraName,
-                shoulderOffset = new Vector3(0.35f, 1.2f, 0f),
-                verticalArmLength = 0f,
-                cameraDistance = 6.5f,
-                immediate = immediate,
-
-                // Damping: moderate lag for cinematic feel
-                positionDamping = Vector3.zero,
-
-                // Screen framing: slightly below center
-                screenX = 0.5f,
-                screenY = 0.45f,
-
-                // Dead zone: small (minimal drift)
-                deadZoneWidth = 0.03f,
-                deadZoneHeight = 0.03f,
-
-                // Soft zone: medium (gradual transitions)
-                softZoneWidth = 0.25f,
-                softZoneHeight = 0.25f,
-
-                // Lookahead: anticipate player movement
-                lookaheadTime = 0.2f,
-                lookaheadSmoothing = 0.5f,
-
-                // Pitch clamp: prevent looking under/over billboard sprite
-                pitchClamp = new Vector2(10f, 60f)
-            };
-        }
-
-        /// <summary>
-        /// Free-look orbit preset: mouse-driven third-person camera
-        /// Based on professional 2.5D games (pixel art in 3D)
-        /// Mouse controls yaw/pitch, shoulder offset, soft follow with collision awareness
-        /// </summary>
-        public static CameraFollowConfig FreeLookOrbit(Transform target, string cameraName = null, bool immediate = false)
-        {
-            return new CameraFollowConfig
-            {
-                target = target,
-                cameraName = cameraName,
-                shoulderOffset = new Vector3(0.4f, 1.3f, 0f),
-                verticalArmLength = 0f,
-                cameraDistance = 6.0f,
-                immediate = immediate,
-
-                // Damping: smooth orbit for third-person follow
-                // Non-zero values enable cinematic mode with ThirdPersonFollow + PanTilt
-                positionDamping = new Vector3(1f, 1f, 1f),
-
-                // Screen framing: slightly off-center for shoulder cam
-                screenX = 0.52f,
-                screenY = 0.46f,
-
-                // Dead zone: tiny (mouse-driven, not auto-follow)
-                deadZoneWidth = 0.03f,
-                deadZoneHeight = 0.03f,
-
-                // Soft zone: gentle transitions
-                softZoneWidth = 0.3f,
-                softZoneHeight = 0.3f,
-
-                // Lookahead: small (camera is mouse-driven, not velocity-driven)
-                lookaheadTime = 0.15f,
-                lookaheadSmoothing = 0.5f,
-
-                // Pitch clamp: free vertical rotation, camera position prevents clipping
-                pitchClamp = new Vector2(-89f, 89f)
-            };
-        }
-
         /// <summary>
         /// Simple third-person follow preset: camera follows behind player and rotates with player
         /// Perfect for 3D low-poly characters
@@ -367,13 +44,14 @@ namespace BugWars.Core
             {
                 target = target,
                 cameraName = cameraName,
-                shoulderOffset = new Vector3(0f, 1.5f, 0f), // Height offset above player
+                shoulderOffset = new Vector3(0f, 2.5f, 0f), // Height offset: 2.5 units above player
                 verticalArmLength = 0f,
-                cameraDistance = 9.5f, // Distance behind player (zoomed out more)
+                cameraDistance = 8f, // Distance: 8 units behind player - more zoomed out
                 immediate = immediate,
 
-                // Damping: smooth follow
-                positionDamping = new Vector3(0.2f, 0.2f, 0.2f),
+                // Damping: smooth follow (0.1 seconds for responsive but smooth following)
+                // Reduced from 0.15 to prevent camera drift
+                positionDamping = new Vector3(0.1f, 0.1f, 0.1f),
 
                 // Screen framing: centered
                 screenX = 0.5f,
@@ -393,6 +71,45 @@ namespace BugWars.Core
 
                 // Pitch clamp: moderate downward angle for good visibility
                 pitchClamp = new Vector2(15f, 50f)
+            };
+        }
+
+        /// <summary>
+        /// First-person camera preset: camera at player's eye level
+        /// Camera is positioned at player's head/eye level, very close for immersive view
+        /// </summary>
+        public static CameraFollowConfig FirstPerson(Transform target, string cameraName = null, bool immediate = false)
+        {
+            return new CameraFollowConfig
+            {
+                target = target,
+                cameraName = cameraName,
+                shoulderOffset = new Vector3(0f, 1.6f, 0f), // Height offset: eye level (Y: 1.6)
+                verticalArmLength = 0f,
+                cameraDistance = 0.1f, // Very close distance for first-person (Z: -0.1)
+                immediate = immediate,
+
+                // Damping: very responsive for first-person (instant feel)
+                positionDamping = new Vector3(0.05f, 0.05f, 0.05f),
+
+                // Screen framing: centered
+                screenX = 0.5f,
+                screenY = 0.5f,
+
+                // Dead zone: none needed
+                deadZoneWidth = 0f,
+                deadZoneHeight = 0f,
+
+                // Soft zone: none needed
+                softZoneWidth = 0f,
+                softZoneHeight = 0f,
+
+                // Lookahead: none needed
+                lookaheadTime = 0f,
+                lookaheadSmoothing = 0f,
+
+                // Pitch clamp: allow full vertical rotation for first-person
+                pitchClamp = new Vector2(-89f, 89f)
             };
         }
     }
@@ -421,11 +138,13 @@ namespace BugWars.Core
 
         #region Dependencies
         private EventManager _eventManager;
+        private InputManager _inputManager;
 
         [Inject]
-        public void Construct(EventManager eventManager)
+        public void Construct(EventManager eventManager, InputManager inputManager)
         {
             _eventManager = eventManager;
+            _inputManager = inputManager;
             Debug.Log("[CameraManager] Dependencies injected via Construct()");
         }
         #endregion
@@ -433,6 +152,8 @@ namespace BugWars.Core
         #region Settings
         [Header("Settings")]
         [SerializeField] private bool debugMode = true; // Enabled for debugging camera setup
+        [SerializeField] [Tooltip("Force camera settings from Inspector values on Awake (ensures consistency across team machines). Disable to allow manual camera modifications.")]
+        private bool forceCameraSettings = true;
         [SerializeField] [Tooltip("Use orthographic projection (better readability) or perspective (depth)")]
         private bool preferOrthographic = false;
 
@@ -460,11 +181,11 @@ namespace BugWars.Core
 
         [Header("Camera Input Settings")]
         [SerializeField] [Tooltip("Default field of view for perspective cameras")]
-        private float perspectiveFov = 55f;
+        private float perspectiveFov = 60f;
         [SerializeField] [Tooltip("Minimum distance when zooming the third-person camera")]
-        private float minZoomDistance = 3.5f;
+        private float minZoomDistance = 4.0f;
         [SerializeField] [Tooltip("Maximum distance when zooming the third-person camera")]
-        private float maxZoomDistance = 9f;
+        private float maxZoomDistance = 10.0f;
         [SerializeField] [Tooltip("Amount to change camera distance per zoom input unit")]
         private float zoomStep = 0.4f;
         [SerializeField] [Tooltip("Smoothing applied when adjusting zoom")]
@@ -476,36 +197,59 @@ namespace BugWars.Core
         [SerializeField] [Tooltip("Invert the Y axis for camera look input")]
         private bool invertY = true;
         [SerializeField] [Tooltip("Default downward tilt (in degrees) applied when the camera is initialised")]
-        private float defaultTiltAngle = 25f; // Positive = looking down from above
+        private float defaultTiltAngle = 12f; // Very shallow angle to maximize forward view
         [SerializeField] [Tooltip("Default yaw offset relative to the target forward when camera initialises")]
         private float defaultPanOffset = 0f;
 
-        [Header("Camera Preset")]
-        [SerializeField] private CameraFramingPreset framingPreset = CameraFramingPreset.Centered;
-        [SerializeField] private AutoAlignMode autoAlignMode = AutoAlignMode.AlwaysBehind;
-        [SerializeField] private float autoAlignSpeed = 360f;
-        private float _autoAlignYaw;
-        private bool _hasAutoAlignYaw;
-        [Header("Perspective Rig")] 
-        [SerializeField] private PerspectiveRigMode perspectiveRigMode = PerspectiveRigMode.Locked;
+        [Header("Camera Mode")]
+        [SerializeField] [Tooltip("Camera perspective mode: First Person (player view) or Third Person (behind player)")]
+        private CameraMode cameraMode = CameraMode.ThirdPerson;
 
-        private Vector3 orbitShoulderOffset;
-        private float orbitCameraDistance;
-        private Vector3 orbitPositionDamping;
-        private Vector2 orbitPitchClamp;
-        private Vector3 pivotHeadRoom;
-        private float pivotShoulderRight;
-        private float orbitCameraSide;
+        [Header("Third-Person Enhancements")]
+        [SerializeField] [Tooltip("Camera will automatically rotate to follow player's movement direction")]
+        private bool autoRotateToMovement = true;
+        [SerializeField] [Tooltip("How fast camera rotates to follow movement (degrees/second)")]
+        private float autoRotateSpeed = 120f;
+        [SerializeField] [Tooltip("Minimum movement speed required to trigger auto-rotation")]
+        private float movementThreshold = 0.1f;
+        [SerializeField] [Tooltip("Enable smooth camera lag for cinematic feel")]
+        private bool enableCameraLag = true;
+        [SerializeField] [Tooltip("Camera lag amount (0 = instant, 1 = very laggy)")]
+        [Range(0f, 1f)]
+        private float cameraLagAmount = 0.15f;
+        [SerializeField] [Tooltip("Camera will lean into turns for dynamic feel")]
+        private bool enableCameraLean = false;
+        [SerializeField] [Tooltip("Maximum lean angle when turning (degrees)")]
+        [Range(0f, 15f)]
+        private float maxLeanAngle = 5f;
+        [SerializeField] [Tooltip("Add slight vertical offset based on player velocity")]
+        private bool enableDynamicHeight = true;
+        [SerializeField] [Tooltip("Maximum height adjustment based on vertical velocity")]
+        [Range(0f, 2f)]
+        private float dynamicHeightAmount = 0.5f;
+        [SerializeField] [Tooltip("Camera FOV increases slightly when sprinting")]
+        private bool enableSprintFOV = true;
+        [SerializeField] [Tooltip("FOV increase when sprinting")]
+        [Range(0f, 15f)]
+        private float sprintFOVIncrease = 8f;
+        [SerializeField] [Tooltip("Target speed to trigger sprint FOV (units/second)")]
+        private float sprintSpeedThreshold = 6f;
+        [SerializeField] [Tooltip("Enable camera recentering button")]
+        private bool enableRecenterButton = true;
+        [SerializeField] [Tooltip("Key to press to recenter camera behind player")]
+        private KeyCode recenterKey = KeyCode.V;
 
         private CameraFollowConfig _activeFollowConfig;
         private bool _hasActiveFollowConfig;
         private readonly Dictionary<string, CinemachinePanTilt> _panTiltCache = new Dictionary<string, CinemachinePanTilt>();
-
-        private enum PerspectiveRigMode
-        {
-            Locked,
-            Unlocked
-        }
+        
+        // Track previous position for velocity calculation
+        private Vector3 _previousPlayerPosition;
+        private float _currentSprintFOV = 0f;
+        private float _currentLeanAngle = 0f;
+        
+        // Store base camera offset to prevent drift
+        private Vector3 _baseCameraOffset;
 
         /// <summary>
         /// Gets the main Unity Camera component
@@ -564,7 +308,8 @@ namespace BugWars.Core
         #region Unity Lifecycle
         private void Awake()
         {
-            ForceCameraDefaults();
+            // Initialize camera settings (ensures consistency across team project machines)
+            InitializeCameraSettings();
 
             // Singleton setup
             if (_instance != null && _instance != this)
@@ -588,48 +333,62 @@ namespace BugWars.Core
             }
         }
 
-        private void ForceCameraDefaults()
+        /// <summary>
+        /// Initializes camera settings to ensure consistency across team project machines
+        /// Called in Awake to ensure settings are applied before any camera operations
+        /// Replaces the old ForceCameraDefaults() method - forces SerializeField values to be applied
+        /// Can be disabled via forceCameraSettings to allow manual camera modifications
+        /// </summary>
+        private void InitializeCameraSettings()
         {
-            ApplyFramingPreset(framingPreset, force: true);
-        }
-
-        public void ApplyFramingPreset(CameraFramingPreset preset, bool force = false)
-        {
-            framingPreset = preset;
-
-            switch (preset)
+            // Skip forcing if disabled (allows manual camera modifications)
+            if (!forceCameraSettings)
             {
-                case CameraFramingPreset.OverShoulder:
-                    orbitShoulderOffset = new Vector3(0.2f, 1.45f, 0f);
-                    orbitCameraDistance = 7.5f;
-                    orbitPositionDamping = Vector3.zero;
-                    orbitPitchClamp = new Vector2(5f, 65f);
-                    defaultTiltAngle = 32f; // Positive = looking down from above
-                    pivotHeadRoom = new Vector3(0f, 1.2f, 0f);
-                    pivotShoulderRight = 0f;
-                    orbitCameraSide = 0.5f;
-                    defaultPanOffset = 0f;
-                    break;
-
-                case CameraFramingPreset.Centered:
-                default:
-                    orbitShoulderOffset = new Vector3(0f, 2.0f, 0f);
-                    orbitCameraDistance = 8.2f;
-                    orbitPositionDamping = Vector3.zero;
-                    orbitPitchClamp = new Vector2(12f, 55f);
-                    defaultTiltAngle = 28f; // Positive = looking down from above
-                    pivotHeadRoom = new Vector3(0f, 1.6f, 0f);
-                    pivotShoulderRight = 0f;
-                    orbitCameraSide = 0.5f;
-                    defaultPanOffset = 0f;
-                    break;
+                if (debugMode)
+                    Debug.Log("[CameraManager] Force camera settings is disabled - using current camera values");
+                return;
             }
 
-            if (!force)
+            // Access Camera.main directly (MainCamera property may not be initialized yet)
+            Camera mainCam = Camera.main;
+            
+            // Force main camera to use Inspector SerializeField values
+            // This ensures consistency across team machines (main camera settings can vary)
+            if (mainCam != null)
             {
-                ReapplyActiveFollowConfig();
+                // Force orthographic mode from Inspector
+                mainCam.orthographic = preferOrthographic;
+                
+                // Force FOV from Inspector
+                if (!preferOrthographic)
+                {
+                    mainCam.fieldOfView = perspectiveFov;
+                }
+                
+                if (debugMode)
+                {
+                    Debug.Log($"[CameraManager] Force applied camera settings: Orthographic={preferOrthographic}, FOV={perspectiveFov}°");
+                }
             }
+            else if (debugMode)
+            {
+                Debug.LogWarning("[CameraManager] Camera.main not found during initialization - settings will be applied when camera is available");
+            }
+            
+            // Validate and clamp defaultTiltAngle to valid range
+            // This prevents issues if someone accidentally sets it to an invalid value
+            if (defaultTiltAngle < 0f || defaultTiltAngle > 90f)
+            {
+                defaultTiltAngle = 27.5f; // Reset to optimal value
+                if (debugMode)
+                    Debug.LogWarning($"[CameraManager] defaultTiltAngle was out of range, reset to: {defaultTiltAngle}°");
+            }
+            
+            // Note: Active camera configs will be reapplied when they're set up
+            // The SerializeField values (defaultTiltAngle, perspectiveFov, etc.) are used directly
+            // in ConfigureSimpleThirdPerson, so they will be applied automatically
         }
+
 
         private void ReapplyActiveFollowConfig()
         {
@@ -639,13 +398,108 @@ namespace BugWars.Core
             }
 
             var config = _activeFollowConfig;
-            config.cameraDistance = orbitCameraDistance;
-            config.shoulderOffset = orbitShoulderOffset;
-            config.positionDamping = orbitPositionDamping;
-            config.pitchClamp = orbitPitchClamp;
+            
+            // Apply mode-based settings
+            if (cameraMode == CameraMode.FirstPerson)
+            {
+                config.shoulderOffset = new Vector3(0f, 1.6f, 0f);
+                config.cameraDistance = 0.1f;
+                config.positionDamping = new Vector3(0.05f, 0.05f, 0.05f);
+                config.pitchClamp = new Vector2(-89f, 89f);
+            }
+            else // ThirdPerson
+            {
+                config.shoulderOffset = new Vector3(0f, 2f, 0f);
+                config.cameraDistance = 5f;
+                config.positionDamping = new Vector3(0.15f, 0.15f, 0.15f);
+                config.pitchClamp = new Vector2(15f, 50f);
+            }
             _activeFollowConfig = config;
 
             ConfigureThirdPersonFollow(_currentActiveCamera, config);
+        }
+
+        /// <summary>
+        /// Called when Inspector values change - validates values and updates camera if needed
+        /// Also ensures Inspector values match code defaults when forceCameraSettings is enabled
+        /// </summary>
+        private void OnValidate()
+        {
+            // Validate and clamp values to ensure they're within acceptable ranges
+            ValidateCameraSettings();
+
+            // Reconfigure camera if mode changed and we have an active follow config
+            if (Application.isPlaying && _hasActiveFollowConfig && _currentActiveCamera != null)
+            {
+                ReapplyActiveFollowConfig();
+            }
+        }
+
+        /// <summary>
+        /// Validates and clamps camera settings to ensure they're within acceptable ranges
+        /// Called from OnValidate() to keep Inspector values in sync with code expectations
+        /// </summary>
+        private void ValidateCameraSettings()
+        {
+            // Clamp FOV to reasonable range
+            if (perspectiveFov < 30f || perspectiveFov > 120f)
+            {
+                perspectiveFov = Mathf.Clamp(perspectiveFov, 30f, 120f);
+                if (debugMode)
+                    Debug.LogWarning($"[CameraManager] perspectiveFov clamped to: {perspectiveFov}°");
+            }
+
+            // Clamp zoom distances
+            if (minZoomDistance < 1f)
+                minZoomDistance = 1f;
+            if (maxZoomDistance < minZoomDistance)
+                maxZoomDistance = minZoomDistance + 1f;
+
+            // Clamp tilt angle to valid range
+            if (defaultTiltAngle < 0f || defaultTiltAngle > 90f)
+            {
+                defaultTiltAngle = Mathf.Clamp(defaultTiltAngle, 0f, 90f);
+                if (debugMode)
+                    Debug.LogWarning($"[CameraManager] defaultTiltAngle clamped to: {defaultTiltAngle}°");
+            }
+
+            // Ensure zoom step is positive
+            if (zoomStep <= 0f)
+                zoomStep = 0.1f;
+        }
+
+        /// <summary>
+        /// Resets camera settings to optimal default values
+        /// Call this method to restore defaults (useful for syncing Inspector with code defaults)
+        /// </summary>
+        [ContextMenu("Reset Camera Settings to Defaults")]
+        public void ResetCameraSettingsToDefaults()
+        {
+            perspectiveFov = 60f;
+            minZoomDistance = 4.0f;
+            maxZoomDistance = 10.0f;
+            zoomStep = 0.4f;
+            zoomSmoothing = 0.35f;
+            lookSensitivityX = 1.0f;
+            lookSensitivityY = 1.0f;
+            invertY = true;
+            defaultTiltAngle = 12f;
+            defaultPanOffset = 0f;
+            cameraMode = CameraMode.ThirdPerson;
+            preferOrthographic = false;
+
+            if (debugMode)
+                Debug.Log("[CameraManager] Camera settings reset to defaults");
+
+            // Reapply settings if camera is active
+            if (Application.isPlaying)
+            {
+                InitializeCameraSettings();
+                if (_hasActiveFollowConfig && _currentActiveCamera != null)
+                {
+                    ReapplyActiveFollowConfig();
+                }
+            }
         }
 
         private void Start()
@@ -654,6 +508,7 @@ namespace BugWars.Core
             {
                 Debug.Log($"[CameraManager] Start called");
                 Debug.Log($"[CameraManager] EventManager: {(_eventManager != null ? "✓ available" : "✗ NULL")}");
+                Debug.Log($"[CameraManager] InputManager: {(_inputManager != null ? "✓ available" : "✗ NULL")}");
                 Debug.Log($"[CameraManager] MainCamera: {(_mainCamera != null ? "✓ found" : "✗ NULL")}");
             }
 
@@ -661,6 +516,11 @@ namespace BugWars.Core
             if (_eventManager == null)
             {
                 Debug.LogError("[CameraManager] EventManager was not injected! Camera events will not work.");
+            }
+            
+            if (_inputManager == null)
+            {
+                Debug.LogWarning("[CameraManager] InputManager was not injected! Camera recenter button may not work.");
             }
 
             // Subscribe to events
@@ -685,11 +545,78 @@ namespace BugWars.Core
             {
                 Debug.Log($"[CameraManager] CinemachineBrain found: {CinemachineBrain.name}");
             }
+
+            // Initialize previous position for velocity calculation
+            if (_activeFollowConfig.target != null)
+            {
+                _previousPlayerPosition = _activeFollowConfig.target.position;
+            }
+            _currentSprintFOV = perspectiveFov;
         }
 
 
+        private void Update()
+        {
+            // Handle camera recentering button (using InputManager for consistency)
+            if (enableRecenterButton && _activeFollowConfig.target != null && _inputManager != null)
+            {
+                // Convert KeyCode to new Input System key
+                Key key = Key.None;
+                switch (recenterKey)
+                {
+                    case KeyCode.V: key = Key.V; break;
+                    case KeyCode.C: key = Key.C; break;
+                    case KeyCode.R: key = Key.R; break;
+                    case KeyCode.Space: key = Key.Space; break;
+                    default: key = Key.V; break; // Default to V
+                }
+                
+                // Use InputManager's utility method instead of directly accessing Keyboard
+                if (_inputManager.IsKeyPressedThisFrame(key))
+                {
+                    RecenterCameraBehindPlayer();
+                }
+            }
+        }
+
         private void LateUpdate()
         {
+            // CRITICAL: Ensure Follow target is always set (prevents drift from target being cleared)
+            if (_hasActiveFollowConfig && _currentActiveCamera != null && _activeFollowConfig.target != null)
+            {
+                if (_currentActiveCamera.Follow != _activeFollowConfig.target)
+                {
+                    _currentActiveCamera.Follow = _activeFollowConfig.target;
+                    if (debugMode)
+                        Debug.LogWarning($"[CameraManager] Restored camera Follow target (was null or wrong)");
+                }
+                
+                // CRITICAL FIX: Ensure PositionComposer TargetOffset is maintained correctly
+                // PositionComposer uses TargetOffset in target's LOCAL space
+                // When player rotates, the offset rotates with them, which is correct for "behind player"
+                // But we need to ensure the offset is always correct
+                var positionComposer = _currentActiveCamera.GetComponent<CinemachinePositionComposer>();
+                if (positionComposer != null && cameraMode == CameraMode.ThirdPerson)
+                {
+                    // Verify offset is correct (should be 0, 2, -5 for third-person)
+                    Vector3 expectedOffset = _baseCameraOffset;
+                    if (enableDynamicHeight)
+                    {
+                        // Calculate dynamic height adjustment
+                        Vector3 velocity = (_activeFollowConfig.target.position - _previousPlayerPosition) / Time.deltaTime;
+                        float verticalSpeed = velocity.y;
+                        float heightOffset = Mathf.Clamp(verticalSpeed * dynamicHeightAmount, -0.5f, 0.5f);
+                        expectedOffset = _baseCameraOffset + new Vector3(0f, heightOffset, 0f);
+                    }
+                    
+                    // Only update if significantly different (prevents micro-adjustments)
+                    if (Vector3.Distance(positionComposer.TargetOffset, expectedOffset) > 0.1f)
+                    {
+                        positionComposer.TargetOffset = expectedOffset;
+                    }
+                }
+            }
+            
             // Handle auto-rotation for simple third-person cameras
             UpdateSimpleThirdPersonRotation();
         }
@@ -750,6 +677,24 @@ namespace BugWars.Core
                 return;
             }
 
+            // Override config based on Inspector camera mode setting
+            if (cameraMode == CameraMode.FirstPerson)
+            {
+                // Apply first-person settings
+                config.shoulderOffset = new Vector3(0f, 1.6f, 0f); // Eye level
+                config.cameraDistance = 0.1f; // Very close
+                config.positionDamping = new Vector3(0.05f, 0.05f, 0.05f); // Responsive
+                config.pitchClamp = new Vector2(-89f, 89f); // Full vertical rotation
+            }
+            else // ThirdPerson
+            {
+                // Apply third-person settings (offset: 0, 2.5, -2.5)
+                config.shoulderOffset = new Vector3(0f, 2.5f, 0f); // 2.5 units above
+                config.cameraDistance = 8f; // 8 units behind (more zoomed out)
+                config.positionDamping = new Vector3(0.1f, 0.1f, 0.1f); // Responsive (reduced from 0.15 to prevent drift)
+                config.pitchClamp = new Vector2(15f, 50f); // Moderate downward angle
+            }
+
             // Get the target camera (or use first available)
             string cameraName = string.IsNullOrEmpty(config.cameraName) ?
                 (_allVirtualCameras.Count > 0 ? _allVirtualCameras[0].name : null) :
@@ -772,9 +717,10 @@ namespace BugWars.Core
 
             if (virtualCamera != null)
             {
-                // Set camera targets directly
+                // CRITICAL: Set Follow target FIRST - PositionComposer requires this!
+                // Follow must be set before configuring PositionComposer
                 virtualCamera.Follow = config.target;
-                virtualCamera.LookAt = config.target;
+                virtualCamera.LookAt = null; // PanTilt handles rotation, not LookAt
 
                 // Debug: Log camera and target positions BEFORE repositioning
                 Debug.Log($"[CameraManager] BEFORE Reposition - Camera Position: {virtualCamera.transform.position} | Target Position: {config.target.position}");
@@ -806,8 +752,12 @@ namespace BugWars.Core
                 _activeFollowConfig = config;
                 _hasActiveFollowConfig = true;
 
+                // Initialize previous position for velocity calculation
+                _previousPlayerPosition = config.target.position;
+                _currentSprintFOV = perspectiveFov;
+
                 if (debugMode)
-                    Debug.Log($"[CameraManager] Camera '{virtualCamera.name}' now following '{config.target.name}' (Mode: {(config.shoulderOffset.x > 0.2f ? "FreeLookOrbit" : "CinematicFollow")})");
+                    Debug.Log($"[CameraManager] Camera '{virtualCamera.name}' now following '{config.target.name}' (Mode: SimpleThirdPerson)");
             }
             else
             {
@@ -836,283 +786,30 @@ namespace BugWars.Core
         }
 
         /// <summary>
-        /// Configures Cinemachine 3 camera components for professional cinematic follow
-        /// Supports: ThirdPersonFollow, FramingTransposer (Body) + Composer (Aim)
-        /// Automatically adds missing components at runtime
+        /// Configures simple third-person camera follow
+        /// Uses Framing Transposer (PositionComposer) for smooth following
         /// </summary>
         private void ConfigureThirdPersonFollow(CinemachineCamera camera, CameraFollowConfig config)
         {
-            // Check if this is SimpleThirdPerson (no lookahead, centered, small damping)
-            bool isSimpleThirdPerson = config.lookaheadTime == 0f && 
-                                       config.shoulderOffset.x == 0f && 
-                                       config.positionDamping.magnitude > 0.01f && 
-                                       config.positionDamping.magnitude < 0.5f;
-
-            if (isSimpleThirdPerson)
-            {
-                // SIMPLE THIRD-PERSON: Direct follow behind player, auto-rotates with player
-                ConfigureSimpleThirdPerson(camera, config);
-            }
-            else
-            {
-                // Check if we have cinematic parameters configured (non-zero damping indicates cinematic mode)
-                bool useCinematicMode = config.positionDamping.magnitude > 0.01f;
-
-                if (useCinematicMode)
-                {
-                    // CINEMATIC MODE: Use FramingTransposer (Body) + Composer (Aim) for professional camera feel
-                    ConfigureCinematicCamera(camera, config);
-                }
-                else
-                {
-                    // LEGACY MODE: Use ThirdPersonFollow or basic Follow component
-                    ConfigureLegacyCamera(camera, config);
-                }
-            }
+            // Only support SimpleThirdPerson now
+            ConfigureSimpleThirdPerson(camera, config);
         }
 
         /// <summary>
-        /// Configures cinematic camera using ThirdPersonFollow + POV/Composer
-        /// Professional camera feel with damping, dead zones, soft zones, lookahead
-        /// Supports both auto-follow (Composer) and mouse-driven (POV) modes
-        /// </summary>
-        private void ConfigureCinematicCamera(CinemachineCamera camera, CameraFollowConfig config)
-        {
-            // Determine if this is a mouse-driven orbit camera or auto-follow camera
-            // FreeLookOrbit has shoulder offset X > 0.2 (right shoulder bias)
-            bool isFreeLookOrbit = config.shoulderOffset.x > 0.2f;
-
-            if (isFreeLookOrbit)
-            {
-                // === FREE-LOOK ORBIT MODE: ThirdPersonFollow + POV ===
-                ConfigureFreeLookOrbit(camera, config);
-            }
-            else
-            {
-                // === AUTO-FOLLOW MODE: PositionComposer (FramingTransposer) + RotationComposer ===
-                ConfigureAutoFollow(camera, config);
-            }
-        }
-
-        /// <summary>
-        /// Configure free-look orbit camera: mouse-driven yaw/pitch with ThirdPersonFollow body
-        /// Professional third-person camera like in EthrA pixel-art 3D games
-        /// Includes collision detection, noise, and camera shake support
-        /// </summary>
-        private void ConfigureFreeLookOrbit(CinemachineCamera camera, CameraFollowConfig config)
-        {
-            Debug.Log($"[CameraManager] ===== CONFIGURING FREE-LOOK ORBIT CAMERA =====");
-            Debug.Log($"[CameraManager] Camera: {camera.name} | Target: {(camera.Follow != null ? camera.Follow.name : "NULL")}");
-
-            // === BODY COMPONENT: ThirdPersonFollow (fixed orbit radius) ===
-            var thirdPersonFollow = camera.GetComponent<CinemachineThirdPersonFollow>();
-            if (thirdPersonFollow == null)
-            {
-                thirdPersonFollow = camera.gameObject.AddComponent<CinemachineThirdPersonFollow>();
-                Debug.Log($"[CameraManager] Added ThirdPersonFollow for free-look orbit to '{camera.name}'");
-            }
-            else
-            {
-                Debug.Log($"[CameraManager] ThirdPersonFollow already exists on '{camera.name}'");
-            }
-
-            // Configure orbit parameters
-            thirdPersonFollow.CameraDistance = config.cameraDistance;
-            thirdPersonFollow.ShoulderOffset = config.shoulderOffset;
-            thirdPersonFollow.VerticalArmLength = config.verticalArmLength;
-            thirdPersonFollow.CameraSide = 0.5f; // Center
-            thirdPersonFollow.Damping = config.positionDamping;
-
-            // Ensure pan/tilt aiming
-            EnsurePanTilt(camera, config);
-
-            // === COLLISION DETECTION: CinemachineDeoccluder ===
-            var deoccluder = camera.GetComponent<CinemachineDeoccluder>();
-            if (deoccluder == null)
-            {
-                deoccluder = camera.gameObject.AddComponent<CinemachineDeoccluder>();
-                Debug.Log($"[CameraManager] Added CinemachineDeoccluder for collision detection to '{camera.name}'");
-            }
-
-            // Configure collision parameters
-            deoccluder.CollideAgainst = LayerMask.GetMask("Default", "Environment", "Terrain"); // Adjust layers as needed
-            deoccluder.MinimumDistanceFromTarget = 0.8f; // Pull forward to maintain visibility
-            deoccluder.AvoidObstacles.Enabled = true;
-            deoccluder.AvoidObstacles.DistanceLimit = config.cameraDistance + 1f; // Check slightly beyond camera distance
-            deoccluder.AvoidObstacles.CameraRadius = 0.2f; // Camera collision sphere radius
-            // Note: Smoothing time may need to be configured in the Inspector or via specific CM3 properties
-
-            // === SUBTLE CAMERA NOISE: BasicMultiChannelPerlin ===
-            var noise = camera.GetComponent<CinemachineBasicMultiChannelPerlin>();
-            if (noise == null)
-            {
-                noise = camera.gameObject.AddComponent<CinemachineBasicMultiChannelPerlin>();
-                Debug.Log($"[CameraManager] Added BasicMultiChannelPerlin for subtle camera noise to '{camera.name}'");
-            }
-
-            // Configure subtle handheld-style noise
-            noise.AmplitudeGain = 0.1f; // Very subtle amplitude
-            noise.FrequencyGain = 0.5f; // Low frequency for gentle sway
-            // Note: Assign a Noise Profile asset in the inspector for best results
-
-            // === CAMERA SHAKE SUPPORT: ImpulseListener ===
-            var impulseListener = camera.GetComponent<CinemachineImpulseListener>();
-            if (impulseListener == null)
-            {
-                impulseListener = camera.gameObject.AddComponent<CinemachineImpulseListener>();
-                Debug.Log($"[CameraManager] Added ImpulseListener for camera shake support to '{camera.name}'");
-            }
-
-            // Configure impulse reaction
-            impulseListener.ReactionSettings.AmplitudeGain = 1.0f; // Full impulse strength
-            impulseListener.ReactionSettings.FrequencyGain = 1.0f;
-            impulseListener.ReactionSettings.Duration = 1.0f; // How long impulses last
-            if (debugMode)
-            {
-                Debug.Log($"[CameraManager] Configured FreeLookOrbit Camera:");
-                Debug.Log($"  - CameraDistance: {config.cameraDistance}");
-                Debug.Log($"  - ShoulderOffset: {config.shoulderOffset}");
-                Debug.Log($"  - Damping: {config.positionDamping}");
-                Debug.Log($"  - Pitch Range: [{config.pitchClamp.x}°, {config.pitchClamp.y}°]");
-                Debug.Log($"  - Collision: Enabled with min distance {deoccluder.MinimumDistanceFromTarget}");
-                Debug.Log($"  - Noise: Subtle handheld effect (amplitude {noise.AmplitudeGain})");
-                Debug.Log($"  - Impulse: Camera shake ready");
-            }
-        }
-
-        /// <summary>
-        /// Configure auto-follow camera: velocity-driven with PositionComposer + RotationComposer
-        /// Smooth cinematic camera that follows player movement automatically
-        /// </summary>
-        private void ConfigureAutoFollow(CinemachineCamera camera, CameraFollowConfig config)
-        {
-            // === BODY COMPONENT: CinemachinePositionComposer (Framing Transposer) ===
-            var framingTransposer = camera.GetComponent<CinemachinePositionComposer>();
-            if (framingTransposer == null)
-            {
-                framingTransposer = camera.gameObject.AddComponent<CinemachinePositionComposer>();
-                Debug.Log($"[CameraManager] Added CinemachinePositionComposer (FramingTransposer) to '{camera.name}'");
-            }
-
-            // Configure position damping for cinematic lag
-            framingTransposer.Damping = config.positionDamping;
-
-            // Configure camera distance
-            framingTransposer.CameraDistance = config.cameraDistance;
-
-            // Configure tracked object offset (shoulder offset for head-room)
-            framingTransposer.TargetOffset = config.shoulderOffset;
-
-            // Configure composition settings (screen position, dead zone, soft zone)
-            // In Cinemachine 3, these are part of the Composition property
-            framingTransposer.Composition.ScreenPosition = new Vector2(config.screenX, config.screenY);
-            // Note: DeadZone and SoftZone configuration in CM3 may require different approach
-            // Configure via Inspector or use specific CM3 composition APIs
-
-            // Configure lookahead for anticipating player movement
-            framingTransposer.Lookahead.Time = config.lookaheadTime;
-            framingTransposer.Lookahead.Smoothing = config.lookaheadSmoothing;
-            framingTransposer.Lookahead.IgnoreY = true; // Don't lookahead vertically for billboard sprites
-
-            // === ROTATION LOCK: Lock camera to fixed angle for 2D sprites ===
-            // Add LockedCameraRotation extension to prevent yaw rotation
-            // Critical for 2-directional sprite characters that only face left/right
-            var rotationLock = camera.GetComponent<LockedCameraRotation>();
-            if (rotationLock == null)
-            {
-                rotationLock = camera.gameObject.AddComponent<LockedCameraRotation>();
-                Debug.Log($"[CameraManager] Added LockedCameraRotation for fixed viewing angle to '{camera.name}'");
-            }
-
-            // Configure rotation lock: 45° downward pitch for orthographic top-down view
-            // Provides good visibility ahead while maintaining 3D depth illusion
-            rotationLock.lockedRotation = new Vector3(45f, 0f, 0f);  // 45° down for top-down orthographic
-            rotationLock.lockPitch = true;   // Lock pitch to 45°
-            rotationLock.lockYaw = true;     // Lock yaw to 0° (CRITICAL for 2-directional sprites)
-            rotationLock.lockRoll = true;    // Lock roll to 0°
-
-            // === ORTHOGRAPHIC PROJECTION: Set camera to orthographic for top-down view ===
-            // Orthographic provides better forward visibility and cleaner 2D sprite integration
-            if (MainCamera != null && !MainCamera.orthographic)
-            {
-                MainCamera.orthographic = true;
-                MainCamera.orthographicSize = 8f; // Good balance for visibility
-                Debug.Log($"[CameraManager] Set Main Camera to orthographic (size: 8)");
-            }
-
-            if (debugMode)
-            {
-                Debug.Log($"[CameraManager] Configured AutoFollow Camera (FramingTransposer):");
-                Debug.Log($"  - Projection: Orthographic (size: 8)");
-                Debug.Log($"  - Damping: {config.positionDamping}");
-                Debug.Log($"  - CameraDistance: {config.cameraDistance}");
-                Debug.Log($"  - TrackedOffset: {config.shoulderOffset}");
-                Debug.Log($"  - ScreenPosition: ({config.screenX}, {config.screenY})");
-                Debug.Log($"  - DeadZone: {config.deadZoneWidth}x{config.deadZoneHeight}");
-                Debug.Log($"  - SoftZone: {config.softZoneWidth}x{config.softZoneHeight}");
-                Debug.Log($"  - Lookahead: Time={config.lookaheadTime}s, Smoothing={config.lookaheadSmoothing}");
-                Debug.Log($"  - PitchClamp: [{config.pitchClamp.x}°, {config.pitchClamp.y}°]");
-                Debug.Log($"  - Rotation Lock: (45°, 0°, 0°) - Orthographic top-down view");
-            }
-        }
-
-        /// <summary>
-        /// Configures legacy camera mode using ThirdPersonFollow or basic Follow
-        /// </summary>
-        private void ConfigureLegacyCamera(CinemachineCamera camera, CameraFollowConfig config)
-        {
-            // Try to get or add CinemachineThirdPersonFollow component
-            var thirdPersonFollow = camera.GetComponent<CinemachineThirdPersonFollow>();
-
-            if (thirdPersonFollow != null)
-            {
-                // Configure third-person follow settings
-                thirdPersonFollow.ShoulderOffset = config.shoulderOffset;
-                thirdPersonFollow.VerticalArmLength = config.verticalArmLength;
-                thirdPersonFollow.CameraDistance = config.cameraDistance;
-                thirdPersonFollow.CameraSide = 0.5f; // Center
-                thirdPersonFollow.Damping = new Vector3(0.1f, 0.1f, 0.1f); // Smooth damping
-
-                if (debugMode)
-                    Debug.Log($"[CameraManager] Configured ThirdPersonFollow: ShoulderOffset={config.shoulderOffset}, " +
-                        $"VerticalArmLength={config.verticalArmLength}, CameraDistance={config.cameraDistance}");
-            }
-            else
-            {
-                // Try CinemachineFollow as fallback
-                var follow = camera.GetComponent<CinemachineFollow>();
-                if (follow == null)
-                {
-                    // Add CinemachineFollow component at runtime
-                    follow = camera.gameObject.AddComponent<CinemachineFollow>();
-                    Debug.Log($"[CameraManager] Added CinemachineFollow component to '{camera.name}' at runtime");
-                }
-
-                // Configure follow offset (behind and above target)
-                follow.FollowOffset = new Vector3(0, config.shoulderOffset.y, -config.cameraDistance);
-
-                // Configure damping for smooth movement
-                follow.TrackerSettings.BindingMode = Unity.Cinemachine.TargetTracking.BindingMode.WorldSpace;
-                follow.TrackerSettings.PositionDamping = new Vector3(0.1f, 0.1f, 0.1f);
-                follow.TrackerSettings.RotationDamping = Vector3.zero; // No rotation damping needed
-
-                if (debugMode)
-                    Debug.Log($"[CameraManager] Configured CinemachineFollow: FollowOffset={follow.FollowOffset}");
-            }
-        }
-
-        /// <summary>
-        /// Configures simple third-person camera: follows directly behind player, rotates with player
-        /// Perfect for 3D low-poly characters
-        /// No pivot system, no lookahead, just direct follow with auto-rotation
+        /// Configures camera based on mode: First Person or Third Person
+        /// Supports both immersive first-person view and third-person behind-player view
         /// </summary>
         private void ConfigureSimpleThirdPerson(CinemachineCamera camera, CameraFollowConfig config)
         {
             if (camera == null || config.target == null)
                 return;
 
-            Debug.Log($"[CameraManager] ===== CONFIGURING SIMPLE THIRD-PERSON CAMERA =====");
-            Debug.Log($"[CameraManager] Camera: {camera.name} | Target: {config.target.name}");
+            // Check camera mode from Inspector
+            bool isFirstPerson = cameraMode == CameraMode.FirstPerson;
+            string modeName = isFirstPerson ? "FIRST-PERSON" : "THIRD-PERSON";
+            
+            Debug.Log($"[CameraManager] ===== CONFIGURING {modeName} CAMERA =====");
+            Debug.Log($"[CameraManager] Camera: {camera.name} | Target: {config.target.name} | Mode: {cameraMode}");
 
             // Ensure main camera is perspective (not orthographic)
             if (MainCamera != null && MainCamera.orthographic)
@@ -1122,35 +819,66 @@ namespace BugWars.Core
                 Debug.Log($"[CameraManager] Set Main Camera to perspective (FOV: {perspectiveFov}°)");
             }
 
-            // Remove any pivot-based components
-            var oldPanTilt = camera.GetComponent<CinemachinePanTilt>();
-            if (oldPanTilt != null)
+            // === BODY COMPONENT: PositionComposer (Framing Transposer) ===
+            // Remove ThirdPersonFollow if it exists (switching to Framing Transposer)
+            var oldThirdPersonFollow = camera.GetComponent<CinemachineThirdPersonFollow>();
+            if (oldThirdPersonFollow != null)
             {
-                Destroy(oldPanTilt);
-                Debug.Log($"[CameraManager] Removed PanTilt from '{camera.name}' (not needed for simple follow)");
+                Destroy(oldThirdPersonFollow);
+                Debug.Log($"[CameraManager] Removed ThirdPersonFollow from '{camera.name}'");
             }
 
-            var oldLockRot = camera.GetComponent<LockedCameraRotation>();
-            if (oldLockRot != null)
+            var positionComposer = camera.GetComponent<CinemachinePositionComposer>();
+            if (positionComposer == null)
             {
-                Destroy(oldLockRot);
-                Debug.Log($"[CameraManager] Removed LockedCameraRotation from '{camera.name}' (not needed for 3D)");
+                positionComposer = camera.gameObject.AddComponent<CinemachinePositionComposer>();
+                Debug.Log($"[CameraManager] Added PositionComposer (Framing Transposer) to '{camera.name}'");
             }
 
-            // === BODY COMPONENT: ThirdPersonFollow ===
-            var thirdPersonFollow = camera.GetComponent<CinemachineThirdPersonFollow>();
-            if (thirdPersonFollow == null)
+            // CRITICAL FIX: PositionComposer's TargetOffset with NEGATIVE Z positions camera BEHIND player
+            // CameraDistance is for forward/backward from the composed position, not the offset!
+            // TargetOffset is in target's local space: X=side, Y=height, Z=forward/back (negative = behind)
+            Vector3 cameraOffset;
+            if (isFirstPerson)
             {
-                thirdPersonFollow = camera.gameObject.AddComponent<CinemachineThirdPersonFollow>();
-                Debug.Log($"[CameraManager] Added ThirdPersonFollow to '{camera.name}'");
+                // First-person: camera at eye level, very close
+                cameraOffset = new Vector3(0f, 1.6f, 0.1f); // (X, Y, Z) = (side, height, forward/back)
             }
-
-            // Configure third-person follow
-            thirdPersonFollow.CameraDistance = config.cameraDistance;
-            thirdPersonFollow.ShoulderOffset = config.shoulderOffset; // Height offset above player
-            thirdPersonFollow.VerticalArmLength = 0f;
-            thirdPersonFollow.CameraSide = 0.5f; // Center (behind player)
-            thirdPersonFollow.Damping = config.positionDamping;
+            else
+            {
+                // Third-person: camera behind and above player
+                // NEGATIVE Z = behind player (important!)
+                // Minimal Z offset (-2.5) to see maximum forward, minimal behind
+                // Higher position (2.5) for better forward view angle
+                cameraOffset = new Vector3(0f, 2.5f, -2.5f); // 2.5 units BEHIND (very minimal), 2.5 units UP
+            }
+            
+            // Store base offset for dynamic height adjustments
+            _baseCameraOffset = cameraOffset;
+            
+            // Apply camera lag if enabled (enhances cinematic feel)
+            // But keep damping reasonable - too much causes drift
+            Vector3 damping = config.positionDamping;
+            if (enableCameraLag && !isFirstPerson)
+            {
+                float lagMultiplier = 1f + (cameraLagAmount * 2f); // Reduced from 5f to 2f to prevent excessive lag
+                damping = damping * lagMultiplier;
+                // Clamp damping to prevent camera from drifting too far
+                damping = new Vector3(
+                    Mathf.Clamp(damping.x, 0.05f, 0.5f),
+                    Mathf.Clamp(damping.y, 0.05f, 0.5f),
+                    Mathf.Clamp(damping.z, 0.05f, 0.5f)
+                );
+            }
+            
+            positionComposer.Damping = damping;
+            positionComposer.CameraDistance = 0f; // Keep at 0 - we use TargetOffset for positioning
+            positionComposer.TargetOffset = cameraOffset; // This positions the camera!
+            
+            // Configure composition (centered framing)
+            var composition = ScreenComposerSettings.Default;
+            composition.ScreenPosition = new Vector2(0.5f, 0.5f);
+            positionComposer.Composition = composition;
 
             // === AIM COMPONENT: PanTilt with fixed tilt angle (downward view) ===
             // Remove RotationComposer if it exists (we need PanTilt for fixed angle)
@@ -1161,6 +889,7 @@ namespace BugWars.Core
                 Debug.Log($"[CameraManager] Removed RotationComposer from '{camera.name}'");
             }
 
+            // Get or add PanTilt component (DO NOT remove it first!)
             var panTilt = camera.GetComponent<CinemachinePanTilt>();
             if (panTilt == null)
             {
@@ -1169,26 +898,40 @@ namespace BugWars.Core
             }
 
             // Configure PanTilt for fixed downward angle (no mouse input, auto-rotates with player)
+            // ParentObject reference frame works fine - pan angle calculation handles world space rotation
             panTilt.ReferenceFrame = CinemachinePanTilt.ReferenceFrames.ParentObject;
             panTilt.RecenterTarget = CinemachinePanTilt.RecenterTargetModes.AxisCenter;
 
             // Pan axis: auto-rotates to stay behind player (no manual input)
+            // Initialize to 0 degrees (same direction as player forward)
+            // PositionComposer already positions camera BEHIND player (via negative CameraDistance)
+            // PanTilt just needs to make camera LOOK forward (0°) to see player's back
             var panAxis = panTilt.PanAxis;
             panAxis.Range = new Vector2(-180f, 180f);
             panAxis.Wrap = true;
             panAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
-            panAxis.Center = 0f;
-            panAxis.Value = 0f; // Will be updated to follow player facing
+            panAxis.Center = 0f; // Start at 0 (camera looks same direction as player)
+            panAxis.Value = 0f; // Initial value: 0 degrees
             panTilt.PanAxis = panAxis;
 
-            // Tilt axis: fixed downward angle (35-40 degrees down for better third-person view)
-            float fixedTiltAngle = 38f; // Degrees down from horizontal (steeper angle for better view)
+            // Tilt axis: angle depends on camera mode
+            float fixedTiltAngle;
+            if (isFirstPerson)
+            {
+                fixedTiltAngle = 0f;
+            }
+            else
+            {
+                fixedTiltAngle = defaultTiltAngle; // Use Inspector value (should be 27.5)
+            }
+            
+            // IMPORTANT: Set tilt angle correctly
             var tiltAxis = panTilt.TiltAxis;
-            tiltAxis.Range = new Vector2(fixedTiltAngle, fixedTiltAngle); // Lock to single angle
+            tiltAxis.Range = new Vector2(fixedTiltAngle, fixedTiltAngle);
             tiltAxis.Wrap = false;
             tiltAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
             tiltAxis.Center = fixedTiltAngle;
-            tiltAxis.Value = fixedTiltAngle; // Fixed downward angle
+            tiltAxis.Value = fixedTiltAngle;
             panTilt.TiltAxis = tiltAxis;
 
             // === COLLISION DETECTION: Deoccluder ===
@@ -1202,12 +945,30 @@ namespace BugWars.Core
             deoccluder.CollideAgainst = LayerMask.GetMask("Default", "Environment", "Terrain");
             deoccluder.MinimumDistanceFromTarget = 0.8f;
             deoccluder.AvoidObstacles.Enabled = true;
-            deoccluder.AvoidObstacles.DistanceLimit = config.cameraDistance + 1f;
+            // Distance limit: check up to 6 units away (camera is 5 units behind, so 6 gives some buffer)
+            deoccluder.AvoidObstacles.DistanceLimit = isFirstPerson ? 1f : 6f;
             deoccluder.AvoidObstacles.CameraRadius = 0.2f;
 
             // === SET TARGETS: Follow and LookAt the player directly ===
-            camera.Follow = config.target; // Follow player position (includes height)
-            camera.LookAt = config.target; // Look at player
+            // CRITICAL: Follow must ALWAYS be set to target for PositionComposer to work correctly
+            // PositionComposer uses Follow target's position as the base for TargetOffset
+            // If Follow is null or wrong, camera will drift!
+            // Force set Follow every frame to ensure it never gets cleared
+            camera.Follow = config.target; // Follow player position (includes height) - MUST be set!
+            
+            // PanTilt handles rotation, so we don't need LookAt for third-person
+            // LookAt would conflict with PanTilt's rotation control
+            camera.LookAt = null; // Let PanTilt handle all rotation
+            
+            // Verify PositionComposer is still configured correctly (defensive check)
+            var verifyPositionComposer = camera.GetComponent<CinemachinePositionComposer>();
+            if (verifyPositionComposer != null && verifyPositionComposer.TargetOffset != cameraOffset)
+            {
+                // Restore correct offset if it was changed
+                verifyPositionComposer.TargetOffset = cameraOffset;
+                if (debugMode)
+                    Debug.LogWarning($"[CameraManager] Restored PositionComposer TargetOffset to: {cameraOffset}");
+            }
 
             // Store reference for auto-rotation
             _activeFollowConfig = config;
@@ -1215,26 +976,31 @@ namespace BugWars.Core
 
             if (debugMode)
             {
-                Debug.Log($"[CameraManager] Configured Simple Third-Person Camera:");
+                Debug.Log($"[CameraManager] Configured {modeName} Camera:");
+                Debug.Log($"  - Mode: {cameraMode}");
                 Debug.Log($"  - FOV: {perspectiveFov}°");
-                Debug.Log($"  - Camera Distance: {config.cameraDistance}");
-                Debug.Log($"  - Shoulder Offset: {config.shoulderOffset}");
+                Debug.Log($"  - Camera Offset: {cameraOffset} (X=side, Y=height, Z=forward/back)");
+                Debug.Log($"  - Pitch Angle: {fixedTiltAngle}°");
                 Debug.Log($"  - Damping: {config.positionDamping}");
-                Debug.Log($"  - Following: {config.target.name} (direct, no pivot)");
-                Debug.Log($"  - Auto-rotation: Enabled (follows player facing)");
+                Debug.Log($"  - Following: {config.target.name}");
+                Debug.Log($"  - Collision Detection: Enabled");
+                if (!isFirstPerson)
+                    Debug.Log($"  - Auto-rotation: Enabled");
             }
         }
 
         /// <summary>
-        /// Updates camera rotation to match player's facing direction for simple third-person cameras
-        /// Rotates pan axis to stay behind player as player turns
+        /// Enhanced third-person camera rotation with movement-based auto-rotation, dynamic height, and sprint FOV
+        /// Rotates pan axis to follow player's movement direction or facing direction
         /// </summary>
         private void UpdateSimpleThirdPersonRotation()
         {
             if (!_hasActiveFollowConfig || _currentActiveCamera == null || _activeFollowConfig.target == null)
                 return;
 
-            // Check if this is a simple third-person camera
+            if (cameraMode == CameraMode.FirstPerson)
+                return;
+
             var config = _activeFollowConfig;
             bool isSimpleThirdPerson = config.lookaheadTime == 0f && 
                                        config.shoulderOffset.x == 0f && 
@@ -1244,31 +1010,86 @@ namespace BugWars.Core
             if (!isSimpleThirdPerson)
                 return;
 
-            // Get PanTilt component
             var panTilt = _currentActiveCamera.GetComponent<CinemachinePanTilt>();
             if (panTilt == null)
                 return;
 
-            // Get player's forward direction (projected onto XZ plane)
             Transform player = config.target;
+
+            // === CALCULATE PLAYER VELOCITY ===
+            Vector3 currentPosition = player.position;
+            Vector3 velocity = (currentPosition - _previousPlayerPosition) / Time.deltaTime;
+            _previousPlayerPosition = currentPosition;
+
+            float horizontalSpeed = new Vector3(velocity.x, 0f, velocity.z).magnitude;
+            float verticalSpeed = velocity.y;
+
+            // === AUTO-ROTATE TO FOLLOW PLAYER ===
+            // Always rotate camera to match player's FACING direction (not movement direction)
+            // With standard WASD controls: A/D rotates character, W/S moves forward/backward
+            // Camera should ONLY follow facing direction, never movement direction
             Vector3 playerForward = Vector3.ProjectOnPlane(player.forward, Vector3.up);
-            
-            if (playerForward.sqrMagnitude < 0.0001f)
-                return; // Player has no forward direction
+            float targetYaw = 0f;
+            float rotateSpeed = 180f; // Default rotation speed
 
-            playerForward.Normalize();
+            if (playerForward.sqrMagnitude > 0.0001f)
+            {
+                playerForward.Normalize();
+                // ALWAYS use player's facing direction (transform.forward)
+                // Never use movement direction - this prevents camera from rotating when walking backwards
+                targetYaw = Mathf.Atan2(playerForward.x, playerForward.z) * Mathf.Rad2Deg;
 
-            // Calculate desired pan angle: opposite of player's facing direction (behind player)
-            float desiredPanAngle = Mathf.Atan2(-playerForward.x, -playerForward.z) * Mathf.Rad2Deg;
+                // Disable auto-rotate to movement for standard WASD controls
+                // With standard WASD, player rotates with A/D, so camera should only follow facing direction
+                // Movement direction (W/S) should never affect camera rotation
 
-            // Update pan axis to smoothly rotate behind player
-            var panAxis = panTilt.PanAxis;
-            float currentPan = panAxis.Value;
-            float panSpeed = 180f; // degrees per second
-            float newPan = Mathf.MoveTowardsAngle(currentPan, desiredPanAngle, panSpeed * Time.deltaTime);
-            panAxis.Value = panAxis.ClampValue(newPan);
-            panAxis.Center = panAxis.Value; // Update center to prevent recentering
-            panTilt.PanAxis = panAxis;
+                // Apply rotation to match player's facing direction
+                var panAxis = panTilt.PanAxis;
+                float currentPan = panAxis.Value;
+                float newPan = Mathf.MoveTowardsAngle(currentPan, targetYaw, rotateSpeed * Time.deltaTime);
+                panAxis.Value = panAxis.ClampValue(newPan);
+                panAxis.Center = panAxis.Value;
+                panTilt.PanAxis = panAxis;
+            }
+
+            // === DYNAMIC HEIGHT ADJUSTMENT ===
+            // NOTE: Dynamic height is now handled in LateUpdate() to prevent conflicts
+            // This ensures PositionComposer TargetOffset is only modified in one place
+
+            // === CAMERA LEAN ON TURNS ===
+            if (enableCameraLean)
+            {
+                // Calculate angular velocity (how fast player is turning)
+                Vector3 playerForwardForLean = Vector3.ProjectOnPlane(player.forward, Vector3.up);
+                if (playerForwardForLean.sqrMagnitude > 0.0001f)
+                {
+                    float turnSpeed = Vector3.SignedAngle(Vector3.forward, playerForwardForLean, Vector3.up);
+                    float targetLean = Mathf.Clamp(turnSpeed * 0.1f, -maxLeanAngle, maxLeanAngle);
+
+                    // Smooth lean transition
+                    _currentLeanAngle = Mathf.Lerp(_currentLeanAngle, targetLean, Time.deltaTime * 5f);
+
+                    // Note: Proper lean implementation would require Roll axis support in PanTilt
+                    // This is a placeholder for future enhancement
+                }
+            }
+
+            // === SPRINT FOV ADJUSTMENT ===
+            if (enableSprintFOV && MainCamera != null)
+            {
+                float targetFOV = perspectiveFov;
+
+                if (horizontalSpeed > sprintSpeedThreshold)
+                {
+                    // Player is sprinting - increase FOV
+                    float sprintFactor = Mathf.Clamp01((horizontalSpeed - sprintSpeedThreshold) / 3f);
+                    targetFOV += sprintFOVIncrease * sprintFactor;
+                }
+
+                // Smooth FOV transition
+                _currentSprintFOV = Mathf.Lerp(_currentSprintFOV, targetFOV, Time.deltaTime * 5f);
+                MainCamera.fieldOfView = _currentSprintFOV;
+            }
         }
         #endregion
 
@@ -1611,17 +1432,58 @@ namespace BugWars.Core
             Massive  // Extreme shake (massive explosions, boss attacks)
         }
 
-        public enum CameraFramingPreset
+        public enum CameraMode
         {
-            Centered,
-            OverShoulder
+            FirstPerson,    // Camera at player's eye level (immersive view)
+            ThirdPerson     // Camera behind player (shows character)
         }
 
-        public enum AutoAlignMode
+        /// <summary>
+        /// Triggers camera shake when player lands (called from player controller)
+        /// </summary>
+        /// <param name="impactVelocity">How fast the player was falling when they landed</param>
+        public void OnPlayerLanded(float impactVelocity)
         {
-            Disabled,
-            AlwaysBehind
+            if (impactVelocity > 5f && _activeFollowConfig.target != null)
+            {
+                float intensity = Mathf.Clamp(impactVelocity / 10f, 0.1f, 1f);
+                TriggerCameraShake(
+                    _activeFollowConfig.target.position,
+                    intensity >= 0.7f ? CameraShakeIntensity.Heavy : CameraShakeIntensity.Medium
+                );
+            }
         }
+
+        /// <summary>
+        /// Recenters camera behind player (useful for manual camera control)
+        /// Press the recenter key (default: V) to snap camera behind player
+        /// </summary>
+        public void RecenterCameraBehindPlayer()
+        {
+            if (_currentActiveCamera == null || _activeFollowConfig.target == null)
+                return;
+
+            var panTilt = _currentActiveCamera.GetComponent<CinemachinePanTilt>();
+            if (panTilt != null)
+            {
+                Transform player = _activeFollowConfig.target;
+                Vector3 playerForward = Vector3.ProjectOnPlane(player.forward, Vector3.up);
+
+                if (playerForward.sqrMagnitude > 0.0001f)
+                {
+                    float targetYaw = Mathf.Atan2(playerForward.x, playerForward.z) * Mathf.Rad2Deg;
+
+                    var panAxis = panTilt.PanAxis;
+                    panAxis.Value = targetYaw;
+                    panAxis.Center = targetYaw;
+                    panTilt.PanAxis = panAxis;
+
+                    if (debugMode)
+                        Debug.Log($"[CameraManager] Camera recentered behind player (Yaw: {targetYaw}°)");
+                }
+            }
+        }
+
 
         /// <summary>
         /// Modifies camera FOV (useful for sprint/dash effects)
@@ -1674,374 +1536,8 @@ namespace BugWars.Core
 
         #endregion
 
-        #region Camera Rig Builders
-        /// <summary>
-        /// Builds orthographic camera rig with lead pivot for excellent readability
-        /// Perfect for 2D sprites in 3D world
-        /// </summary>
-        private void BuildOrthoRig(CinemachineCamera vcam, Transform playerTransform, bool teleport = true)
-        {
-            if (vcam == null || playerTransform == null || MainCamera == null) return;
-
-            // Main camera orthographic settings
-            MainCamera.orthographic = true;
-            MainCamera.orthographicSize = 8f;
-
-            // Create/get lead pivot
-            CameraLeadPivot pivot = GetOrCreateLeadPivot(playerTransform);
-            pivot.maxLeadDistance = 3.2f;
-            pivot.maxSpeedForLead = 7.5f;
-            pivot.shoulderRight = 0.35f;
-            pivot.headRoom = new Vector3(0, 1.05f, 0);
-            pivot.followPlayerYaw = (perspectiveRigMode == PerspectiveRigMode.Locked) && autoAlignMode == AutoAlignMode.AlwaysBehind;
-            pivot.followYawSpeed = autoAlignSpeed;
-            if (teleport) pivot.TeleportToPlayer();
-
-            // Body: PositionComposer (Framing Transposer)
-            var posComp = vcam.GetComponent<CinemachinePositionComposer>();
-            if (posComp == null)
-            {
-                posComp = vcam.gameObject.AddComponent<CinemachinePositionComposer>();
-                Debug.Log($"[CameraManager] Added PositionComposer for ortho rig to '{vcam.name}'");
-            }
-
-            posComp.Damping = new Vector3(0.45f, 0.45f, 0.65f);
-            posComp.CameraDistance = 10f;
-            posComp.TargetOffset = Vector3.zero; // pivot already has headRoom/shoulder
-            posComp.Composition.ScreenPosition = new Vector2(0.53f, 0.48f); // push view slightly forward
-
-            // Aim: fixed rotation
-            var lockRot = vcam.GetComponent<LockedCameraRotation>();
-            if (lockRot == null)
-            {
-                lockRot = vcam.gameObject.AddComponent<LockedCameraRotation>();
-                Debug.Log($"[CameraManager] Added LockedCameraRotation to '{vcam.name}'");
-            }
-
-            lockRot.lockedRotation = new Vector3(35f, 0f, 0f); // gentle down angle for better ground visibility
-            lockRot.lockPitch = true;
-            lockRot.lockYaw = true;
-            lockRot.lockRoll = true;
-
-            // Follow/LookAt the pivot
-            vcam.Follow = pivot.transform;
-            vcam.LookAt = pivot.transform;
-
-            if (debugMode)
-            {
-                Debug.Log($"[CameraManager] Built Ortho Rig:");
-                Debug.Log($"  - Orthographic Size: 8");
-                Debug.Log($"  - Lead Distance: {pivot.maxLeadDistance}m");
-                Debug.Log($"  - Camera Angle: 35° down");
-                Debug.Log($"  - Following: Lead Pivot");
-            }
-        }
-
-        /// <summary>
-        /// Builds perspective camera rig with lead pivot (low FOV for depth)
-        /// Alternative to orthographic with more depth perception
-        /// </summary>
-        private void BuildPerspectiveLiteRig(CinemachineCamera vcam, CameraFollowConfig config, bool teleport = true)
-        {
-            if (vcam == null || config.target == null || MainCamera == null) return;
- 
-             // Main camera perspective settings
-             MainCamera.orthographic = false;
-             MainCamera.fieldOfView = perspectiveFov;
-             MainCamera.nearClipPlane = 0.05f;
-             MainCamera.farClipPlane = 500f;
- 
-             // Create/get lead pivot
-             CameraLeadPivot pivot = GetOrCreateLeadPivot(config.target);
-            bool isLockedRig = perspectiveRigMode == PerspectiveRigMode.Locked;
-            pivot.maxLeadDistance = 0f;
-            pivot.maxSpeedForLead = 0f;
-            pivot.shoulderRight = isLockedRig ? 0f : pivotShoulderRight;
-            pivot.shoulderBlend = 0f;
-            pivot.headRoom = pivotHeadRoom;
-            pivot.extraSmoothing = 0f;
-            pivot.followPlayerYaw = (perspectiveRigMode == PerspectiveRigMode.Locked) && autoAlignMode == AutoAlignMode.AlwaysBehind;
-            pivot.followYawSpeed = autoAlignSpeed;
-            if (teleport) pivot.TeleportToPlayer();
-            if (perspectiveRigMode == PerspectiveRigMode.Locked && autoAlignMode == AutoAlignMode.AlwaysBehind)
-            {
-                Vector3 forward = pivot.transform.forward;
-                if (forward.sqrMagnitude > 0.0001f)
-                {
-                    float initialAngle = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
-                    _autoAlignYaw = SnapToCardinal(initialAngle);
-                    _hasAutoAlignYaw = true;
-                    pivot.transform.rotation = Quaternion.Euler(0f, _autoAlignYaw, 0f);
-                }
-            }
-            if (perspectiveRigMode == PerspectiveRigMode.Locked)
-            {
-                ConfigureLockedPerspectiveRig(vcam, config, pivot);
-            }
-            else
-            {
-                ConfigureUnlockedPerspectiveRig(vcam, config, pivot);
-            }
-        }
-
-        private void ConfigureLockedPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
-        {
-            var panTilt = vcam.GetComponent<CinemachinePanTilt>();
-            if (panTilt != null)
-            {
-                if (_activePanTilt == panTilt)
-                {
-                    _activePanTilt = null;
-                }
-                _panTiltCache.Remove(vcam.name);
-                Destroy(panTilt);
-            }
-
-            var lockRot = vcam.GetComponent<LockedCameraRotation>();
-            if (lockRot != null)
-            {
-                Destroy(lockRot);
-            }
-
-            var followComponent = vcam.GetComponent<CinemachineFollow>();
-            if (followComponent != null)
-            {
-                Destroy(followComponent);
-            }
-
-            var tpf = vcam.GetComponent<CinemachineThirdPersonFollow>();
-            if (tpf == null)
-            {
-                tpf = vcam.gameObject.AddComponent<CinemachineThirdPersonFollow>();
-                Debug.Log($"[CameraManager] Added CinemachineThirdPersonFollow for locked perspective rig to '{vcam.name}'");
-            }
-
-            tpf.CameraDistance = orbitCameraDistance;
-            tpf.ShoulderOffset = Vector3.zero;
-            tpf.VerticalArmLength = 0f;
-            tpf.CameraSide = orbitCameraSide;
-            tpf.Damping = orbitPositionDamping == Vector3.zero
-                ? new Vector3(0.1f, 0.1f, 0.1f)
-                : orbitPositionDamping;
-
-            var deoc = vcam.GetComponent<CinemachineDeoccluder>();
-            if (deoc == null)
-            {
-                deoc = vcam.gameObject.AddComponent<CinemachineDeoccluder>();
-                Debug.Log($"[CameraManager] Added Deoccluder for locked perspective rig to '{vcam.name}'");
-            }
-
-            deoc.CollideAgainst = LayerMask.GetMask("Default", "Environment", "Terrain");
-            deoc.MinimumDistanceFromTarget = 0.6f;
-            deoc.AvoidObstacles.Enabled = true;
-            deoc.AvoidObstacles.CameraRadius = 0.2f;
-            deoc.AvoidObstacles.DistanceLimit = orbitCameraDistance + 1.5f;
-
-            vcam.Follow = pivot.transform;
-            vcam.LookAt = config.target;
-
-            var rotationComposer = vcam.GetComponent<CinemachineRotationComposer>();
-            if (rotationComposer == null)
-            {
-                rotationComposer = vcam.gameObject.AddComponent<CinemachineRotationComposer>();
-                Debug.Log($"[CameraManager] Added CinemachineRotationComposer for locked perspective rig to '{vcam.name}'");
-            }
-            rotationComposer.Damping = Vector2.zero;
-            rotationComposer.TargetOffset = pivot.headRoom;
-            var composition = ScreenComposerSettings.Default;
-            composition.ScreenPosition = new Vector2(0.5f, 0.45f);
-            rotationComposer.Composition = composition;
-
-            if (debugMode)
-            {
-                Debug.Log($"[CameraManager] Built Locked Perspective Rig:");
-                Debug.Log($"  - FOV: {perspectiveFov}°");
-                Debug.Log($"  - Camera Distance: {tpf.CameraDistance}");
-                Debug.Log($"  - Pivot followPlayerYaw: {pivot.followPlayerYaw}");
-                Debug.Log($"  - Following: {pivot.transform.name}");
-            }
-        }
-
-        private void ConfigureUnlockedPerspectiveRig(CinemachineCamera vcam, CameraFollowConfig config, CameraLeadPivot pivot)
-        {
-            var oldTpf = vcam.GetComponent<CinemachineThirdPersonFollow>();
-            if (oldTpf != null)
-            {
-                Destroy(oldTpf);
-            }
-
-            var panTilt = vcam.GetComponent<CinemachinePanTilt>();
-            if (panTilt == null)
-            {
-                panTilt = vcam.gameObject.AddComponent<CinemachinePanTilt>();
-                Debug.Log($"[CameraManager] Added CinemachinePanTilt for unlocked perspective rig to '{vcam.name}'");
-            }
-            ConfigurePanTilt(panTilt, config);
-            _panTiltCache[vcam.name] = panTilt;
-            if (_currentActiveCamera == vcam)
-            {
-                _activePanTilt = panTilt;
-            }
-
-            var follow = vcam.GetComponent<CinemachineFollow>();
-            if (follow == null)
-            {
-                follow = vcam.gameObject.AddComponent<CinemachineFollow>();
-                Debug.Log($"[CameraManager] Added CinemachineFollow for unlocked perspective rig to '{vcam.name}'");
-            }
-
-            float followHeight = Mathf.Clamp(pivot.headRoom.y * 0.75f, 0f, 1.6f);
-            follow.FollowOffset = new Vector3(orbitShoulderOffset.x, followHeight, -orbitCameraDistance);
-            follow.TrackerSettings.BindingMode = Unity.Cinemachine.TargetTracking.BindingMode.WorldSpace;
-            follow.TrackerSettings.PositionDamping = orbitPositionDamping;
-            follow.TrackerSettings.RotationDamping = Vector3.zero;
-
-            var deoc = vcam.GetComponent<CinemachineDeoccluder>();
-            if (deoc == null)
-            {
-                deoc = vcam.gameObject.AddComponent<CinemachineDeoccluder>();
-                Debug.Log($"[CameraManager] Added Deoccluder for unlocked perspective rig to '{vcam.name}'");
-            }
-
-            deoc.CollideAgainst = LayerMask.GetMask("Default", "Environment", "Terrain");
-            deoc.MinimumDistanceFromTarget = 0.8f;
-            deoc.AvoidObstacles.Enabled = true;
-            deoc.AvoidObstacles.CameraRadius = 0.2f;
-            deoc.AvoidObstacles.DistanceLimit = orbitCameraDistance + 1.5f;
-
-            vcam.Follow = pivot.transform;
-            vcam.LookAt = config.target;
-
-            var rotationComposer = vcam.GetComponent<CinemachineRotationComposer>();
-            if (rotationComposer != null)
-            {
-                Destroy(rotationComposer);
-            }
-
-            if (debugMode)
-            {
-                Debug.Log($"[CameraManager] Built Perspective Lite Rig (Unlocked):");
-                Debug.Log($"  - FOV: {perspectiveFov}°");
-                Debug.Log($"  - Follow Offset: {follow.FollowOffset}");
-                Debug.Log($"  - Following: {pivot.transform.name}");
-                Debug.Log($"  - Looking At: {config.target.name}");
-            }
-        }
-
-        internal void ApplyAutoAlign(CameraLeadPivot pivot, Vector3 moveDir, Transform player)
-        {
-            if (pivot == null || player == null)
-                return;
-
-            if (autoAlignMode != AutoAlignMode.AlwaysBehind)
-            {
-                if (pivot.followPlayerYaw)
-                {
-                    pivot.transform.rotation = Quaternion.identity;
-                }
-                return;
-            }
-
-            if (moveDir.sqrMagnitude > 0.0001f)
-            {
-                float angle = Mathf.Atan2(moveDir.x, moveDir.z) * Mathf.Rad2Deg;
-                _autoAlignYaw = SnapToCardinal(angle);
-                _hasAutoAlignYaw = true;
-            }
-
-            if (!_hasAutoAlignYaw)
-                return;
-
-            float maxStep = Mathf.Max(1f, autoAlignSpeed) * Time.deltaTime;
-            Quaternion targetRotation = Quaternion.Euler(0f, _autoAlignYaw, 0f);
-
-            if (pivot.followPlayerYaw)
-            {
-                pivot.transform.rotation = Quaternion.RotateTowards(pivot.transform.rotation, targetRotation, maxStep);
-            }
-
-            if (perspectiveRigMode == PerspectiveRigMode.Unlocked && _activePanTilt != null)
-            {
-                var panAxis = _activePanTilt.PanAxis;
-                float desiredPan = Mathf.Repeat(_autoAlignYaw + 180f, 360f);
-                if (desiredPan > 180f)
-                    desiredPan -= 360f;
-                float newPan = Mathf.MoveTowardsAngle(panAxis.Value, desiredPan, maxStep);
-                panAxis.Value = panAxis.ClampValue(newPan);
-                panAxis.Center = panAxis.Value;
-                _activePanTilt.PanAxis = panAxis;
-            }
-
-            if (perspectiveRigMode == PerspectiveRigMode.Unlocked && _currentActiveCamera != null)
-            {
-                var follow = _currentActiveCamera.GetComponent<CinemachineFollow>();
-                if (follow != null)
-                {
-                    float followHeight = Mathf.Clamp(pivot.headRoom.y * 0.75f, 0f, 1.6f);
-                    Vector3 baseOffset = new Vector3(orbitShoulderOffset.x, followHeight, -orbitCameraDistance);
-                    Quaternion yawRotation = Quaternion.Euler(0f, _autoAlignYaw, 0f);
-                    follow.FollowOffset = yawRotation * baseOffset;
-                }
-            }
-        }
-
-        private static float SnapToCardinal(float angle)
-        {
-            angle = Mathf.Repeat(angle, 360f);
-            float[] cardinals = { 0f, 90f, 180f, 270f };
-            float nearest = cardinals[0];
-            float minDiff = Mathf.Abs(Mathf.DeltaAngle(angle, cardinals[0]));
-
-            for (int i = 1; i < cardinals.Length; i++)
-            {
-                float diff = Mathf.Abs(Mathf.DeltaAngle(angle, cardinals[i]));
-                if (diff < minDiff)
-                {
-                    minDiff = diff;
-                    nearest = cardinals[i];
-                }
-            }
-
-            return nearest;
-        }
-
-        /// <summary>
-        /// Gets or creates a lead pivot for the player
-        /// </summary>
-        private CameraLeadPivot GetOrCreateLeadPivot(Transform playerTransform)
-        {
-            // Check if pivot already exists
-            string pivotName = $"CamLeadPivot_{playerTransform.name}";
-            GameObject pivotGo = GameObject.Find(pivotName);
-
-            if (pivotGo != null)
-            {
-                var existingPivot = pivotGo.GetComponent<CameraLeadPivot>();
-                if (existingPivot != null)
-                {
-                    existingPivot.player = playerTransform;
-
-                    // Try to find Rigidbody
-                    var rb = playerTransform.GetComponent<Rigidbody>();
-                    if (rb != null) existingPivot.playerRb = rb;
-
-                    return existingPivot;
-                }
-            }
-
-            // Create new pivot
-            pivotGo = new GameObject(pivotName);
-            var pivot = pivotGo.AddComponent<CameraLeadPivot>();
-            pivot.player = playerTransform;
-
-            // Try to find Rigidbody
-            var playerRb = playerTransform.GetComponent<Rigidbody>();
-            if (playerRb != null) pivot.playerRb = playerRb;
-
-            Debug.Log($"[CameraManager] Created new lead pivot: {pivotName}");
-            return pivot;
-        }
-
+        #region Camera Rig Builders - REMOVED (only using SimpleThirdPerson now)
+        // Old rig builder methods removed - we only use SimpleThirdPerson now
         #endregion
 
         #region Frustum Culling Helpers
@@ -2133,125 +1629,15 @@ namespace BugWars.Core
         }
         #endregion
 
-        private CinemachinePanTilt EnsurePanTilt(CinemachineCamera camera, CameraFollowConfig config)
-        {
-            if (camera == null)
-                return null;
-
-            if (!_panTiltCache.TryGetValue(camera.name, out var panTilt) || panTilt == null)
-            {
-                panTilt = camera.GetComponent<CinemachinePanTilt>();
-                if (panTilt == null)
-                {
-                    panTilt = camera.gameObject.AddComponent<CinemachinePanTilt>();
-                    Debug.Log($"[CameraManager] Added CinemachinePanTilt to '{camera.name}'");
-                }
-                else
-                {
-                    Debug.Log($"[CameraManager] CinemachinePanTilt already exists on '{camera.name}'");
-                }
-                _panTiltCache[camera.name] = panTilt;
-            }
-            else
-            {
-                Debug.Log($"[CameraManager] Using cached CinemachinePanTilt for '{camera.name}'");
-            }
-
-            ConfigurePanTilt(panTilt, config);
-            if (_currentActiveCamera == camera)
-            {
-                _activePanTilt = panTilt;
-                Debug.Log($"[CameraManager] Set active PanTilt for '{camera.name}'");
-            }
-
-            return panTilt;
-        }
-
-        private void ConfigurePanTilt(CinemachinePanTilt panTilt, CameraFollowConfig config)
-        {
-            if (panTilt == null)
-                return;
-
-            Debug.Log($"[CameraManager] Configuring PanTilt - defaultTiltAngle: {defaultTiltAngle}°");
-
-            panTilt.ReferenceFrame = CinemachinePanTilt.ReferenceFrames.ParentObject;
-            panTilt.RecenterTarget = CinemachinePanTilt.RecenterTargetModes.AxisCenter;
-
-            var panAxis = panTilt.PanAxis;
-            panAxis.Range = new Vector2(-180f, 180f);
-            panAxis.Wrap = true;
-            panAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
-            float desiredPan = Mathf.Clamp(0f, panAxis.Range.x, panAxis.Range.y);
-            panAxis.Center = desiredPan;
-            panAxis.Value = desiredPan;
-            panTilt.PanAxis = panAxis;
-
-            Vector2 pitchClamp = config.pitchClamp;
-            if (Mathf.Approximately(pitchClamp.x, 0f) && Mathf.Approximately(pitchClamp.y, 0f))
-            {
-                pitchClamp = new Vector2(20f, 70f);
-                Debug.Log("[CameraManager] Using default pitch clamp: [20°, 70°]");
-            }
-
-            float minPitch = Mathf.Clamp(pitchClamp.x, -89f, 89f);
-            float maxPitch = Mathf.Clamp(pitchClamp.y, -89f, 89f);
-            if (maxPitch < minPitch)
-            {
-                (minPitch, maxPitch) = (maxPitch, minPitch);
-            }
-
-            var tiltAxis = panTilt.TiltAxis;
-            tiltAxis.Range = new Vector2(minPitch, maxPitch);
-            tiltAxis.Wrap = false;
-            tiltAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
-            float desiredTilt = Mathf.Clamp(defaultTiltAngle, tiltAxis.Range.x, tiltAxis.Range.y);
-            tiltAxis.Center = desiredTilt;
-            tiltAxis.Value = desiredTilt;
-            panTilt.TiltAxis = tiltAxis;
-
-            Debug.Log($"[CameraManager] PanTilt Configured:");
-            Debug.Log($"  - Pan: {desiredPan}° (Range: {panAxis.Range})");
-            Debug.Log($"  - Tilt: {desiredTilt}° (Range: [{minPitch}°, {maxPitch}°])");
-            Debug.Log($"  - Reference Frame: {panTilt.ReferenceFrame}");
-        }
-
+        // Mouse input handlers removed - SimpleThirdPerson camera is auto-follow only (no mouse control)
         private void OnCameraLookInput(Vector2 delta)
         {
-            if (preferOrthographic || _activePanTilt == null ||
-                (perspectiveRigMode == PerspectiveRigMode.Unlocked && autoAlignMode == AutoAlignMode.AlwaysBehind))
-                return;
-
-            ApplyLookDelta(_activePanTilt, delta);
-        }
-
-        private void ApplyLookDelta(CinemachinePanTilt panTilt, Vector2 delta)
-        {
-            if (panTilt == null)
-                return;
-
-            var panAxis = panTilt.PanAxis;
-            panAxis.Value = panAxis.ClampValue(panAxis.Value + delta.x * lookSensitivityX);
-            panAxis.CancelRecentering();
-            panTilt.PanAxis = panAxis;
-
-            var tiltAxis = panTilt.TiltAxis;
-            float verticalDelta = delta.y * lookSensitivityY * (invertY ? 1f : -1f);
-            tiltAxis.Value = tiltAxis.ClampValue(tiltAxis.Value + verticalDelta);
-            tiltAxis.CancelRecentering();
-            panTilt.TiltAxis = tiltAxis;
+            // Not used for SimpleThirdPerson - camera auto-rotates with player
         }
 
         private void OnCameraZoomInput(float delta)
         {
-            if (_currentActiveCamera == null || preferOrthographic)
-                return;
-
-            var follow = _currentActiveCamera.GetComponent<CinemachineThirdPersonFollow>();
-            if (follow == null)
-                return;
-
-            float targetDistance = Mathf.Clamp(follow.CameraDistance - delta * zoomStep, minZoomDistance, maxZoomDistance);
-            follow.CameraDistance = Mathf.Lerp(follow.CameraDistance, targetDistance, zoomSmoothing);
+            // Not used for SimpleThirdPerson - fixed camera distance
         }
     }
 
@@ -2310,3 +1696,4 @@ namespace BugWars.Core
 
     #endregion
 }
+

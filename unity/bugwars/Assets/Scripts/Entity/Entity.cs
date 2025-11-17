@@ -236,7 +236,13 @@ namespace BugWars.Entity
                 else
                 {
                     // 3D model characters: rotate the GameObject to face movement direction
-                    RotateTowardsMovement(direction);
+                    // Only auto-rotate if not using standard WASD controls (where A/D manually rotates)
+                    // Check if this is a Player with standard WASD enabled
+                    BugWars.Entity.Player.Player player = this as BugWars.Entity.Player.Player;
+                    if (player == null || !player.IsUsingStandardWASD())
+                    {
+                        RotateTowardsMovement(direction);
+                    }
                 }
             }
             else

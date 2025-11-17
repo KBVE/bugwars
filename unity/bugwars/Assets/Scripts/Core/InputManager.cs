@@ -55,6 +55,7 @@ namespace BugWars.Core
             HandleGlobalInputs();
             HandleCameraInputs();
             HandlePlayerMovementInputs();
+            HandlePlayerRotationInputs();
         }
         #endregion
 
@@ -132,7 +133,8 @@ namespace BugWars.Core
 
         #region Player Movement Input
         /// <summary>
-        /// Handles player movement inputs (WASD, arrow keys) and broadcasts to EventManager
+        /// Handles player movement inputs (W/S for forward/backward) and broadcasts to EventManager
+        /// Standard WASD: W/S moves forward/backward relative to character facing
         /// </summary>
         private void HandlePlayerMovementInputs()
         {
@@ -141,25 +143,44 @@ namespace BugWars.Core
                 return;
             }
 
-            // Get movement input
-            float horizontal = 0f;
+            // Get forward/backward movement input (W/S)
             float vertical = 0f;
 
-            // Horizontal: A/D or Left/Right
-            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed)
-                horizontal = -1f;
-            else if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
-                horizontal = 1f;
-
-            // Vertical: W/S or Up/Down
+            // Vertical: W/S or Up/Down (forward/backward movement)
             if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed)
-                vertical = -1f;
+                vertical = -1f; // Backward
             else if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed)
-                vertical = 1f;
+                vertical = 1f; // Forward
 
-            // Broadcast movement input (always, even if zero for consistent updates)
-            Vector2 movement = new Vector2(horizontal, vertical);
+            // Broadcast movement input (forward/backward only, relative to character facing)
+            Vector2 movement = new Vector2(0f, vertical);
             _eventManager.TriggerPlayerMovementInput(movement);
+        }
+        #endregion
+
+        #region Player Rotation Input
+        /// <summary>
+        /// Handles player rotation inputs (A/D for left/right rotation) and broadcasts to EventManager
+        /// Standard WASD: A/D rotates character left/right
+        /// </summary>
+        private void HandlePlayerRotationInputs()
+        {
+            if (_eventManager == null || Keyboard.current == null)
+            {
+                return;
+            }
+
+            // Get rotation input (A/D)
+            float rotation = 0f;
+
+            // Horizontal: A/D or Left/Right (rotate left/right)
+            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed)
+                rotation = -1f; // Rotate left
+            else if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
+                rotation = 1f; // Rotate right
+
+            // Broadcast rotation input (always, even if zero for consistent updates)
+            _eventManager.TriggerPlayerRotationInput(rotation);
         }
         #endregion
 

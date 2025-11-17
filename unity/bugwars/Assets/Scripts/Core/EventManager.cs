@@ -66,6 +66,7 @@ namespace BugWars.Core
 
         // Input Events - Player Movement
         public UnityEvent<Vector2> OnPlayerMovementInput = new UnityEvent<Vector2>();
+        public UnityEvent<float> OnPlayerRotationInput = new UnityEvent<float>(); // Rotation input: -1 (A/Left) to +1 (D/Right)
 
         // Game State Events
         public UnityEvent OnGamePaused = new UnityEvent();
@@ -106,6 +107,7 @@ namespace BugWars.Core
             OnEscapePressed.RemoveAllListeners();
             OnPausePressed.RemoveAllListeners();
             OnPlayerMovementInput.RemoveAllListeners();
+            OnPlayerRotationInput.RemoveAllListeners();
             OnGamePaused.RemoveAllListeners();
             OnGameResumed.RemoveAllListeners();
             OnSceneLoadStarted.RemoveAllListeners();
@@ -232,6 +234,14 @@ namespace BugWars.Core
         public void TriggerPlayerMovementInput(Vector2 movement)
         {
             OnPlayerMovementInput?.Invoke(movement);
+        }
+
+        /// <summary>
+        /// Broadcast player rotation input (A/D or Left/Right arrow keys)
+        /// </summary>
+        public void TriggerPlayerRotationInput(float rotation)
+        {
+            OnPlayerRotationInput?.Invoke(rotation);
         }
         #endregion
 
