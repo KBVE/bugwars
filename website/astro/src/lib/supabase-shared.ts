@@ -66,6 +66,21 @@ export class SupaShared {
   select(table: string, opts?: { columns?: string; match?: Record<string, any>; limit?: number }) {
     return this.send('from.select', { table, ...(opts ?? {}) });
   }
+  insert(table: string, data: Record<string, any> | Record<string, any>[]) {
+    return this.send('from.insert', { table, data });
+  }
+  update(table: string, data: Record<string, any>, match: Record<string, any>) {
+    return this.send('from.update', { table, data, match });
+  }
+  upsert(table: string, data: Record<string, any> | Record<string, any>[]) {
+    return this.send('from.upsert', { table, data });
+  }
+  delete(table: string, match: Record<string, any>) {
+    return this.send('from.delete', { table, match });
+  }
+  rpc(fn: string, args?: Record<string, any>) {
+    return this.send('rpc', { fn, args });
+  }
   subscribePostgres(key: string, params: any, cb: (payload: any) => void) {
     const off = this.on(`realtime:${key}`, cb);
     this.send('realtime.subscribe', { key, params }).catch((e) => {

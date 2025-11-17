@@ -229,13 +229,8 @@ class UnityService {
   public async saveToSupabase(payload: SupabasePayload): Promise<any> {
     try {
       const supa = getSupa();
-      const { data, error } = await supa.client
-        .from(payload.table)
-        .upsert(payload.data);
-
-      if (error) {
-        throw error;
-      }
+      // Use the SharedWorker's upsert method instead of accessing .client directly
+      const data = await supa.upsert(payload.table, payload.data);
 
       // Notify Unity that save was successful
       this.sendToUnity({
@@ -265,20 +260,11 @@ class UnityService {
   public async loadFromSupabase(table: string, filters?: Record<string, any>): Promise<any> {
     try {
       const supa = getSupa();
-      let query = supa.client.from(table).select('*');
-
-      // Apply filters if provided
-      if (filters) {
-        Object.entries(filters).forEach(([key, value]) => {
-          query = query.eq(key, value);
-        });
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
+      // Use the SharedWorker's select method with filters as match parameter
+      const data = await supa.select(table, {
+        columns: '*',
+        match: filters
+      });
 
       // Notify Unity with loaded data
       this.sendToUnity({

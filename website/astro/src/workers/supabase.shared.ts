@@ -10,6 +10,10 @@ type Req =
   | { id: string; type: 'signInWithPassword'; payload: { email: string; password: string } }
   | { id: string; type: 'signOut' }
   | { id: string; type: 'from.select'; payload: { table: string; columns?: string; match?: Record<string, any>; limit?: number } }
+  | { id: string; type: 'from.insert'; payload: { table: string; data: Record<string, any> | Record<string, any>[] } }
+  | { id: string; type: 'from.update'; payload: { table: string; data: Record<string, any>; match: Record<string, any> } }
+  | { id: string; type: 'from.upsert'; payload: { table: string; data: Record<string, any> | Record<string, any>[] } }
+  | { id: string; type: 'from.delete'; payload: { table: string; match: Record<string, any> } }
   | { id: string; type: 'rpc'; payload: { fn: string; args?: Record<string, any> } }
   | { id: string; type: 'realtime.subscribe'; payload: { key: string; params: any } }
   | { id: string; type: 'realtime.unsubscribe'; payload: { key: string } };
@@ -171,6 +175,52 @@ function reply(port: MessagePort, msg: Res) {
           if (m.payload.match) query = query.match(m.payload.match);
           if (m.payload.limit) query = query.limit(m.payload.limit);
           const { data, error } = await query;
+          if (error) throw error;
+          reply(port, { id: m.id, ok: true, data });
+          break;
+        }
+
+        case 'from.insert': {
+          if (!client) throw new Error('Not initialized');
+          const { data, error } = await client
+            .from(m.payload.table)
+            .insert(m.payload.data)
+            .select();
+          if (error) throw error;
+          reply(port, { id: m.id, ok: true, data });
+          break;
+        }
+
+        case 'from.update': {
+          if (!client) throw new Error('Not initialized');
+          const { data, error } = await client
+            .from(m.payload.table)
+            .update(m.payload.data)
+            .match(m.payload.match)
+            .select();
+          if (error) throw error;
+          reply(port, { id: m.id, ok: true, data });
+          break;
+        }
+
+        case 'from.upsert': {
+          if (!client) throw new Error('Not initialized');
+          const { data, error } = await client
+            .from(m.payload.table)
+            .upsert(m.payload.data)
+            .select();
+          if (error) throw error;
+          reply(port, { id: m.id, ok: true, data });
+          break;
+        }
+
+        case 'from.delete': {
+          if (!client) throw new Error('Not initialized');
+          const { data, error } = await client
+            .from(m.payload.table)
+            .delete()
+            .match(m.payload.match)
+            .select();
           if (error) throw error;
           reply(port, { id: m.id, ok: true, data });
           break;
