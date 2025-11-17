@@ -187,14 +187,53 @@ namespace BugWars.Terrain
                 result = Color.Lerp(result, rockColor, rockAmount);
             }
 
-            // Darken valleys slightly for depth perception
+            // Darken valleys slightly for depth perception (reduced to avoid black lines)
             if (heightFactor < 0.3f)
             {
-                float valleyDarken = Mathf.InverseLerp(0.3f, 0f, heightFactor) * 0.15f;
+                float valleyDarken = Mathf.InverseLerp(0.3f, 0f, heightFactor) * 0.08f; // Reduced from 0.15f
                 result = Color.Lerp(result, Color.black, valleyDarken);
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Smooth normals at chunk edges to reduce visible seams between chunks
+        /// Uses grid-based detection to reliably identify edge vertices
+        /// </summary>
+        private void SmoothEdgeNormals(Mesh mesh)
+        {
+            Vector3[] vertices = mesh.vertices;
+            Vector3[] normals = mesh.normals;
+
+            float stepSize = chunkSize / (float)(resolution - 1);
+
+            // Process vertices in a grid pattern to identify edges
+            for (int y = 0; y < resolution; y++)
+            {
+                for (int x = 0; x < resolution; x++)
+                {
+                    int index = y * resolution + x;
+
+                    // Check if this vertex is on any edge of the chunk
+                    bool isOnEdgeX = (x == 0 || x == resolution - 1);
+                    bool isOnEdgeZ = (y == 0 || y == resolution - 1);
+
+                    if (isOnEdgeX || isOnEdgeZ)
+                    {
+                        // Force edge normals to point straight up
+                        // This ensures consistent lighting across chunk boundaries
+                        normals[index] = Vector3.up;
+                    }
+                    else if (x == 1 || x == resolution - 2 || y == 1 || y == resolution - 2)
+                    {
+                        // Smooth vertices adjacent to edges (one step in)
+                        normals[index] = Vector3.Lerp(normals[index], Vector3.up, 0.5f).normalized;
+                    }
+                }
+            }
+
+            mesh.normals = normals;
         }
 
         /// <summary>
@@ -210,8 +249,13 @@ namespace BugWars.Terrain
             mesh.uv = meshData.uvs;
             mesh.colors = meshData.colors;
 
-            // Calculate normals for proper lighting (low-poly flat shading)
+            // Use smooth normals to prevent visible seams between chunks
             mesh.RecalculateNormals();
+
+            // Optionally apply normal smoothing for better chunk edge blending
+            // This helps reduce the greenish lines at chunk boundaries
+            SmoothEdgeNormals(mesh);
+
             mesh.RecalculateBounds();
 
             meshFilter.mesh = mesh;

@@ -346,7 +346,7 @@ namespace BugWars.Terrain
                 // Set shader properties for natural terrain look
                 material.SetFloat("_ColorMultiplier", 1.0f);
                 material.SetFloat("_Smoothness", 0.2f);
-                material.SetFloat("_AmbientStrength", 0.4f);
+                material.SetFloat("_AmbientStrength", 0.5f); // Increased from 0.4 to reduce dark areas
 
                 return material;
             }

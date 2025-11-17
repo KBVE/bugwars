@@ -83,15 +83,15 @@ Shader "BugWars/TerrainVertexColor"
                 // Get main light
                 Light mainLight = GetMainLight(input.shadowCoord);
 
-                // Calculate diffuse lighting (Lambert)
+                // Calculate diffuse lighting (Lambert) with minimum to prevent black lines
                 float NdotL = saturate(dot(normalWS, mainLight.direction));
                 float3 diffuse = mainLight.color * NdotL * mainLight.shadowAttenuation;
 
                 // Add ambient lighting
                 float3 ambient = _AmbientStrength * unity_AmbientSky.rgb;
 
-                // Combine ambient and diffuse
-                float3 lighting = ambient + diffuse;
+                // Combine ambient and diffuse with minimum lighting threshold
+                float3 lighting = max(ambient + diffuse, float3(0.3, 0.3, 0.3)); // Ensure minimum 30% lighting
 
                 // Apply lighting to vertex color
                 half3 finalColor = input.color.rgb * lighting;
