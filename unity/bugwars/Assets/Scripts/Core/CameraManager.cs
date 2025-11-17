@@ -44,9 +44,9 @@ namespace BugWars.Core
             {
                 target = target,
                 cameraName = cameraName,
-                shoulderOffset = new Vector3(0f, 2.5f, 0f), // Height offset: 2.5 units above player
+                shoulderOffset = new Vector3(0f, 4.4f, 0f), // Height offset: 4.4 units above player (~10% higher)
                 verticalArmLength = 0f,
-                cameraDistance = 8f, // Distance: 8 units behind player - more zoomed out
+                cameraDistance = 8f, // Distance: 8 units behind player (not used, TargetOffset matters)
                 immediate = immediate,
 
                 // Damping: smooth follow (0.1 seconds for responsive but smooth following)
@@ -197,7 +197,7 @@ namespace BugWars.Core
         [SerializeField] [Tooltip("Invert the Y axis for camera look input")]
         private bool invertY = true;
         [SerializeField] [Tooltip("Default downward tilt (in degrees) applied when the camera is initialised")]
-        private float defaultTiltAngle = 12f; // Very shallow angle to maximize forward view
+        private float defaultTiltAngle = 20f; // Slightly steeper to match higher camera position
         [SerializeField] [Tooltip("Default yaw offset relative to the target forward when camera initialises")]
         private float defaultPanOffset = 0f;
 
@@ -483,7 +483,7 @@ namespace BugWars.Core
             lookSensitivityX = 1.0f;
             lookSensitivityY = 1.0f;
             invertY = true;
-            defaultTiltAngle = 12f;
+            defaultTiltAngle = 20f;
             defaultPanOffset = 0f;
             cameraMode = CameraMode.ThirdPerson;
             preferOrthographic = false;
@@ -688,9 +688,9 @@ namespace BugWars.Core
             }
             else // ThirdPerson
             {
-                // Apply third-person settings (offset: 0, 2.5, -2.5)
-                config.shoulderOffset = new Vector3(0f, 2.5f, 0f); // 2.5 units above
-                config.cameraDistance = 8f; // 8 units behind (more zoomed out)
+                // Apply third-person settings (offset: 0, 4.4, -8.5)
+                config.shoulderOffset = new Vector3(0f, 4.4f, 0f); // 4.4 units above (~10% higher)
+                config.cameraDistance = 8f; // 8 units behind (not used, TargetOffset matters)
                 config.positionDamping = new Vector3(0.1f, 0.1f, 0.1f); // Responsive (reduced from 0.15 to prevent drift)
                 config.pitchClamp = new Vector2(15f, 50f); // Moderate downward angle
             }
@@ -848,9 +848,9 @@ namespace BugWars.Core
             {
                 // Third-person: camera behind and above player
                 // NEGATIVE Z = behind player (important!)
-                // Minimal Z offset (-2.5) to see maximum forward, minimal behind
-                // Higher position (2.5) for better forward view angle
-                cameraOffset = new Vector3(0f, 2.5f, -2.5f); // 2.5 units BEHIND (very minimal), 2.5 units UP
+                // 8.5 units BEHIND (reduced to see more ahead than behind)
+                // 4.4 units UP (higher = more ahead visible, less behind visible, ~10% increase)
+                cameraOffset = new Vector3(0f, 4.4f, -8.5f); // 8.5 units BEHIND, 4.4 units UP
             }
             
             // Store base offset for dynamic height adjustments
@@ -1030,7 +1030,18 @@ namespace BugWars.Core
             // Camera should ONLY follow facing direction, never movement direction
             Vector3 playerForward = Vector3.ProjectOnPlane(player.forward, Vector3.up);
             float targetYaw = 0f;
+            
+            // Sync camera rotation speed with player's rotation speed to prevent lag
+            // Get player's rotation speed if available, otherwise use default
             float rotateSpeed = 180f; // Default rotation speed
+            BugWars.Entity.Player.Player playerComponent = player.GetComponent<BugWars.Entity.Player.Player>();
+            if (playerComponent != null && playerComponent.IsUsingStandardWASD())
+            {
+                // Match player's rotation speed so camera keeps up with character rotation
+                rotateSpeed = playerComponent.GetRotationSpeed();
+                // Add a small buffer (10%) to ensure camera stays ahead/keeps up
+                rotateSpeed *= 1.1f;
+            }
 
             if (playerForward.sqrMagnitude > 0.0001f)
             {

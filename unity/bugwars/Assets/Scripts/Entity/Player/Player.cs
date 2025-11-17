@@ -12,8 +12,8 @@ namespace BugWars.Entity.Player
     {
         [Header("Player Properties")]
         [SerializeField] private float jumpForce = 10f;
-        [SerializeField] [Tooltip("Rotation speed for A/D keys (degrees per second)")]
-        private float rotationSpeed = 180f;
+        [SerializeField] [Tooltip("Rotation speed for A/D keys (degrees per second). This controls how fast the character rotates when pressing A/D.")]
+        private float playerRotationSpeed = 200f; // Change this for a/d rotation speed
 
         private Vector3 moveDirection;
         private float rotationInput;
@@ -97,7 +97,8 @@ namespace BugWars.Entity.Player
             if (rb == null) return;
 
             // Rotate around Y-axis (yaw)
-            float rotationDelta = rotationAmount * rotationSpeed * Time.deltaTime;
+            // Use playerRotationSpeed (not Entity's rotationSpeed) for A/D key rotation
+            float rotationDelta = rotationAmount * playerRotationSpeed * Time.deltaTime;
             transform.Rotate(0f, rotationDelta, 0f, Space.Self);
         }
 
@@ -155,6 +156,14 @@ namespace BugWars.Entity.Player
         public bool IsUsingStandardWASD()
         {
             return useStandardWASD;
+        }
+
+        /// <summary>
+        /// Get the player's rotation speed (for camera sync)
+        /// </summary>
+        public float GetRotationSpeed()
+        {
+            return playerRotationSpeed;
         }
     }
 }
