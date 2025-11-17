@@ -198,39 +198,18 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Smooth normals at chunk edges to reduce visible seams between chunks
-        /// Uses grid-based detection to reliably identify edge vertices
+        /// Create flat normals pointing straight up for all vertices
+        /// This eliminates lighting discontinuities between chunks entirely
+        /// Results in consistent, uniform lighting across all terrain
         /// </summary>
-        private void SmoothEdgeNormals(Mesh mesh)
+        private void CreateFlatNormals(Mesh mesh)
         {
-            Vector3[] vertices = mesh.vertices;
-            Vector3[] normals = mesh.normals;
+            Vector3[] normals = new Vector3[mesh.vertexCount];
 
-            float stepSize = chunkSize / (float)(resolution - 1);
-
-            // Process vertices in a grid pattern to identify edges
-            for (int y = 0; y < resolution; y++)
+            // Set all normals to point straight up
+            for (int i = 0; i < normals.Length; i++)
             {
-                for (int x = 0; x < resolution; x++)
-                {
-                    int index = y * resolution + x;
-
-                    // Check if this vertex is on any edge of the chunk
-                    bool isOnEdgeX = (x == 0 || x == resolution - 1);
-                    bool isOnEdgeZ = (y == 0 || y == resolution - 1);
-
-                    if (isOnEdgeX || isOnEdgeZ)
-                    {
-                        // Force edge normals to point straight up
-                        // This ensures consistent lighting across chunk boundaries
-                        normals[index] = Vector3.up;
-                    }
-                    else if (x == 1 || x == resolution - 2 || y == 1 || y == resolution - 2)
-                    {
-                        // Smooth vertices adjacent to edges (one step in)
-                        normals[index] = Vector3.Lerp(normals[index], Vector3.up, 0.5f).normalized;
-                    }
-                }
+                normals[i] = Vector3.up;
             }
 
             mesh.normals = normals;
@@ -249,12 +228,13 @@ namespace BugWars.Terrain
             mesh.uv = meshData.uvs;
             mesh.colors = meshData.colors;
 
-            // Use smooth normals to prevent visible seams between chunks
-            mesh.RecalculateNormals();
+            // Don't calculate normals - we'll use flat normals from the shader
+            // This prevents lighting discontinuities at chunk boundaries
+            // mesh.RecalculateNormals();
+            // SmoothEdgeNormals(mesh);
 
-            // Optionally apply normal smoothing for better chunk edge blending
-            // This helps reduce the greenish lines at chunk boundaries
-            SmoothEdgeNormals(mesh);
+            // Instead, create flat normals manually for consistent lighting
+            CreateFlatNormals(mesh);
 
             mesh.RecalculateBounds();
 

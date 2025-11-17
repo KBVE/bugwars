@@ -348,6 +348,7 @@ namespace BugWars.Terrain
                 material.SetFloat("_Smoothness", 0.2f);
                 material.SetFloat("_AmbientStrength", 0.5f); // Increased from 0.4 to reduce dark areas
 
+                Debug.Log($"[TerrainManager] Successfully created material with custom shader: {terrainShader.name}");
                 return material;
             }
             else
