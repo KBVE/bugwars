@@ -44,8 +44,8 @@ namespace BugWars.Terrain
             meshRenderer = gameObject.AddComponent<MeshRenderer>();
             meshCollider = gameObject.AddComponent<MeshCollider>();
 
-            // Configure mesh collider for terrain (non-convex for proper terrain collision)
-            meshCollider.convex = false; // Must be false for terrain meshes
+            // Configure mesh collider for terrain surface
+            meshCollider.convex = false; // Non-convex for accurate terrain collision
 
             if (terrainMaterial != null)
             {
@@ -76,32 +76,23 @@ namespace BugWars.Terrain
         /// <summary>
         /// Generates mesh data using Perlin noise for terrain height
         /// This runs on a background thread for performance
-        /// Creates top, bottom, AND side walls to fully enclose the terrain
+        /// Creates a simple top surface terrain plane
         /// </summary>
         private MeshData GenerateMeshData()
         {
-            // Calculate array sizes for top + bottom + 4 side walls
-            int topBottomVertCount = resolution * resolution * 2;
-            int sideVertCount = resolution * 2 * 4; // 4 walls, each with 2 rows (top + bottom) of resolution vertices
-            int totalVertCount = topBottomVertCount + sideVertCount;
+            // Calculate array sizes for just the top surface
+            int vertCount = resolution * resolution;
+            int triCount = (resolution - 1) * (resolution - 1) * 6;
 
-            int topBottomTriCount = (resolution - 1) * (resolution - 1) * 6 * 2;
-            int sideTriCount = (resolution - 1) * 6 * 4; // 4 walls
-            int totalTriCount = topBottomTriCount + sideTriCount;
-
-            MeshData meshData = new MeshData(totalVertCount, totalTriCount);
+            MeshData meshData = new MeshData(vertCount, triCount);
 
             float halfSize = chunkSize * 0.5f;
             float stepSize = chunkSize / (float)(resolution - 1);
-            float wallDepth = -50f; // How deep the walls go
 
             int vertexIndex = 0;
             int triIndex = 0;
 
-            // Store top surface vertices for wall generation
-            Vector3[] topVerts = new Vector3[resolution * resolution];
-
-            // === GENERATE TOP AND BOTTOM SURFACES ===
+            // === GENERATE TOP SURFACE ===
             for (int y = 0; y < resolution; y++)
             {
                 for (int x = 0; x < resolution; x++)
@@ -117,133 +108,31 @@ namespace BugWars.Terrain
                         (worldZ + seedOffsetY) * noiseScale
                     ) * heightMultiplier;
 
-                    Vector3 topPos = new Vector3(
+                    Vector3 position = new Vector3(
                         x * stepSize - halfSize,
                         height,
                         y * stepSize - halfSize
                     );
 
-                    topVerts[y * resolution + x] = topPos;
-                    meshData.vertices[vertexIndex] = topPos;
+                    meshData.vertices[vertexIndex] = position;
                     meshData.uvs[vertexIndex] = new Vector2(x / (float)(resolution - 1), y / (float)(resolution - 1));
 
-                    // Bottom vertex (flat plane far below)
-                    int bottomIdx = resolution * resolution + vertexIndex;
-                    meshData.vertices[bottomIdx] = new Vector3(topPos.x, wallDepth, topPos.z);
-                    meshData.uvs[bottomIdx] = meshData.uvs[vertexIndex];
-
-                    // Top face triangles
+                    // Generate triangles for the current quad
                     if (x < resolution - 1 && y < resolution - 1)
                     {
                         int i = vertexIndex;
+                        // First triangle
                         meshData.triangles[triIndex++] = i;
                         meshData.triangles[triIndex++] = i + resolution;
                         meshData.triangles[triIndex++] = i + resolution + 1;
+                        // Second triangle
                         meshData.triangles[triIndex++] = i;
                         meshData.triangles[triIndex++] = i + resolution + 1;
                         meshData.triangles[triIndex++] = i + 1;
-
-                        // Bottom face triangles (reversed winding)
-                        int bi = bottomIdx;
-                        meshData.triangles[triIndex++] = bi;
-                        meshData.triangles[triIndex++] = bi + resolution + 1;
-                        meshData.triangles[triIndex++] = bi + resolution;
-                        meshData.triangles[triIndex++] = bi;
-                        meshData.triangles[triIndex++] = bi + 1;
-                        meshData.triangles[triIndex++] = bi + resolution + 1;
                     }
 
                     vertexIndex++;
                 }
-            }
-
-            // === GENERATE 4 SIDE WALLS ===
-            int sideVertStart = topBottomVertCount;
-
-            // North wall (z = +halfSize)
-            for (int x = 0; x < resolution; x++)
-            {
-                int topIdx = (resolution - 1) * resolution + x;
-                meshData.vertices[sideVertStart + x] = topVerts[topIdx];
-                meshData.vertices[sideVertStart + x + resolution] = new Vector3(topVerts[topIdx].x, wallDepth, topVerts[topIdx].z);
-                meshData.uvs[sideVertStart + x] = new Vector2(x / (float)(resolution - 1), 1);
-                meshData.uvs[sideVertStart + x + resolution] = new Vector2(x / (float)(resolution - 1), 0);
-            }
-            for (int x = 0; x < resolution - 1; x++)
-            {
-                int v = sideVertStart + x;
-                meshData.triangles[triIndex++] = v;
-                meshData.triangles[triIndex++] = v + 1;
-                meshData.triangles[triIndex++] = v + resolution;
-                meshData.triangles[triIndex++] = v + 1;
-                meshData.triangles[triIndex++] = v + resolution + 1;
-                meshData.triangles[triIndex++] = v + resolution;
-            }
-
-            sideVertStart += resolution * 2;
-
-            // South wall (z = -halfSize)
-            for (int x = 0; x < resolution; x++)
-            {
-                int topIdx = x;
-                meshData.vertices[sideVertStart + x] = topVerts[topIdx];
-                meshData.vertices[sideVertStart + x + resolution] = new Vector3(topVerts[topIdx].x, wallDepth, topVerts[topIdx].z);
-                meshData.uvs[sideVertStart + x] = new Vector2(x / (float)(resolution - 1), 1);
-                meshData.uvs[sideVertStart + x + resolution] = new Vector2(x / (float)(resolution - 1), 0);
-            }
-            for (int x = 0; x < resolution - 1; x++)
-            {
-                int v = sideVertStart + x;
-                meshData.triangles[triIndex++] = v;
-                meshData.triangles[triIndex++] = v + resolution;
-                meshData.triangles[triIndex++] = v + 1;
-                meshData.triangles[triIndex++] = v + 1;
-                meshData.triangles[triIndex++] = v + resolution;
-                meshData.triangles[triIndex++] = v + resolution + 1;
-            }
-
-            sideVertStart += resolution * 2;
-
-            // East wall (x = +halfSize)
-            for (int z = 0; z < resolution; z++)
-            {
-                int topIdx = z * resolution + (resolution - 1);
-                meshData.vertices[sideVertStart + z] = topVerts[topIdx];
-                meshData.vertices[sideVertStart + z + resolution] = new Vector3(topVerts[topIdx].x, wallDepth, topVerts[topIdx].z);
-                meshData.uvs[sideVertStart + z] = new Vector2(z / (float)(resolution - 1), 1);
-                meshData.uvs[sideVertStart + z + resolution] = new Vector2(z / (float)(resolution - 1), 0);
-            }
-            for (int z = 0; z < resolution - 1; z++)
-            {
-                int v = sideVertStart + z;
-                meshData.triangles[triIndex++] = v;
-                meshData.triangles[triIndex++] = v + resolution;
-                meshData.triangles[triIndex++] = v + 1;
-                meshData.triangles[triIndex++] = v + 1;
-                meshData.triangles[triIndex++] = v + resolution;
-                meshData.triangles[triIndex++] = v + resolution + 1;
-            }
-
-            sideVertStart += resolution * 2;
-
-            // West wall (x = -halfSize)
-            for (int z = 0; z < resolution; z++)
-            {
-                int topIdx = z * resolution;
-                meshData.vertices[sideVertStart + z] = topVerts[topIdx];
-                meshData.vertices[sideVertStart + z + resolution] = new Vector3(topVerts[topIdx].x, wallDepth, topVerts[topIdx].z);
-                meshData.uvs[sideVertStart + z] = new Vector2(z / (float)(resolution - 1), 1);
-                meshData.uvs[sideVertStart + z + resolution] = new Vector2(z / (float)(resolution - 1), 0);
-            }
-            for (int z = 0; z < resolution - 1; z++)
-            {
-                int v = sideVertStart + z;
-                meshData.triangles[triIndex++] = v;
-                meshData.triangles[triIndex++] = v + 1;
-                meshData.triangles[triIndex++] = v + resolution;
-                meshData.triangles[triIndex++] = v + 1;
-                meshData.triangles[triIndex++] = v + resolution + 1;
-                meshData.triangles[triIndex++] = v + resolution;
             }
 
             return meshData;
