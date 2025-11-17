@@ -331,20 +331,37 @@ namespace BugWars.Terrain
 
         /// <summary>
         /// Create a default grassland material if none is assigned
+        /// Uses custom vertex color shader for terrain variation (dirt patches, rocky peaks)
         /// </summary>
         private Material CreateDefaultGrasslandMaterial()
         {
-            Material material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            material.name = "Default Grassland Material";
+            // Try to use custom terrain shader first
+            Shader terrainShader = Shader.Find("BugWars/TerrainVertexColor");
 
-            // Set grassland green color
-            material.color = new Color(0.3f, 0.6f, 0.2f, 1f);
+            if (terrainShader != null)
+            {
+                Material material = new Material(terrainShader);
+                material.name = "Terrain Vertex Color Material";
 
-            // Enable smoothness for low-poly look
-            material.SetFloat("_Smoothness", 0.2f);
-            material.SetFloat("_Metallic", 0f);
+                // Set shader properties for natural terrain look
+                material.SetFloat("_ColorMultiplier", 1.0f);
+                material.SetFloat("_Smoothness", 0.2f);
+                material.SetFloat("_AmbientStrength", 0.4f);
 
-            return material;
+                return material;
+            }
+            else
+            {
+                // Fallback to standard URP Lit shader if custom shader not found
+                Debug.LogWarning("TerrainVertexColor shader not found. Using fallback URP/Lit shader. Terrain colors will not display correctly.");
+                Material material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                material.name = "Default Grassland Material (Fallback)";
+                material.color = new Color(0.3f, 0.6f, 0.2f, 1f);
+                material.SetFloat("_Smoothness", 0.2f);
+                material.SetFloat("_Metallic", 0f);
+
+                return material;
+            }
         }
 
         /// <summary>

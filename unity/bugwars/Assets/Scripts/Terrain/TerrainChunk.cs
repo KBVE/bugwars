@@ -117,6 +117,9 @@ namespace BugWars.Terrain
                     meshData.vertices[vertexIndex] = position;
                     meshData.uvs[vertexIndex] = new Vector2(x / (float)(resolution - 1), y / (float)(resolution - 1));
 
+                    // Calculate and assign vertex color for terrain variation
+                    meshData.colors[vertexIndex] = CalculateTerrainColor(worldX, worldZ, height);
+
                     // Generate triangles for the current quad
                     if (x < resolution - 1 && y < resolution - 1)
                     {
@@ -139,6 +142,62 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
+        /// Calculate terrain color based on height and noise for natural variation
+        /// Creates dirt patches, rocky peaks, and grass valleys
+        /// </summary>
+        private Color CalculateTerrainColor(float worldX, float worldZ, float height)
+        {
+            // Define base terrain colors
+            Color grassColor = new Color(0.3f, 0.6f, 0.2f, 1f);      // Grass green
+            Color dirtColor = new Color(0.5f, 0.35f, 0.2f, 1f);       // Brown dirt
+            Color darkDirtColor = new Color(0.35f, 0.25f, 0.15f, 1f); // Darker dirt for variation
+            Color rockColor = new Color(0.4f, 0.4f, 0.4f, 1f);        // Gray rock
+
+            // Use multiple noise layers for natural-looking dirt patches
+            float dirtNoise = Mathf.PerlinNoise(worldX * 0.1f + seed, worldZ * 0.1f + seed);
+            float detailNoise = Mathf.PerlinNoise(worldX * 0.3f - seed, worldZ * 0.3f - seed);
+
+            // Combine noise layers for more organic patches
+            float combinedNoise = dirtNoise * 0.7f + detailNoise * 0.3f;
+
+            // Height-based variation (normalized 0-1)
+            float heightFactor = Mathf.InverseLerp(0f, heightMultiplier, height);
+
+            // Start with grass as base
+            Color result = grassColor;
+
+            // Add dirt patches where noise is high (creates irregular dirt areas)
+            if (combinedNoise > 0.5f)
+            {
+                float dirtAmount = Mathf.InverseLerp(0.5f, 0.7f, combinedNoise);
+                result = Color.Lerp(grassColor, dirtColor, dirtAmount);
+            }
+
+            // Add darker dirt variation for more visual interest
+            if (combinedNoise > 0.7f)
+            {
+                float darkDirtAmount = Mathf.InverseLerp(0.7f, 0.85f, combinedNoise);
+                result = Color.Lerp(result, darkDirtColor, darkDirtAmount * 0.5f);
+            }
+
+            // Add rocky color on peaks (exponential curve for realistic distribution)
+            if (heightFactor > 0.6f)
+            {
+                float rockAmount = Mathf.Pow(Mathf.InverseLerp(0.6f, 1.0f, heightFactor), 2f);
+                result = Color.Lerp(result, rockColor, rockAmount);
+            }
+
+            // Darken valleys slightly for depth perception
+            if (heightFactor < 0.3f)
+            {
+                float valleyDarken = Mathf.InverseLerp(0.3f, 0f, heightFactor) * 0.15f;
+                result = Color.Lerp(result, Color.black, valleyDarken);
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Apply generated mesh data to Unity mesh components
         /// Must be called on main thread
         /// </summary>
@@ -149,6 +208,7 @@ namespace BugWars.Terrain
             mesh.vertices = meshData.vertices;
             mesh.triangles = meshData.triangles;
             mesh.uv = meshData.uvs;
+            mesh.colors = meshData.colors;
 
             // Calculate normals for proper lighting (low-poly flat shading)
             mesh.RecalculateNormals();
@@ -233,12 +293,14 @@ namespace BugWars.Terrain
             public Vector3[] vertices;
             public int[] triangles;
             public Vector2[] uvs;
+            public Color[] colors;
 
             public MeshData(int vertexCount, int triangleCount)
             {
                 vertices = new Vector3[vertexCount];
                 triangles = new int[triangleCount];
                 uvs = new Vector2[vertexCount];
+                colors = new Color[vertexCount];
             }
         }
     }
