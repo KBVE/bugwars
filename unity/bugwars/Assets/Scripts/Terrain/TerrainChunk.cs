@@ -82,7 +82,7 @@ namespace BugWars.Terrain
         {
             // Calculate array sizes for top + bottom + 4 side walls
             int topBottomVertCount = resolution * resolution * 2;
-            int sideVertCount = resolution * 4; // 4 edges, resolution vertices each
+            int sideVertCount = resolution * 2 * 4; // 4 walls, each with 2 rows (top + bottom) of resolution vertices
             int totalVertCount = topBottomVertCount + sideVertCount;
 
             int topBottomTriCount = (resolution - 1) * (resolution - 1) * 6 * 2;
