@@ -314,6 +314,8 @@ MonoBehaviour:
   sprintSpeedThreshold: 6
   enableRecenterButton: 0
   recenterKey: 118
+  enableZoom: 1
+  defaultZoomDistance: -8.5
 --- !u!1 &7897882360276293766
 GameObject:
   m_ObjectHideFlags: 0

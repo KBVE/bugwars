@@ -225,6 +225,7 @@ namespace BugWars.Core
         /// </summary>
         public void TriggerCameraZoom(float delta)
         {
+            Debug.Log($"[EventManager] TriggerCameraZoom called with delta={delta}, listenerCount={OnCameraZoomInput?.GetPersistentEventCount() ?? 0}");
             OnCameraZoomInput?.Invoke(delta);
         }
 

@@ -177,6 +177,8 @@ namespace BugWars.Core
         // Active camera tracking
         private CinemachineCamera _currentActiveCamera;
         private CinemachinePanTilt _activePanTilt;
+        private CinemachinePositionComposer _positionComposer; // Reference for PositionComposer system
+        private CinemachineOrbitalFollow _orbitalFollow; // Reference for OrbitalFollow system
         private int _defaultPriority = 10;
         private int _activePriority = 100;
 
@@ -205,6 +207,16 @@ namespace BugWars.Core
         [Header("Camera Mode")]
         [SerializeField] [Tooltip("Camera perspective mode: First Person (player view) or Third Person (behind player)")]
         private CameraMode cameraMode = CameraMode.ThirdPerson;
+        
+        [Header("Camera System")]
+        [SerializeField] [Tooltip("Camera system: PositionComposer (manual control) or OrbitalFollow (built-in distance/zoom)")]
+        private CameraSystemType cameraSystem = CameraSystemType.PositionComposer;
+        
+        public enum CameraSystemType
+        {
+            PositionComposer,  // Current system: PositionComposer + PanTilt (more control)
+            OrbitalFollow      // Alternative: CinemachineOrbitalFollow (simpler, built-in zoom)
+        }
 
         [Header("Third-Person Enhancements")]
         [SerializeField] [Tooltip("Camera will automatically rotate to follow player's movement direction")]
@@ -237,13 +249,17 @@ namespace BugWars.Core
         private float sprintSpeedThreshold = 6f;
         [SerializeField] [Tooltip("Enable camera recentering button")]
         private bool enableRecenterButton = true;
-        [SerializeField] [Tooltip("Key to press to recenter camera behind player")]
+        [SerializeField] [Tooltip("Key to press to recenter camera behind player and reset zoom")]
         private KeyCode recenterKey = KeyCode.V;
+        [SerializeField] [Tooltip("Enable zoom with scroll wheel")]
+        private bool enableZoom = true;
+        [SerializeField] [Tooltip("Default zoom distance (negative = behind player)")]
+        private float defaultZoomDistance = -8.5f;
 
         private CameraFollowConfig _activeFollowConfig;
         private bool _hasActiveFollowConfig;
         private readonly Dictionary<string, CinemachinePanTilt> _panTiltCache = new Dictionary<string, CinemachinePanTilt>();
-        
+
         // Track previous position for velocity calculation
         private Vector3 _previousPlayerPosition;
         private float _currentSprintFOV = 0f;
@@ -251,6 +267,12 @@ namespace BugWars.Core
         
         // Store base camera offset to prevent drift
         private Vector3 _baseCameraOffset;
+        
+        // Zoom tracking (WoW-style: distance from player, not offset)
+        private float _currentZoomDistance = 8.5f; // Default third-person distance (positive = units away from player)
+        private float _targetZoomDistance = 8.5f; // Target zoom for smooth interpolation
+        private bool _isResettingZoom = false; // Flag for smooth zoom reset
+        private Vector3 _zoomDirection = Vector3.back; // Direction from player to camera (normalized)
 
         /// <summary>
         /// Gets the main Unity Camera component
@@ -558,7 +580,7 @@ namespace BugWars.Core
 
         private void Update()
         {
-            // Handle camera recentering button (using InputManager for consistency)
+            // Handle camera recentering and zoom reset button (using InputManager for consistency)
             if (enableRecenterButton && _activeFollowConfig.target != null && _inputManager != null)
             {
                 // Convert KeyCode to new Input System key
@@ -576,6 +598,29 @@ namespace BugWars.Core
                 if (_inputManager.IsKeyPressedThisFrame(key))
                 {
                     RecenterCameraBehindPlayer();
+                    ResetZoom(); // Also reset zoom when recentering
+                }
+            }
+            
+            // Smooth zoom interpolation (WoW-style)
+            if (_isResettingZoom || Mathf.Abs(_currentZoomDistance - _targetZoomDistance) > 0.01f)
+            {
+                float zoomSpeed = _isResettingZoom ? 5f : 8f; // Faster when resetting
+                _currentZoomDistance = Mathf.Lerp(_currentZoomDistance, _targetZoomDistance, Time.deltaTime * zoomSpeed);
+                
+                // Clamp current zoom to min/max bounds during interpolation (positive values)
+                _currentZoomDistance = Mathf.Clamp(_currentZoomDistance, minZoomDistance, maxZoomDistance);
+                
+                // Apply WoW-style zoom during interpolation
+                if (_hasActiveFollowConfig && _currentActiveCamera != null && cameraMode == CameraMode.ThirdPerson)
+                {
+                    ApplyWoWStyleZoom();
+                }
+                
+                // Check if reset is complete
+                if (_isResettingZoom && Mathf.Abs(_currentZoomDistance - _targetZoomDistance) < 0.05f)
+                {
+                    _isResettingZoom = false;
                 }
             }
         }
@@ -592,15 +637,52 @@ namespace BugWars.Core
                         Debug.LogWarning($"[CameraManager] Restored camera Follow target (was null or wrong)");
                 }
                 
-                // CRITICAL FIX: Ensure PositionComposer TargetOffset is maintained correctly
-                // PositionComposer uses TargetOffset in target's LOCAL space
-                // When player rotates, the offset rotates with them, which is correct for "behind player"
-                // But we need to ensure the offset is always correct
-                var positionComposer = _currentActiveCamera.GetComponent<CinemachinePositionComposer>();
-                if (positionComposer != null && cameraMode == CameraMode.ThirdPerson)
+                // CRITICAL FIX: Ensure camera offset is maintained correctly
+                // Handle both PositionComposer and OrbitalFollow systems
+                if (cameraMode == CameraMode.ThirdPerson)
+                {
+                    if (cameraSystem == CameraSystemType.OrbitalFollow && _orbitalFollow != null)
+                    {
+                        // OrbitalFollow: Update radius and height offset
+                        _orbitalFollow.Radius = _currentZoomDistance;
+                        float baseHeight = _baseCameraOffset.y;
+                        float baseDistance = Mathf.Abs(_baseCameraOffset.z);
+                        float heightRatio = baseHeight / baseDistance;
+                        _orbitalFollow.HeightOffset = _currentZoomDistance * heightRatio;
+                    }
+                    else if (_positionComposer != null)
+                    {
+                        // PositionComposer: Update TargetOffset
+                        UpdatePositionComposerOffset();
+                    }
+                }
+            }
+            
+            // Handle auto-rotation for simple third-person cameras
+            UpdateSimpleThirdPersonRotation();
+        }
+        
+        /// <summary>
+        /// Updates PositionComposer TargetOffset (used in LateUpdate)
+        /// </summary>
+        private void UpdatePositionComposerOffset()
+        {
+            if (_positionComposer == null)
+                return;
+                
+            // PositionComposer uses TargetOffset in target's LOCAL space
+            // When player rotates, the offset rotates with them, which is correct for "behind player"
+            var positionComposer = _positionComposer;
+            if (positionComposer != null && cameraMode == CameraMode.ThirdPerson)
                 {
                     // Verify offset is correct (should be 0, 4.4, -8.5 for third-person)
-                    Vector3 expectedOffset = _baseCameraOffset;
+                    // Start with base offset but use current zoom distance (WoW-style)
+                    // Calculate offset maintaining the same angle but with current zoom distance
+                    float baseHeight = _baseCameraOffset.y;
+                    float baseDistance = Mathf.Abs(_baseCameraOffset.z);
+                    float heightRatio = baseHeight / baseDistance;
+                    float zoomHeight = _currentZoomDistance * heightRatio;
+                    Vector3 expectedOffset = new Vector3(_baseCameraOffset.x, zoomHeight, -_currentZoomDistance);
                     if (enableDynamicHeight)
                     {
                         // Calculate dynamic height adjustment with smoothing to prevent bouncing on slopes
@@ -611,16 +693,41 @@ namespace BugWars.Core
                         // Use a smaller multiplier and tighter clamping for smoother transitions
                         float heightOffset = Mathf.Clamp(verticalSpeed * dynamicHeightAmount * 0.5f, -0.3f, 0.3f);
                         
-                        // Smooth interpolation to target offset to prevent sudden jumps
-                        Vector3 targetOffset = _baseCameraOffset + new Vector3(0f, heightOffset, 0f);
-                        expectedOffset = Vector3.Lerp(positionComposer.TargetOffset, targetOffset, Time.deltaTime * 5f);
+                    // Smooth interpolation to target offset to prevent sudden jumps
+                    // Preserve current zoom distance (Z value) when adjusting height
+                    // Calculate zoom offset maintaining the same angle
+                    float dynamicBaseHeight = _baseCameraOffset.y;
+                    float dynamicBaseDistance = Mathf.Abs(_baseCameraOffset.z);
+                    float dynamicHeightRatio = dynamicBaseHeight / dynamicBaseDistance;
+                    float dynamicZoomHeight = _currentZoomDistance * dynamicHeightRatio;
+                    Vector3 dynamicBaseOffset = new Vector3(_baseCameraOffset.x, dynamicZoomHeight, -_currentZoomDistance);
+                    Vector3 targetOffset = dynamicBaseOffset + new Vector3(0f, heightOffset, 0f);
+                    expectedOffset = Vector3.Lerp(positionComposer.TargetOffset, targetOffset, Time.deltaTime * 5f);
+                    }
+                    else
+                    {
+                        // Preserve zoom distance even when dynamic height is disabled
+                        // expectedOffset already has correct Z from line 642 (which is -_currentZoomDistance)
                     }
                     
                     // Only update if significantly different (prevents micro-adjustments)
                     // Reduced threshold for smoother updates
+                    // IMPORTANT: expectedOffset already has correct zoom distance from calculation above
                     if (Vector3.Distance(positionComposer.TargetOffset, expectedOffset) > 0.05f)
                     {
                         positionComposer.TargetOffset = expectedOffset;
+                    }
+                    else
+                    {
+                        // Even if not updating, ensure zoom is preserved
+                        Vector3 currentOffset = positionComposer.TargetOffset;
+                        // Compare with negative zoom distance (Z should be negative for behind player)
+                        float expectedZ = -_currentZoomDistance;
+                        if (Mathf.Abs(currentOffset.z - expectedZ) > 0.01f)
+                        {
+                            currentOffset.z = expectedZ;
+                            positionComposer.TargetOffset = currentOffset;
+                        }
                     }
                 }
             }
@@ -651,7 +758,10 @@ namespace BugWars.Core
                 _eventManager.OnCameraZoomInput.AddListener(OnCameraZoomInput);
 
                 if (debugMode)
+                {
                     Debug.Log("[CameraManager] Subscribed to EventManager camera events");
+                    Debug.Log($"[CameraManager] OnCameraZoomInput listener count: {_eventManager.OnCameraZoomInput.GetPersistentEventCount()}");
+                }
             }
             else
             {
@@ -807,6 +917,7 @@ namespace BugWars.Core
         /// <summary>
         /// Configures camera based on mode: First Person or Third Person
         /// Supports both immersive first-person view and third-person behind-player view
+        /// Can use either PositionComposer or OrbitalFollow based on cameraSystem setting
         /// </summary>
         private void ConfigureSimpleThirdPerson(CinemachineCamera camera, CameraFollowConfig config)
         {
@@ -828,15 +939,42 @@ namespace BugWars.Core
                 Debug.Log($"[CameraManager] Set Main Camera to perspective (FOV: {perspectiveFov}°)");
             }
 
-            // === BODY COMPONENT: PositionComposer (Framing Transposer) ===
-            // Remove ThirdPersonFollow if it exists (switching to Framing Transposer)
+            // === BODY COMPONENT: Choose between PositionComposer or OrbitalFollow ===
+            // Remove old components first
             var oldThirdPersonFollow = camera.GetComponent<CinemachineThirdPersonFollow>();
             if (oldThirdPersonFollow != null)
             {
                 Destroy(oldThirdPersonFollow);
                 Debug.Log($"[CameraManager] Removed ThirdPersonFollow from '{camera.name}'");
             }
-
+            
+            var oldOrbitalFollow = camera.GetComponent<CinemachineOrbitalFollow>();
+            var oldPositionComposer = camera.GetComponent<CinemachinePositionComposer>();
+            
+            // Configure based on selected camera system
+            if (cameraSystem == CameraSystemType.OrbitalFollow && !isFirstPerson)
+            {
+                // Use OrbitalFollow for third-person
+                ConfigureOrbitalFollow(camera, config);
+            }
+            else
+            {
+                // Use PositionComposer (default or first-person)
+                if (oldOrbitalFollow != null)
+                {
+                    Destroy(oldOrbitalFollow);
+                    Debug.Log($"[CameraManager] Removed OrbitalFollow from '{camera.name}'");
+                }
+                
+                ConfigurePositionComposer(camera, config, isFirstPerson);
+            }
+        }
+        
+        /// <summary>
+        /// Configures PositionComposer (Framing Transposer) system
+        /// </summary>
+        private void ConfigurePositionComposer(CinemachineCamera camera, CameraFollowConfig config, bool isFirstPerson)
+        {
             var positionComposer = camera.GetComponent<CinemachinePositionComposer>();
             if (positionComposer == null)
             {
@@ -864,6 +1002,16 @@ namespace BugWars.Core
             
             // Store base offset for dynamic height adjustments
             _baseCameraOffset = cameraOffset;
+            
+            // Initialize zoom distance from camera offset (WoW-style: positive distance)
+            if (!isFirstPerson)
+            {
+                // Convert negative Z offset to positive distance
+                _currentZoomDistance = Mathf.Abs(cameraOffset.z);
+                _targetZoomDistance = Mathf.Abs(cameraOffset.z);
+                defaultZoomDistance = Mathf.Abs(cameraOffset.z); // Store as default
+                _zoomDirection = new Vector3(0f, cameraOffset.y, cameraOffset.z).normalized;
+            }
             
             // Apply camera lag if enabled (enhances cinematic feel)
             // But keep damping reasonable - too much causes drift
@@ -893,73 +1041,10 @@ namespace BugWars.Core
             positionComposer.Composition = composition;
 
             // === AIM COMPONENT: PanTilt with fixed tilt angle (downward view) ===
-            // Remove RotationComposer if it exists (we need PanTilt for fixed angle)
-            var oldRotationComposer = camera.GetComponent<CinemachineRotationComposer>();
-            if (oldRotationComposer != null)
-            {
-                Destroy(oldRotationComposer);
-                Debug.Log($"[CameraManager] Removed RotationComposer from '{camera.name}'");
-            }
-
-            // Get or add PanTilt component (DO NOT remove it first!)
-            var panTilt = camera.GetComponent<CinemachinePanTilt>();
-            if (panTilt == null)
-            {
-                panTilt = camera.gameObject.AddComponent<CinemachinePanTilt>();
-                Debug.Log($"[CameraManager] Added PanTilt to '{camera.name}' for fixed downward angle");
-            }
-
-            // Configure PanTilt for fixed downward angle (no mouse input, auto-rotates with player)
-            // ParentObject reference frame works fine - pan angle calculation handles world space rotation
-            panTilt.ReferenceFrame = CinemachinePanTilt.ReferenceFrames.ParentObject;
-            panTilt.RecenterTarget = CinemachinePanTilt.RecenterTargetModes.AxisCenter;
-
-            // Pan axis: auto-rotates to stay behind player (no manual input)
-            // Initialize to 0 degrees (same direction as player forward)
-            // PositionComposer already positions camera BEHIND player (via negative CameraDistance)
-            // PanTilt just needs to make camera LOOK forward (0°) to see player's back
-            var panAxis = panTilt.PanAxis;
-            panAxis.Range = new Vector2(-180f, 180f);
-            panAxis.Wrap = true;
-            panAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
-            panAxis.Center = 0f; // Start at 0 (camera looks same direction as player)
-            panAxis.Value = 0f; // Initial value: 0 degrees
-            panTilt.PanAxis = panAxis;
-
-            // Tilt axis: angle depends on camera mode
-            float fixedTiltAngle;
-            if (isFirstPerson)
-            {
-                fixedTiltAngle = 0f;
-            }
-            else
-            {
-                fixedTiltAngle = defaultTiltAngle; // Use Inspector value (should be 27.5)
-            }
+            ConfigurePanTilt(camera, isFirstPerson);
             
-            // IMPORTANT: Set tilt angle correctly
-            var tiltAxis = panTilt.TiltAxis;
-            tiltAxis.Range = new Vector2(fixedTiltAngle, fixedTiltAngle);
-            tiltAxis.Wrap = false;
-            tiltAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
-            tiltAxis.Center = fixedTiltAngle;
-            tiltAxis.Value = fixedTiltAngle;
-            panTilt.TiltAxis = tiltAxis;
-
             // === COLLISION DETECTION: Deoccluder ===
-            var deoccluder = camera.GetComponent<CinemachineDeoccluder>();
-            if (deoccluder == null)
-            {
-                deoccluder = camera.gameObject.AddComponent<CinemachineDeoccluder>();
-                Debug.Log($"[CameraManager] Added Deoccluder for collision detection to '{camera.name}'");
-            }
-
-            deoccluder.CollideAgainst = LayerMask.GetMask("Default", "Environment", "Terrain");
-            deoccluder.MinimumDistanceFromTarget = 0.8f;
-            deoccluder.AvoidObstacles.Enabled = true;
-            // Distance limit: check up to 6 units away (camera is 5 units behind, so 6 gives some buffer)
-            deoccluder.AvoidObstacles.DistanceLimit = isFirstPerson ? 1f : 6f;
-            deoccluder.AvoidObstacles.CameraRadius = 0.2f;
+            ConfigureDeoccluder(camera, isFirstPerson);
 
             // === SET TARGETS: Follow and LookAt the player directly ===
             // CRITICAL: Follow must ALWAYS be set to target for PositionComposer to work correctly
@@ -988,17 +1073,184 @@ namespace BugWars.Core
 
             if (debugMode)
             {
-                Debug.Log($"[CameraManager] Configured {modeName} Camera:");
+                float tiltAngle = isFirstPerson ? 0f : defaultTiltAngle;
+                Debug.Log($"[CameraManager] Configured {modeName} Camera (PositionComposer):");
                 Debug.Log($"  - Mode: {cameraMode}");
                 Debug.Log($"  - FOV: {perspectiveFov}°");
                 Debug.Log($"  - Camera Offset: {cameraOffset} (X=side, Y=height, Z=forward/back)");
-                Debug.Log($"  - Pitch Angle: {fixedTiltAngle}°");
-                Debug.Log($"  - Damping: {config.positionDamping}");
+                Debug.Log($"  - Pitch Angle: {tiltAngle}°");
+                Debug.Log($"  - Damping: {damping}");
                 Debug.Log($"  - Following: {config.target.name}");
-                Debug.Log($"  - Collision Detection: Enabled");
                 if (!isFirstPerson)
                     Debug.Log($"  - Auto-rotation: Enabled");
             }
+        }
+        
+        /// <summary>
+        /// Configures OrbitalFollow system (alternative to PositionComposer)
+        /// Uses similar settings but with built-in distance/zoom control
+        /// </summary>
+        private void ConfigureOrbitalFollow(CinemachineCamera camera, CameraFollowConfig config)
+        {
+            var orbitalFollow = camera.GetComponent<CinemachineOrbitalFollow>();
+            if (orbitalFollow == null)
+            {
+                orbitalFollow = camera.gameObject.AddComponent<CinemachineOrbitalFollow>();
+                Debug.Log($"[CameraManager] Added OrbitalFollow to '{camera.name}'");
+            }
+            
+            // Calculate base offset (similar to PositionComposer)
+            Vector3 cameraOffset = new Vector3(0f, 4.4f, -8.5f); // Same as PositionComposer default
+            _baseCameraOffset = cameraOffset;
+            
+            // Calculate radius from base offset (similar to PositionComposer distance)
+            float baseDistance = Mathf.Abs(cameraOffset.z);
+            float baseHeight = cameraOffset.y;
+            
+            // Initialize zoom distance from base offset
+            _currentZoomDistance = baseDistance;
+            _targetZoomDistance = baseDistance;
+            defaultZoomDistance = baseDistance;
+            
+            // Apply camera lag if enabled (similar to PositionComposer)
+            Vector3 damping = config.positionDamping;
+            if (enableCameraLag)
+            {
+                float lagMultiplier = 1f + (cameraLagAmount * 2f);
+                damping = damping * lagMultiplier;
+                damping.y = config.positionDamping.y; // Preserve Y damping
+                damping = new Vector3(
+                    Mathf.Clamp(damping.x, 0.05f, 0.5f),
+                    Mathf.Clamp(damping.y, 0.05f, 0.5f),
+                    Mathf.Clamp(damping.z, 0.05f, 0.5f)
+                );
+            }
+            
+            // Configure OrbitalFollow with similar settings to PositionComposer
+            orbitalFollow.Radius = _currentZoomDistance; // Distance from target (zoom control)
+            orbitalFollow.HeightOffset = baseHeight; // Height above target (similar to TargetOffset.y)
+            orbitalFollow.Damping = damping; // Use same damping settings
+            
+            // Disable orbital rotation - we want fixed behind player (WoW-style, not orbital)
+            orbitalFollow.RotationMode = CinemachineOrbitalFollow.RotationModes.UserControlled;
+            orbitalFollow.HorizontalAxis.Enabled = false; // Disable horizontal rotation
+            orbitalFollow.VerticalAxis.Enabled = false; // Disable vertical rotation
+            
+            // Set initial rotation to behind player (0° = same as player forward)
+            var horizontalAxis = orbitalFollow.HorizontalAxis;
+            horizontalAxis.Value = 0f;
+            horizontalAxis.Center = 0f;
+            orbitalFollow.HorizontalAxis = horizontalAxis;
+            
+            // Set vertical angle to match default tilt
+            var verticalAxis = orbitalFollow.VerticalAxis;
+            verticalAxis.Value = defaultTiltAngle;
+            verticalAxis.Center = defaultTiltAngle;
+            verticalAxis.Range = new Vector2(defaultTiltAngle, defaultTiltAngle); // Fixed angle
+            orbitalFollow.VerticalAxis = verticalAxis;
+            
+            // Store reference for zoom
+            _orbitalFollow = orbitalFollow;
+            
+            // Configure PanTilt for auto-rotation (OrbitalFollow handles position)
+            ConfigurePanTilt(camera, false);
+            
+            // Configure collision detection
+            ConfigureDeoccluder(camera, false);
+            
+            // Set targets
+            camera.Follow = config.target;
+            camera.LookAt = null;
+            
+            _activeFollowConfig = config;
+            _hasActiveFollowConfig = true;
+            
+            if (debugMode)
+            {
+                Debug.Log($"[CameraManager] Configured THIRD-PERSON Camera (OrbitalFollow):");
+                Debug.Log($"  - Radius: {orbitalFollow.Radius} (zoom distance)");
+                Debug.Log($"  - Height Offset: {orbitalFollow.HeightOffset}");
+                Debug.Log($"  - Damping: {orbitalFollow.Damping}");
+                Debug.Log($"  - Rotation: Disabled (fixed behind player)");
+                Debug.Log($"  - Following: {config.target.name}");
+            }
+        }
+        
+        /// <summary>
+        /// Configures PanTilt component for camera rotation
+        /// </summary>
+        private void ConfigurePanTilt(CinemachineCamera camera, bool isFirstPerson)
+        {
+            // Remove RotationComposer if it exists (we need PanTilt for fixed angle)
+            var oldRotationComposer = camera.GetComponent<CinemachineRotationComposer>();
+            if (oldRotationComposer != null)
+            {
+                Destroy(oldRotationComposer);
+                Debug.Log($"[CameraManager] Removed RotationComposer from '{camera.name}'");
+            }
+
+            // Get or add PanTilt component (DO NOT remove it first!)
+            var panTilt = camera.GetComponent<CinemachinePanTilt>();
+            if (panTilt == null)
+            {
+                panTilt = camera.gameObject.AddComponent<CinemachinePanTilt>();
+                Debug.Log($"[CameraManager] Added PanTilt to '{camera.name}' for fixed downward angle");
+            }
+
+            // Configure PanTilt for fixed downward angle (no mouse input, auto-rotates with player)
+            panTilt.ReferenceFrame = CinemachinePanTilt.ReferenceFrames.ParentObject;
+            panTilt.RecenterTarget = CinemachinePanTilt.RecenterTargetModes.AxisCenter;
+
+            // Pan axis: auto-rotates to stay behind player (no manual input)
+            var panAxis = panTilt.PanAxis;
+            panAxis.Range = new Vector2(-180f, 180f);
+            panAxis.Wrap = true;
+            panAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
+            panAxis.Center = 0f; // Start at 0 (camera looks same direction as player)
+            panAxis.Value = 0f; // Initial value: 0 degrees
+            panTilt.PanAxis = panAxis;
+
+            // Tilt axis: angle depends on camera mode
+            float fixedTiltAngle;
+            if (isFirstPerson)
+            {
+                fixedTiltAngle = 0f;
+            }
+            else
+            {
+                fixedTiltAngle = defaultTiltAngle; // Use Inspector value
+            }
+            
+            // IMPORTANT: Set tilt angle correctly
+            var tiltAxis = panTilt.TiltAxis;
+            tiltAxis.Range = new Vector2(fixedTiltAngle, fixedTiltAngle);
+            tiltAxis.Wrap = false;
+            tiltAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
+            tiltAxis.Center = fixedTiltAngle;
+            tiltAxis.Value = fixedTiltAngle;
+            panTilt.TiltAxis = tiltAxis;
+            
+            // Store reference
+            _activePanTilt = panTilt;
+        }
+        
+        /// <summary>
+        /// Configures Deoccluder for collision detection (shared by both systems)
+        /// </summary>
+        private void ConfigureDeoccluder(CinemachineCamera camera, bool isFirstPerson)
+        {
+            var deoccluder = camera.GetComponent<CinemachineDeoccluder>();
+            if (deoccluder == null)
+            {
+                deoccluder = camera.gameObject.AddComponent<CinemachineDeoccluder>();
+                Debug.Log($"[CameraManager] Added Deoccluder for collision detection to '{camera.name}'");
+            }
+
+            deoccluder.CollideAgainst = LayerMask.GetMask("Default", "Environment", "Terrain");
+            deoccluder.MinimumDistanceFromTarget = 0.8f;
+            deoccluder.AvoidObstacles.Enabled = true;
+            deoccluder.AvoidObstacles.DistanceLimit = isFirstPerson ? 1f : 6f;
+            deoccluder.AvoidObstacles.CameraRadius = 0.2f;
         }
 
         /// <summary>
@@ -1660,7 +1912,127 @@ namespace BugWars.Core
 
         private void OnCameraZoomInput(float delta)
         {
-            // Not used for SimpleThirdPerson - fixed camera distance
+            if (debugMode)
+                Debug.Log($"[CameraManager] OnCameraZoomInput called: delta={delta}, enableZoom={enableZoom}, cameraMode={cameraMode}, hasConfig={_hasActiveFollowConfig}");
+            
+            if (!enableZoom)
+            {
+                if (debugMode)
+                    Debug.Log("[CameraManager] Zoom is disabled in Inspector");
+                return;
+            }
+            
+            if (cameraMode == CameraMode.FirstPerson)
+            {
+                if (debugMode)
+                    Debug.Log("[CameraManager] Zoom not available in first-person mode");
+                return;
+            }
+            
+            if (!_hasActiveFollowConfig || _currentActiveCamera == null || _activeFollowConfig.target == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[CameraManager] Cannot zoom - no active camera or follow config");
+                return;
+            }
+            
+            // Cancel any ongoing zoom reset
+            _isResettingZoom = false;
+            
+            // WoW-style zoom: adjust distance from player
+            // Scroll up (positive delta) = zoom in (decrease distance, move closer)
+            // Scroll down (negative delta) = zoom out (increase distance, move further)
+            float oldTarget = _targetZoomDistance;
+            _targetZoomDistance -= delta * zoomStep; // Decrease distance when scrolling up
+            
+            // Clamp to min/max zoom distances (positive values now)
+            _targetZoomDistance = Mathf.Clamp(_targetZoomDistance, minZoomDistance, maxZoomDistance);
+            
+            // Update current zoom immediately for responsive feel
+            _currentZoomDistance = _targetZoomDistance;
+            
+            if (debugMode)
+                Debug.Log($"[CameraManager] Zoom: {oldTarget} -> {_targetZoomDistance} (delta: {delta}, step: {zoomStep}, clamped: {minZoomDistance} to {maxZoomDistance})");
+            
+            // Update zoom direction based on current camera position relative to player
+            UpdateZoomDirection();
+            
+            // Apply zoom to camera using WoW-style approach
+            ApplyWoWStyleZoom();
+        }
+        
+        /// <summary>
+        /// Updates the zoom direction vector (from player to camera)
+        /// This ensures zoom moves along the current camera-to-player line
+        /// NOTE: Don't recalculate if camera is working correctly - only update when needed
+        /// </summary>
+        private void UpdateZoomDirection()
+        {
+            if (_currentActiveCamera == null || _activeFollowConfig.target == null)
+                return;
+            
+            // Don't recalculate direction - use base offset direction to maintain camera orientation
+            // Recalculating from camera position can cause rotation issues
+            // Just use the base offset direction (behind and above player)
+            Vector3 baseDir = new Vector3(0f, _baseCameraOffset.y, _baseCameraOffset.z);
+            _zoomDirection = baseDir.normalized;
+        }
+        
+        /// <summary>
+        /// Applies WoW-style zoom by adjusting camera position along the player-to-camera line
+        /// Maintains the same angle/height relative to player while changing distance
+        /// IMPORTANT: Uses base offset direction to preserve camera rotation
+        /// </summary>
+        private void ApplyWoWStyleZoom()
+        {
+            if (_activeFollowConfig.target == null)
+                return;
+            
+            if (cameraSystem == CameraSystemType.OrbitalFollow && _orbitalFollow != null)
+            {
+                // OrbitalFollow: Use Radius for zoom (built-in distance control)
+                _orbitalFollow.Radius = _currentZoomDistance;
+                
+                // Maintain height ratio
+                float baseHeight = _baseCameraOffset.y;
+                float baseDistance = Mathf.Abs(_baseCameraOffset.z);
+                float heightRatio = baseHeight / baseDistance;
+                _orbitalFollow.HeightOffset = _currentZoomDistance * heightRatio;
+                
+                if (debugMode)
+                    Debug.Log($"[CameraManager] Applied WoW-style zoom (OrbitalFollow): radius={_currentZoomDistance}, height={_orbitalFollow.HeightOffset}");
+            }
+            else if (_positionComposer != null)
+            {
+                // PositionComposer: Use TargetOffset for zoom
+                float baseHeight = _baseCameraOffset.y;
+                float baseDistance = Mathf.Abs(_baseCameraOffset.z);
+                float heightRatio = baseHeight / baseDistance;
+                
+                float zoomHeight = _currentZoomDistance * heightRatio;
+                float zoomBack = -_currentZoomDistance; // Negative Z = behind player
+                
+                Vector3 newOffset = new Vector3(0f, zoomHeight, zoomBack);
+                _positionComposer.TargetOffset = newOffset;
+                
+                if (debugMode)
+                    Debug.Log($"[CameraManager] Applied WoW-style zoom (PositionComposer): distance={_currentZoomDistance}, offset={newOffset}");
+            }
+        }
+        
+        /// <summary>
+        /// Smoothly resets camera zoom to default distance (WoW-style)
+        /// </summary>
+        public void ResetZoom()
+        {
+            if (cameraMode == CameraMode.FirstPerson)
+                return;
+            
+            _targetZoomDistance = defaultZoomDistance;
+            _isResettingZoom = true;
+            
+            if (debugMode)
+                Debug.Log($"[CameraManager] Resetting zoom to default: {defaultZoomDistance}");
         }
     }
 
@@ -1719,4 +2091,3 @@ namespace BugWars.Core
 
     #endregion
 }
-

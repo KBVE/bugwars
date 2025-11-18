@@ -29,11 +29,11 @@ namespace BugWars.Core
         [SerializeField] [Tooltip("Scale applied to raw mouse delta before broadcasting camera look input")]
         private float cameraLookSensitivity = 0.1f;
         [SerializeField] [Tooltip("Scale applied to scroll wheel delta before broadcasting camera zoom input")]
-        private float cameraZoomSensitivity = 0.1f;
+        private float cameraZoomSensitivity = 1.0f; // Increased from 0.1f for more responsive zoom
         [SerializeField] [Tooltip("Invert vertical camera look input")]
         private bool invertCameraY = true;
-        [SerializeField] [Tooltip("When enabled, mouse/gamepad look input will drive the camera")]
-        private bool cameraInputCaptured = true; // Enabled for 3D character camera control
+        [SerializeField] [Tooltip("When enabled, mouse/gamepad look input and scroll wheel zoom will drive the camera")]
+        private bool cameraInputCaptured = true; // Enabled for 3D character camera control (required for zoom)
         #endregion
 
         #region Unity Lifecycle
@@ -103,30 +103,60 @@ namespace BugWars.Core
         #region Camera Input
         private void HandleCameraInputs()
         {
-            if (_eventManager == null || Mouse.current == null)
+            if (_eventManager == null)
             {
+                if (debugMode)
+                    Debug.LogWarning("[InputManager] EventManager is null in HandleCameraInputs");
+                return;
+            }
+            
+            if (Mouse.current == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[InputManager] Mouse.current is null in HandleCameraInputs");
                 return;
             }
 
-            if (!cameraInputCaptured)
-            {
-                return;
-            }
+            // Always allow zoom input even if camera look is disabled
+            // Only check cameraInputCaptured for look input, not zoom
+            bool allowLookInput = cameraInputCaptured;
 
-            Vector2 lookDelta = Mouse.current.delta.ReadValue();
-            if (lookDelta.sqrMagnitude > Mathf.Epsilon)
+            // Only process look input if cameraInputCaptured is enabled
+            if (allowLookInput)
             {
-                float yMultiplier = invertCameraY ? 1f : -1f;
-                Vector2 scaledDelta = new Vector2(
-                    lookDelta.x * cameraLookSensitivity,
-                    lookDelta.y * cameraLookSensitivity * yMultiplier);
-                _eventManager.TriggerCameraLook(scaledDelta);
+                Vector2 lookDelta = Mouse.current.delta.ReadValue();
+                if (lookDelta.sqrMagnitude > Mathf.Epsilon)
+                {
+                    float yMultiplier = invertCameraY ? 1f : -1f;
+                    Vector2 scaledDelta = new Vector2(
+                        lookDelta.x * cameraLookSensitivity,
+                        lookDelta.y * cameraLookSensitivity * yMultiplier);
+                    _eventManager.TriggerCameraLook(scaledDelta);
+                }
             }
 
             float scrollDelta = Mouse.current.scroll.ReadValue().y;
+            if (debugMode && Mathf.Abs(scrollDelta) > Mathf.Epsilon)
+            {
+                Debug.Log($"[InputManager] Scroll wheel detected: raw={scrollDelta}");
+            }
+            
             if (Mathf.Abs(scrollDelta) > Mathf.Epsilon)
             {
-                _eventManager.TriggerCameraZoom(scrollDelta * cameraZoomSensitivity);
+                float scaledDelta = scrollDelta * cameraZoomSensitivity;
+                if (debugMode)
+                    Debug.Log($"[InputManager] Scroll wheel: raw={scrollDelta}, scaled={scaledDelta}, sensitivity={cameraZoomSensitivity}, EventManager={_eventManager != null}");
+                
+                if (_eventManager != null)
+                {
+                    _eventManager.TriggerCameraZoom(scaledDelta);
+                    if (debugMode)
+                        Debug.Log($"[InputManager] TriggerCameraZoom called with: {scaledDelta}");
+                }
+                else if (debugMode)
+                {
+                    Debug.LogError("[InputManager] EventManager is NULL! Cannot trigger zoom event!");
+                }
             }
         }
         #endregion
