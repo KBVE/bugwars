@@ -43,15 +43,27 @@ namespace BugWars.Terrain
         public float objectsPerChunk = 20f; // Average number of objects per chunk
         public float spawnProbability = 0.8f; // Probability of spawning in a valid location (0-1)
 
-        [Header("Placement")]
+        [Header("Placement Algorithm")]
+        public bool usePoissonDisk = true; // Use Poisson disk sampling for natural spacing
         public float minDistanceBetweenObjects = 5f; // Minimum distance between objects
-        public float noiseScale = 0.1f; // Perlin noise scale for clustering
-        public float noiseThreshold = 0.3f; // Noise value threshold for spawning (0-1)
+        public int maxPlacementAttempts = 30; // Max attempts to find valid placement per object
+
+        [Header("Clustering (Biome-like)")]
+        public bool enableClustering = true; // Create natural clusters (forests, rock formations)
+        public float clusterNoiseScale = 0.05f; // Large-scale noise for biome clustering
+        public float clusterThreshold = 0.4f; // Threshold for cluster spawning (0-1)
+        public float detailNoiseScale = 0.15f; // Fine-detail noise for variation within clusters
+        public float clusterDensityMultiplier = 1.5f; // Density multiplier inside clusters
 
         [Header("Terrain Height")]
         public float minHeight = 0f; // Minimum terrain height for spawning
         public float maxHeight = 10f; // Maximum terrain height for spawning
         public float maxSlope = 45f; // Maximum terrain slope (degrees) for spawning
+
+        [Header("Height-Based Variation")]
+        public bool useHeightVariation = true; // Different densities at different heights
+        public float lowlandBonus = 1.2f; // Density multiplier for low areas (0-3 units)
+        public float highlandPenalty = 0.6f; // Density multiplier for high areas (6+ units)
     }
 
     /// <summary>
@@ -80,38 +92,109 @@ namespace BugWars.Terrain
         [Header("Spawn Settings")]
         [SerializeField] private EnvironmentSpawnSettings treeSettings = new EnvironmentSpawnSettings
         {
-            objectsPerChunk = 15,
-            spawnProbability = 0.7f,
+            // INCREASED DENSITY: 40 trees per chunk (was 15) - creates dense forest feel
+            objectsPerChunk = 40,
+            spawnProbability = 0.85f,
+
+            // Natural clustering for forest patches
+            usePoissonDisk = true,
             minDistanceBetweenObjects = 8f,
-            noiseScale = 0.05f,
-            noiseThreshold = 0.4f,
+            maxPlacementAttempts = 30,
+
+            // Biome clustering creates realistic forest areas
+            enableClustering = true,
+            clusterNoiseScale = 0.03f,      // Large-scale forest patches
+            clusterThreshold = 0.35f,        // Lower = more forest coverage
+            detailNoiseScale = 0.12f,        // Variation within forests
+            clusterDensityMultiplier = 2.0f, // Dense clusters (up to 80 trees in forest patches)
+
             minHeight = 0.5f,
             maxHeight = 8f,
-            maxSlope = 35f
+            maxSlope = 35f,
+
+            // More trees in valleys, fewer on peaks
+            useHeightVariation = true,
+            lowlandBonus = 1.3f,
+            highlandPenalty = 0.5f
         };
 
         [SerializeField] private EnvironmentSpawnSettings bushSettings = new EnvironmentSpawnSettings
         {
-            objectsPerChunk = 25,
-            spawnProbability = 0.6f,
+            // INCREASED DENSITY: 60 bushes per chunk (was 25) - understory vegetation
+            objectsPerChunk = 60,
+            spawnProbability = 0.75f,
+
+            usePoissonDisk = true,
             minDistanceBetweenObjects = 3f,
-            noiseScale = 0.08f,
-            noiseThreshold = 0.3f,
+            maxPlacementAttempts = 25,
+
+            // Bushes cluster around trees and in clearings
+            enableClustering = true,
+            clusterNoiseScale = 0.08f,       // Medium-scale clusters
+            clusterThreshold = 0.3f,
+            detailNoiseScale = 0.2f,
+            clusterDensityMultiplier = 1.8f,
+
             minHeight = 0.2f,
             maxHeight = 6f,
-            maxSlope = 40f
+            maxSlope = 40f,
+
+            useHeightVariation = true,
+            lowlandBonus = 1.4f,
+            highlandPenalty = 0.7f
         };
 
         [SerializeField] private EnvironmentSpawnSettings rockSettings = new EnvironmentSpawnSettings
         {
-            objectsPerChunk = 10,
-            spawnProbability = 0.5f,
-            minDistanceBetweenObjects = 5f,
-            noiseScale = 0.12f,
-            noiseThreshold = 0.5f,
+            // INCREASED DENSITY: 25 rocks per chunk (was 10) - natural rock formations
+            objectsPerChunk = 25,
+            spawnProbability = 0.7f,
+
+            usePoissonDisk = true,
+            minDistanceBetweenObjects = 4f,
+            maxPlacementAttempts = 20,
+
+            // Rocks form clusters/outcrops
+            enableClustering = true,
+            clusterNoiseScale = 0.06f,
+            clusterThreshold = 0.45f,        // Sparser than trees
+            detailNoiseScale = 0.18f,
+            clusterDensityMultiplier = 2.5f, // Dense rock formations in clusters
+
             minHeight = 0f,
             maxHeight = 10f,
-            maxSlope = 60f
+            maxSlope = 60f, // Rocks can spawn on steeper terrain
+
+            // More rocks at higher elevations (rocky peaks)
+            useHeightVariation = true,
+            lowlandBonus = 0.8f,
+            highlandPenalty = 1.5f  // BONUS on highlands (inverted from trees)
+        };
+
+        [SerializeField] private EnvironmentSpawnSettings grassSettings = new EnvironmentSpawnSettings
+        {
+            // DENSE GRASS: 80 clumps per chunk - carpet of grass
+            objectsPerChunk = 80,
+            spawnProbability = 0.9f,
+
+            usePoissonDisk = true,
+            minDistanceBetweenObjects = 2f,  // Grass can be closer together
+            maxPlacementAttempts = 20,
+
+            // Grass covers most open areas
+            enableClustering = false,        // Grass is everywhere (no clustering)
+            clusterNoiseScale = 0.15f,
+            clusterThreshold = 0.2f,
+            detailNoiseScale = 0.25f,
+            clusterDensityMultiplier = 1.0f,
+
+            minHeight = 0f,
+            maxHeight = 5f,
+            maxSlope = 50f,
+
+            useHeightVariation = true,
+            lowlandBonus = 1.2f,
+            highlandPenalty = 0.8f
         };
 
         [Header("Performance")]
