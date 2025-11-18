@@ -611,7 +611,20 @@ namespace BugWars.Terrain
         /// </summary>
         private Material CreateDefaultGrasslandMaterial()
         {
-            // Try to use custom terrain shader first
+            // FIRST: Try to load the pre-made material from Resources
+            // This is the most reliable way to ensure shader is included in WebGL builds
+            Material resourceMaterial = Resources.Load<Material>("TerrainVertexColorMaterial");
+            if (resourceMaterial != null)
+            {
+                Debug.Log("[TerrainManager] Successfully loaded TerrainVertexColorMaterial from Resources");
+                return resourceMaterial;
+            }
+            else
+            {
+                Debug.LogWarning("[TerrainManager] Could not load TerrainVertexColorMaterial from Resources. Attempting to create material at runtime...");
+            }
+
+            // SECOND: Try to use custom terrain shader (may fail in WebGL due to shader stripping)
             Shader terrainShader = Shader.Find("BugWars/TerrainVertexColor");
 
             if (terrainShader != null)
