@@ -79,7 +79,7 @@ The React side is already configured in `/website/astro/src/components/unity-rea
 using BugWars.JavaScriptBridge;
 
 // Simple message
-WebGLBridge.SendToWeb("GameReady", new {
+WebGLBridge.SendToWeb("GameReady", new GameReadyData {
     timestamp = DateTime.UtcNow.ToString("o")
 });
 

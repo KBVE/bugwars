@@ -175,7 +175,7 @@ namespace BugWars.Examples
 
             // Or send as base64 through JSON
             string base64 = BufferBridge.EncodeToBase64(binaryData);
-            WebGLBridge.SendToWeb("Base64Data", new { data = base64 });
+            WebGLBridge.SendToWeb("Base64Data", new Base64DataWrapper { data = base64 });
         }
 
         /// <summary>

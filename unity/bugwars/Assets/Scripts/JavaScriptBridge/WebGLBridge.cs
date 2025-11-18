@@ -75,7 +75,7 @@ namespace BugWars.JavaScriptBridge
             Debug.Log("[WebGLBridge] VContainer injection complete. Sending BridgeReady signal to React.");
 
             // Notify React that Unity bridge is ready to receive messages
-            SendToWeb("BridgeReady", new
+            SendToWeb("BridgeReady", new BridgeReadyData
             {
                 timestamp = DateTime.UtcNow.ToString("o"),
                 gameObjectName = gameObject.name,
@@ -120,7 +120,7 @@ namespace BugWars.JavaScriptBridge
                 _eventManager?.TriggerEvent("SessionUpdated", sessionData);
 
                 // Acknowledge receipt
-                SendToWeb("SessionReceived", new { success = true, userId = sessionData.userId });
+                SendToWeb("SessionReceived", new SessionReceivedData { success = true, userId = sessionData.userId });
             }
             catch (Exception e)
             {
@@ -181,7 +181,7 @@ namespace BugWars.JavaScriptBridge
                 _eventManager?.TriggerEvent("PlayerProfileUpdated", profileData);
 
                 // Acknowledge receipt
-                SendToWeb("ProfileReceived", new { success = true, username = profileData.username });
+                SendToWeb("ProfileReceived", new ProfileReceivedData { success = true, username = profileData.username });
             }
             catch (Exception e)
             {
@@ -364,7 +364,7 @@ namespace BugWars.JavaScriptBridge
         /// </summary>
         public void NotifyGameReady()
         {
-            SendToWeb("GameReady", new { timestamp = DateTime.UtcNow.ToString("o") });
+            SendToWeb("GameReady", new GameReadyData { timestamp = DateTime.UtcNow.ToString("o") });
         }
 
         /// <summary>
@@ -372,10 +372,10 @@ namespace BugWars.JavaScriptBridge
         /// </summary>
         public void NotifyPlayerSpawned(string playerId, Vector3 position)
         {
-            SendToWeb("PlayerSpawned", new
+            SendToWeb("PlayerSpawned", new PlayerSpawnedData
             {
                 playerId = playerId,
-                position = new { x = position.x, y = position.y, z = position.z }
+                position = new Vector3Data { x = position.x, y = position.y, z = position.z }
             });
         }
 
@@ -384,7 +384,7 @@ namespace BugWars.JavaScriptBridge
         /// </summary>
         public void RequestData(string table, string filters = null)
         {
-            SendToWeb("DataRequest", new { table = table, filters = filters });
+            SendToWeb("DataRequest", new DataRequestData { table = table, filters = filters });
         }
 
         /// <summary>
@@ -392,7 +392,8 @@ namespace BugWars.JavaScriptBridge
         /// </summary>
         public void SaveData(string table, object data)
         {
-            SendToWeb("DataSave", new { table = table, data = data });
+            string jsonData = JsonUtility.ToJson(data);
+            SendToWeb("DataSave", new DataSaveData { table = table, data = jsonData });
         }
 
         /// <summary>
@@ -400,7 +401,7 @@ namespace BugWars.JavaScriptBridge
         /// </summary>
         public void RequestPlayerProfile()
         {
-            SendToWeb("PlayerProfileRequest", new { timestamp = DateTime.UtcNow.ToString("o") });
+            SendToWeb("PlayerProfileRequest", new PlayerProfileRequestData { timestamp = DateTime.UtcNow.ToString("o") });
         }
 
         /// <summary>
@@ -429,6 +430,14 @@ namespace BugWars.JavaScriptBridge
     }
 
     #region Data Structures
+
+    [Serializable]
+    public class BridgeReadyData
+    {
+        public string timestamp;
+        public string gameObjectName;
+        public string version;
+    }
 
     [Serializable]
     public class SessionData
@@ -470,6 +479,67 @@ namespace BugWars.JavaScriptBridge
     public class ArrayWrapper<T>
     {
         public T[] data;
+    }
+
+    [Serializable]
+    public class SessionReceivedData
+    {
+        public bool success;
+        public string userId;
+    }
+
+    [Serializable]
+    public class ProfileReceivedData
+    {
+        public bool success;
+        public string username;
+    }
+
+    [Serializable]
+    public class GameReadyData
+    {
+        public string timestamp;
+    }
+
+    [Serializable]
+    public class DataRequestData
+    {
+        public string table;
+        public string filters;
+    }
+
+    [Serializable]
+    public class DataSaveData
+    {
+        public string table;
+        public string data;
+    }
+
+    [Serializable]
+    public class PlayerProfileRequestData
+    {
+        public string timestamp;
+    }
+
+    [Serializable]
+    public class Base64DataWrapper
+    {
+        public string data;
+    }
+
+    [Serializable]
+    public class Vector3Data
+    {
+        public float x;
+        public float y;
+        public float z;
+    }
+
+    [Serializable]
+    public class PlayerSpawnedData
+    {
+        public string playerId;
+        public Vector3Data position;
     }
 
     #endregion
