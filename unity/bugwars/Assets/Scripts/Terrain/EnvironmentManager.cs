@@ -337,10 +337,31 @@ namespace BugWars.Terrain
             if (assets.Count == 0)
                 return;
 
+            // Calculate adjusted object count based on height variation
+            float densityMultiplier = 1.0f;
+            if (settings.useHeightVariation)
+            {
+                // Sample chunk center height to determine if lowland or highland
+                Vector3 chunkCenter = GetChunkCenterPosition(chunkCoord);
+                float centerHeight = GetTerrainHeightAtPosition(chunkCenter);
+
+                if (centerHeight < 3f)
+                {
+                    // Lowland - apply bonus
+                    densityMultiplier = settings.lowlandBonus;
+                }
+                else if (centerHeight > 6f)
+                {
+                    // Highland - apply penalty (or bonus for rocks)
+                    densityMultiplier = settings.highlandPenalty;
+                }
+                // Else mid-range - use base density (1.0f)
+            }
+
             int objectsSpawned = 0;
-            int maxObjects = Mathf.RoundToInt(settings.objectsPerChunk);
+            int maxObjects = Mathf.RoundToInt(settings.objectsPerChunk * densityMultiplier);
             int attempts = 0;
-            int maxAttempts = maxObjects * 3; // Try 3x to account for failed placements
+            int maxAttempts = maxObjects * settings.maxPlacementAttempts; // Use configurable attempts
 
             List<Vector3> spawnedPositions = new List<Vector3>();
 
@@ -351,22 +372,49 @@ namespace BugWars.Terrain
                 // Generate random position within chunk
                 Vector3 position = GetRandomPositionInChunk(chunkCoord);
 
-                // Check noise threshold for clustering
-                float noiseValue = GetNoiseValueForPosition(position, settings.noiseScale);
-                if (noiseValue < settings.noiseThreshold)
-                    continue;
+                // Check clustering (biome-based spawning)
+                if (settings.enableClustering)
+                {
+                    float clusterNoise = GetNoiseValueForPosition(position, settings.clusterNoiseScale);
+                    float detailNoise = GetNoiseValueForPosition(position, settings.detailNoiseScale);
+                    float combinedNoise = clusterNoise * 0.7f + detailNoise * 0.3f;
 
-                // Check spawn probability
-                if (Random.value > settings.spawnProbability)
-                    continue;
+                    // Skip if outside cluster zones
+                    if (combinedNoise < settings.clusterThreshold)
+                        continue;
+
+                    // Increase density in cluster zones
+                    if (combinedNoise > settings.clusterThreshold + 0.2f)
+                    {
+                        // In dense cluster - boost spawn probability
+                        float clusterBoost = settings.clusterDensityMultiplier;
+                        if (Random.value > settings.spawnProbability * clusterBoost)
+                            continue;
+                    }
+                    else
+                    {
+                        // Normal spawn probability
+                        if (Random.value > settings.spawnProbability)
+                            continue;
+                    }
+                }
+                else
+                {
+                    // No clustering - just use base probability
+                    if (Random.value > settings.spawnProbability)
+                        continue;
+                }
 
                 // Check terrain height and slope
                 if (!IsValidSpawnLocation(position, settings))
                     continue;
 
-                // Check minimum distance from other objects
-                if (!CheckMinimumDistance(position, spawnedPositions, settings.minDistanceBetweenObjects))
-                    continue;
+                // Check minimum distance from other objects (Poisson disk sampling)
+                if (settings.usePoissonDisk)
+                {
+                    if (!CheckMinimumDistance(position, spawnedPositions, settings.minDistanceBetweenObjects))
+                        continue;
+                }
 
                 // Select random asset
                 var asset = SelectRandomAsset(assets);
@@ -456,6 +504,19 @@ namespace BugWars.Terrain
                 chunkCoord.x * chunkSize + randomX,
                 0,
                 chunkCoord.y * chunkSize + randomZ
+            );
+        }
+
+        /// <summary>
+        /// Get center position of a chunk
+        /// </summary>
+        private Vector3 GetChunkCenterPosition(Vector2Int chunkCoord)
+        {
+            float chunkSize = 500f; // Match TerrainManager chunk size
+            return new Vector3(
+                chunkCoord.x * chunkSize + chunkSize * 0.5f,
+                0,
+                chunkCoord.y * chunkSize + chunkSize * 0.5f
             );
         }
 
