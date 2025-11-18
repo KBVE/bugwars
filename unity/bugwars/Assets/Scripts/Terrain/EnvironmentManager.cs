@@ -92,21 +92,21 @@ namespace BugWars.Terrain
         [Header("Spawn Settings")]
         [SerializeField] private EnvironmentSpawnSettings treeSettings = new EnvironmentSpawnSettings
         {
-            // INCREASED DENSITY: 40 trees per chunk (was 15) - creates dense forest feel
-            objectsPerChunk = 40,
-            spawnProbability = 0.85f,
+            // TIGHT CLUSTERING: Creates actual forest "zones" with 3-10 trees per cluster
+            objectsPerChunk = 30,
+            spawnProbability = 0.95f,  // High probability INSIDE clusters
 
-            // Natural clustering for forest patches
+            // Tight spacing within forest zones (trees close together like real forests)
             usePoissonDisk = true,
-            minDistanceBetweenObjects = 8f,
-            maxPlacementAttempts = 30,
+            minDistanceBetweenObjects = 5f,  // REDUCED: Trees closer together in forests
+            maxPlacementAttempts = 40,        // More attempts to pack trees into clusters
 
-            // Biome clustering creates realistic forest areas
+            // REALISTIC BIOME CLUSTERING: Tight forest zones with 3-10 trees each
             enableClustering = true,
-            clusterNoiseScale = 0.03f,      // Large-scale forest patches
-            clusterThreshold = 0.35f,        // Lower = more forest coverage
-            detailNoiseScale = 0.12f,        // Variation within forests
-            clusterDensityMultiplier = 2.0f, // Dense clusters (up to 80 trees in forest patches)
+            clusterNoiseScale = 0.02f,        // LARGER-scale: Creates distinct forest "zones"
+            clusterThreshold = 0.55f,         // HIGHER: Fewer but more concentrated clusters
+            detailNoiseScale = 0.3f,          // HIGHER: More variation = smaller tight groups
+            clusterDensityMultiplier = 4.0f,  // MUCH HIGHER: Pack 3-10 trees per zone
 
             minHeight = 0.5f,
             maxHeight = 8f,
@@ -120,20 +120,21 @@ namespace BugWars.Terrain
 
         [SerializeField] private EnvironmentSpawnSettings bushSettings = new EnvironmentSpawnSettings
         {
-            // INCREASED DENSITY: 60 bushes per chunk (was 25) - understory vegetation
-            objectsPerChunk = 60,
-            spawnProbability = 0.75f,
+            // TIGHT CLUSTERING: Creates understory "zones" with 3-8 bushes per cluster around forest areas
+            objectsPerChunk = 40,
+            spawnProbability = 0.9f,         // High probability INSIDE clusters
 
+            // Tight spacing within undergrowth zones (bushes cluster like real forest understory)
             usePoissonDisk = true,
-            minDistanceBetweenObjects = 3f,
-            maxPlacementAttempts = 25,
+            minDistanceBetweenObjects = 2.5f, // REDUCED: Bushes very close together in undergrowth
+            maxPlacementAttempts = 35,        // More attempts to pack bushes into clusters
 
-            // Bushes cluster around trees and in clearings
+            // REALISTIC BIOME CLUSTERING: Tight undergrowth zones with 3-8 bushes each
             enableClustering = true,
-            clusterNoiseScale = 0.08f,       // Medium-scale clusters
-            clusterThreshold = 0.3f,
-            detailNoiseScale = 0.2f,
-            clusterDensityMultiplier = 1.8f,
+            clusterNoiseScale = 0.025f,       // LARGER-scale: Match tree zones (slightly offset)
+            clusterThreshold = 0.50f,         // HIGHER: Fewer but more concentrated clusters
+            detailNoiseScale = 0.35f,         // HIGHER: More variation = smaller tight groups
+            clusterDensityMultiplier = 3.5f,  // HIGH: Pack 3-8 bushes per zone (understory layer)
 
             minHeight = 0.2f,
             maxHeight = 6f,
@@ -146,20 +147,21 @@ namespace BugWars.Terrain
 
         [SerializeField] private EnvironmentSpawnSettings rockSettings = new EnvironmentSpawnSettings
         {
-            // INCREASED DENSITY: 25 rocks per chunk (was 10) - natural rock formations
-            objectsPerChunk = 25,
-            spawnProbability = 0.7f,
+            // TIGHT CLUSTERING: Creates distinct rock "outcrops" with 2-6 rocks per formation
+            objectsPerChunk = 18,
+            spawnProbability = 0.85f,        // High probability INSIDE outcrops
 
+            // Tight spacing within rock formations (rocks cluster like real geological outcrops)
             usePoissonDisk = true,
-            minDistanceBetweenObjects = 4f,
-            maxPlacementAttempts = 20,
+            minDistanceBetweenObjects = 3f,  // REDUCED: Rocks close together in formations
+            maxPlacementAttempts = 30,       // More attempts to pack rocks into outcrops
 
-            // Rocks form clusters/outcrops
+            // REALISTIC BIOME CLUSTERING: Tight outcrop formations with 2-6 rocks each
             enableClustering = true,
-            clusterNoiseScale = 0.06f,
-            clusterThreshold = 0.45f,        // Sparser than trees
-            detailNoiseScale = 0.18f,
-            clusterDensityMultiplier = 2.5f, // Dense rock formations in clusters
+            clusterNoiseScale = 0.04f,       // LARGER-scale: Creates distinct outcrop zones
+            clusterThreshold = 0.60f,        // HIGHER: Fewer but more concentrated formations
+            detailNoiseScale = 0.25f,        // HIGHER: More variation = smaller tight groups
+            clusterDensityMultiplier = 3.0f, // HIGH: Pack 2-6 rocks per outcrop formation
 
             minHeight = 0f,
             maxHeight = 10f,
@@ -269,8 +271,8 @@ namespace BugWars.Terrain
             if (terrainManager == null)
                 return;
 
-            // Get active terrain chunks
-            var activeChunkCoords = terrainManager.GetActiveChunkCoords();
+            // Get active terrain chunks and create a snapshot to avoid collection modification errors
+            var activeChunkCoords = terrainManager.GetActiveChunkCoords().ToList();
 
             // Load environment for new chunks
             foreach (var chunkCoord in activeChunkCoords)
@@ -282,6 +284,7 @@ namespace BugWars.Terrain
             }
 
             // Unload environment for chunks that are no longer active
+            // Create snapshot of keys to avoid "Collection was modified" error
             var chunksToUnload = chunkEnvironmentData.Keys
                 .Where(coord => !activeChunkCoords.Contains(coord))
                 .ToList();
