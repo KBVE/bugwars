@@ -50,8 +50,9 @@ namespace BugWars.Core
                 immediate = immediate,
 
                 // Damping: smooth follow (0.1 seconds for responsive but smooth following)
+                // Y-axis damping increased (0.2) for smoother vertical following on slopes
                 // Reduced from 0.15 to prevent camera drift
-                positionDamping = new Vector3(0.1f, 0.1f, 0.1f),
+                positionDamping = new Vector3(0.1f, 0.2f, 0.1f),
 
                 // Screen framing: centered
                 screenX = 0.5f,
@@ -598,19 +599,26 @@ namespace BugWars.Core
                 var positionComposer = _currentActiveCamera.GetComponent<CinemachinePositionComposer>();
                 if (positionComposer != null && cameraMode == CameraMode.ThirdPerson)
                 {
-                    // Verify offset is correct (should be 0, 2, -5 for third-person)
+                    // Verify offset is correct (should be 0, 4.4, -8.5 for third-person)
                     Vector3 expectedOffset = _baseCameraOffset;
                     if (enableDynamicHeight)
                     {
-                        // Calculate dynamic height adjustment
+                        // Calculate dynamic height adjustment with smoothing to prevent bouncing on slopes
                         Vector3 velocity = (_activeFollowConfig.target.position - _previousPlayerPosition) / Time.deltaTime;
                         float verticalSpeed = velocity.y;
-                        float heightOffset = Mathf.Clamp(verticalSpeed * dynamicHeightAmount, -0.5f, 0.5f);
-                        expectedOffset = _baseCameraOffset + new Vector3(0f, heightOffset, 0f);
+                        
+                        // Smooth the vertical speed calculation to reduce jitter on slopes
+                        // Use a smaller multiplier and tighter clamping for smoother transitions
+                        float heightOffset = Mathf.Clamp(verticalSpeed * dynamicHeightAmount * 0.5f, -0.3f, 0.3f);
+                        
+                        // Smooth interpolation to target offset to prevent sudden jumps
+                        Vector3 targetOffset = _baseCameraOffset + new Vector3(0f, heightOffset, 0f);
+                        expectedOffset = Vector3.Lerp(positionComposer.TargetOffset, targetOffset, Time.deltaTime * 5f);
                     }
                     
                     // Only update if significantly different (prevents micro-adjustments)
-                    if (Vector3.Distance(positionComposer.TargetOffset, expectedOffset) > 0.1f)
+                    // Reduced threshold for smoother updates
+                    if (Vector3.Distance(positionComposer.TargetOffset, expectedOffset) > 0.05f)
                     {
                         positionComposer.TargetOffset = expectedOffset;
                     }
@@ -691,7 +699,8 @@ namespace BugWars.Core
                 // Apply third-person settings (offset: 0, 4.4, -8.5)
                 config.shoulderOffset = new Vector3(0f, 4.4f, 0f); // 4.4 units above (~10% higher)
                 config.cameraDistance = 8f; // 8 units behind (not used, TargetOffset matters)
-                config.positionDamping = new Vector3(0.1f, 0.1f, 0.1f); // Responsive (reduced from 0.15 to prevent drift)
+                // Y-axis damping increased for smoother vertical following on slopes
+                config.positionDamping = new Vector3(0.1f, 0.2f, 0.1f); // Smoother Y-axis for slopes
                 config.pitchClamp = new Vector2(15f, 50f); // Moderate downward angle
             }
 
@@ -863,6 +872,9 @@ namespace BugWars.Core
             {
                 float lagMultiplier = 1f + (cameraLagAmount * 2f); // Reduced from 5f to 2f to prevent excessive lag
                 damping = damping * lagMultiplier;
+                // Preserve Y-axis damping (don't apply lag multiplier to Y for smoother slopes)
+                // Y-axis already has higher damping (0.2) for smooth vertical following
+                damping.y = config.positionDamping.y; // Keep original Y damping for smooth vertical following
                 // Clamp damping to prevent camera from drifting too far
                 damping = new Vector3(
                     Mathf.Clamp(damping.x, 0.05f, 0.5f),
