@@ -162,7 +162,7 @@ namespace BugWars.Character
             // - Lookahead for anticipating movement
             // - Fixed 25° downward viewing angle (HD-2D style)
             // - Locked rotation (no yaw changes) for consistent sprite visibility
-            var config = Core.CameraFollowConfig.CinematicFollow(
+            var config = Core.CameraFollowConfig.SimpleThirdPerson(
                 target: transform,
                 cameraName: "VirtualCamera",
                 immediate: false  // Smooth blend to new camera
@@ -511,9 +511,9 @@ namespace BugWars.Character
         /// </summary>
         public CameraFollowConfig GetPreferredCameraConfig(Transform target)
         {
-            // Use CinematicFollow for 2D billboard sprites - provides smooth auto-follow
+            // Use SimpleThirdPerson for 2D billboard sprites - provides smooth auto-follow
             // with fixed 25-35° downward viewing angle for HD-2D style (like Octopath Traveler)
-            var config = CameraFollowConfig.CinematicFollow(target);
+            var config = CameraFollowConfig.SimpleThirdPerson(target);
 
             // Customize for Samurai - slightly closer camera for better sprite detail
             config.cameraDistance = 7f;

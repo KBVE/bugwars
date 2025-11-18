@@ -11,9 +11,11 @@ namespace BugWars.Entity.Player
     public class Player : Entity
     {
         [Header("Player Properties")]
+        [SerializeField] [Tooltip("Movement speed (units per second)")]
+        private float playerMoveSpeed = 10f;
         [SerializeField] private float jumpForce = 10f;
         [SerializeField] [Tooltip("Rotation speed for A/D keys (degrees per second). This controls how fast the character rotates when pressing A/D.")]
-        private float playerRotationSpeed = 200f; // Change this for a/d rotation speed
+        private float playerRotationSpeed = 85f; // Change this for a/d rotation speed
 
         private Vector3 moveDirection;
         private float rotationInput;
@@ -105,6 +107,10 @@ namespace BugWars.Entity.Player
         private void MovePlayer()
         {
             // Use base class Move method for physics-based movement
+            // Override moveSpeed to use playerMoveSpeed
+            float originalMoveSpeed = moveSpeed;
+            moveSpeed = playerMoveSpeed; // Use player's move speed
+            
             if (moveDirection.sqrMagnitude > 0.01f)
             {
                 Move(moveDirection);
@@ -114,6 +120,8 @@ namespace BugWars.Entity.Player
                 // Stop movement when no input
                 Move(Vector3.zero);
             }
+            
+            moveSpeed = originalMoveSpeed; // Restore (though it shouldn't matter since we're the only one using it)
         }
 
         protected override void OnDeath()

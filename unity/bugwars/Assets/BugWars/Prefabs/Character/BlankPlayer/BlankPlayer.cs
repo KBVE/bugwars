@@ -167,7 +167,7 @@ namespace BugWars.Character
                 yield break;
             }
 
-            var config = Core.CameraFollowConfig.CinematicFollow(
+            var config = Core.CameraFollowConfig.SimpleThirdPerson(
                 target: transform,
                 cameraName: "VirtualCamera",
                 immediate: false
@@ -525,9 +525,9 @@ namespace BugWars.Character
         /// </summary>
         public CameraFollowConfig GetPreferredCameraConfig(Transform target)
         {
-            // Use CinematicFollow for 2D billboard sprites
+            // Use SimpleThirdPerson for 2D billboard sprites
             // This provides smooth auto-follow with fixed viewing angle
-            var config = CameraFollowConfig.CinematicFollow(target);
+            var config = CameraFollowConfig.SimpleThirdPerson(target);
 
             // Customize for 4-directional sprites
             config.cameraDistance = 7f;

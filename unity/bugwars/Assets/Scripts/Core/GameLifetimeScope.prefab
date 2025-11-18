@@ -50,7 +50,6 @@ MonoBehaviour:
   autoSpawnPlayer: 1
   playerSpawnPosition: {x: 0, y: 10, z: 0}
   autoCameraFollow: 1
-  playerEntity: {fileID: 916027482582278375, guid: 09f0d5a5e1bae49939598a7c9681d89b, type: 3}
   playerData:
     playerName: Player
     playerId: 84cb97e0-5c59-4ffd-84a7-9e9d785acd81
@@ -153,6 +152,12 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   OnPausePressed:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPlayerMovementInput:
+    m_PersistentCalls:
+      m_Calls: []
+  OnPlayerRotationInput:
     m_PersistentCalls:
       m_Calls: []
   OnGamePaused:
@@ -280,23 +285,35 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BugWars.Core.CameraManager
   debugMode: 1
+  forceCameraSettings: 1
   preferOrthographic: 0
   autoDiscoverCameras: 1
-  includeInactiveCameras: 0
-  perspectiveFov: 55
-  minZoomDistance: 3.5
-  maxZoomDistance: 9
+  includeInactiveCameras: 1
+  perspectiveFov: 60
+  minZoomDistance: 4
+  maxZoomDistance: 10
   zoomStep: 0.4
   zoomSmoothing: 0.35
   lookSensitivityX: 1
   lookSensitivityY: 1
   invertY: 1
-  defaultTiltAngle: -34
+  defaultTiltAngle: 20
   defaultPanOffset: 0
-  framingPreset: 1
-  autoAlignMode: 1
-  autoAlignSpeed: 360
-  perspectiveRigMode: 0
+  cameraMode: 1
+  autoRotateToMovement: 1
+  autoRotateSpeed: 120
+  movementThreshold: 0.1
+  enableCameraLag: 1
+  cameraLagAmount: 0.15
+  enableCameraLean: 0
+  maxLeanAngle: 5
+  enableDynamicHeight: 1
+  dynamicHeightAmount: 0.5
+  enableSprintFOV: 1
+  sprintFOVIncrease: 8
+  sprintSpeedThreshold: 6
+  enableRecenterButton: 0
+  recenterKey: 118
 --- !u!1 &7897882360276293766
 GameObject:
   m_ObjectHideFlags: 0

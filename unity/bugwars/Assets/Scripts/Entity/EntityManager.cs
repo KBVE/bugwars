@@ -493,22 +493,22 @@ namespace BugWars.Entity
             // Check for Camera3D tag first (PRIMARY: AdventurerCharacter and other 3D characters)
             if (playerObject.CompareTag(Core.CameraTags.Camera3D))
             {
-                Debug.Log($"[EntityManager] Detected Camera3D tag - using FreeLookOrbit camera for {playerObject.name}");
-                return Core.CameraFollowConfig.FreeLookOrbit(playerTransform);
+                Debug.Log($"[EntityManager] Detected Camera3D tag - using SimpleThirdPerson camera for {playerObject.name}");
+                return Core.CameraFollowConfig.SimpleThirdPerson(playerTransform);
             }
             // Check for CameraBillboard tag (LEGACY: Samurai, BlankPlayer - 2D billboard sprites)
             else if (playerObject.CompareTag(Core.CameraTags.CameraBillboard))
             {
-                Debug.Log($"[EntityManager] Detected CameraBillboard tag - using CinematicFollow camera for {playerObject.name}");
-                return Core.CameraFollowConfig.CinematicFollow(playerTransform);
+                Debug.Log($"[EntityManager] Detected CameraBillboard tag - using SimpleThirdPerson camera for {playerObject.name}");
+                return Core.CameraFollowConfig.SimpleThirdPerson(playerTransform);
             }
-            // Default fallback: Use FreeLookOrbit (optimized for 3D characters like AdventurerCharacter)
+            // Default fallback: Use SimpleThirdPerson (optimized for 3D characters like AdventurerCharacter)
             else
             {
                 Debug.LogWarning($"[EntityManager] No camera-specific tag found on '{playerObject.name}' (Current tag: '{playerObject.tag}'). " +
-                                 $"Using default FreeLookOrbit camera. Consider adding '{Core.CameraTags.Camera3D}' or " +
+                                 $"Using default SimpleThirdPerson camera. Consider adding '{Core.CameraTags.Camera3D}' or " +
                                  $"'{Core.CameraTags.CameraBillboard}' tag, or implement ICameraPreference.");
-                return Core.CameraFollowConfig.FreeLookOrbit(playerTransform);
+                return Core.CameraFollowConfig.SimpleThirdPerson(playerTransform);
             }
         }
 
@@ -529,7 +529,7 @@ namespace BugWars.Entity
                 return;
             }
 
-            var config = Core.CameraFollowConfig.ThirdPerson(target, cameraName);
+            var config = Core.CameraFollowConfig.SimpleThirdPerson(target, cameraName);
             _eventManager.RequestCameraFollow(config);
         }
 

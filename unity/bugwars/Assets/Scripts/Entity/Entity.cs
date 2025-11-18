@@ -42,8 +42,8 @@ namespace BugWars.Entity
         [SerializeField] protected bool autoFlipSprite = true; // Automatically flip sprite based on movement
 
         [Header("Physics")]
-        [SerializeField] protected float moveSpeed = 5f;
-        [SerializeField] protected float rotationSpeed = 1800f; // Fast rotation for responsive 3D movement
+        [SerializeField] [HideInInspector] protected float moveSpeed = 5f; // Moved to Player Properties for Player classes
+        [SerializeField] [HideInInspector] protected float rotationSpeed = 1800f; // Legacy - not used with standard WASD controls
 
         protected bool isAlive = true;
         protected Rigidbody rb;
