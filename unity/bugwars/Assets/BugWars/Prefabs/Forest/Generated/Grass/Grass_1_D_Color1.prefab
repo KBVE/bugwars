@@ -63,6 +63,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ca73db1b16fdc4896b5edac1b9c16380, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1267854508076985709}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ca73db1b16fdc4896b5edac1b9c16380, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6558926485831234478}
   m_SourcePrefab: {fileID: 100100000, guid: ca73db1b16fdc4896b5edac1b9c16380, type: 3}
 --- !u!1 &5039143108805366260 stripped
 GameObject:
@@ -70,6 +73,24 @@ GameObject:
   m_PrefabInstance: {fileID: 5273653748181150885}
   m_PrefabAsset: {fileID: 0}
 --- !u!114 &1267854508076985709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5039143108805366260}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Harvest
+  interactionDistance: 1.5
+  interactionType: 2
+  resourceType: 3
+  resourceAmount: 2
+  harvestTime: 0.5
+--- !u!114 &6558926485831234478
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

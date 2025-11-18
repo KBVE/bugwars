@@ -62,17 +62,38 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a8d06a25b91b24b7faf15fac8e86ae79, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8435779097210277638}
+      addedObject: {fileID: 1574028040020353306}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a8d06a25b91b24b7faf15fac8e86ae79, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1574028040020353306}
+      addedObject: {fileID: 843470785529915249}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: a8d06a25b91b24b7faf15fac8e86ae79, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2225268669244659240}
   m_SourcePrefab: {fileID: 100100000, guid: a8d06a25b91b24b7faf15fac8e86ae79, type: 3}
 --- !u!1 &991323871530107241 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: a8d06a25b91b24b7faf15fac8e86ae79, type: 3}
   m_PrefabInstance: {fileID: 72209459650755640}
   m_PrefabAsset: {fileID: 0}
---- !u!136 &8435779097210277638
+--- !u!114 &1574028040020353306
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 991323871530107241}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Chop
+  interactionDistance: 3
+  interactionType: 0
+  resourceType: 0
+  resourceAmount: 5
+  harvestTime: 2
+--- !u!136 &843470785529915249
 CapsuleCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -95,7 +116,7 @@ CapsuleCollider:
   m_Height: 2.6006525
   m_Direction: 1
   m_Center: {x: -0.538098, y: 1.2843708, z: -0.26679173}
---- !u!114 &1574028040020353306
+--- !u!114 &2225268669244659240
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

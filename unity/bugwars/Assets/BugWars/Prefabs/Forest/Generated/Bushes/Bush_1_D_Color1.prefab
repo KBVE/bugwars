@@ -62,17 +62,38 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 17f5e3a6de7714b5ba120b584879285e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8876529528838370044}
+      addedObject: {fileID: 1357912434183799069}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 17f5e3a6de7714b5ba120b584879285e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1357912434183799069}
+      addedObject: {fileID: 6939819158817937038}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 17f5e3a6de7714b5ba120b584879285e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6507443459164586444}
   m_SourcePrefab: {fileID: 100100000, guid: 17f5e3a6de7714b5ba120b584879285e, type: 3}
 --- !u!1 &841020354568955362 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 17f5e3a6de7714b5ba120b584879285e, type: 3}
   m_PrefabInstance: {fileID: 534396047137020083}
   m_PrefabAsset: {fileID: 0}
---- !u!135 &8876529528838370044
+--- !u!114 &1357912434183799069
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 841020354568955362}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Harvest
+  interactionDistance: 2
+  interactionType: 2
+  resourceType: 2
+  resourceAmount: 3
+  harvestTime: 1
+--- !u!135 &6939819158817937038
 SphereCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -93,7 +114,7 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.6267408
   m_Center: {x: 0, y: 0.4816167, z: -0.000000018860682}
---- !u!114 &1357912434183799069
+--- !u!114 &6507443459164586444
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

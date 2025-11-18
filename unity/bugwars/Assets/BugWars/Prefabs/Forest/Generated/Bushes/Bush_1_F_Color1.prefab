@@ -62,17 +62,38 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: d25860cbfca4441ed95ed70ba57cd038, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1336910589323210722}
+      addedObject: {fileID: 4727600400064797500}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: d25860cbfca4441ed95ed70ba57cd038, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4727600400064797500}
+      addedObject: {fileID: 304695494132236141}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: d25860cbfca4441ed95ed70ba57cd038, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8317646796266737662}
   m_SourcePrefab: {fileID: 100100000, guid: d25860cbfca4441ed95ed70ba57cd038, type: 3}
 --- !u!1 &382388182185799722 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: d25860cbfca4441ed95ed70ba57cd038, type: 3}
   m_PrefabInstance: {fileID: 689030777587944827}
   m_PrefabAsset: {fileID: 0}
---- !u!135 &1336910589323210722
+--- !u!114 &4727600400064797500
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 382388182185799722}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Harvest
+  interactionDistance: 2
+  interactionType: 2
+  resourceType: 2
+  resourceAmount: 3
+  harvestTime: 1
+--- !u!135 &304695494132236141
 SphereCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -93,7 +114,7 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.91309804
   m_Center: {x: -0.077441335, y: 0.48161665, z: -0.13152607}
---- !u!114 &4727600400064797500
+--- !u!114 &8317646796266737662
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

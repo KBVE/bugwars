@@ -62,17 +62,38 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 0223e114be027494f8dd42303fce45ee, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7909875047128797092}
+      addedObject: {fileID: 6468739785071299510}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 0223e114be027494f8dd42303fce45ee, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6468739785071299510}
+      addedObject: {fileID: 5090949340118712813}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 0223e114be027494f8dd42303fce45ee, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1184286193518408568}
   m_SourcePrefab: {fileID: 100100000, guid: 0223e114be027494f8dd42303fce45ee, type: 3}
 --- !u!1 &3420929006457492432 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 0223e114be027494f8dd42303fce45ee, type: 3}
   m_PrefabInstance: {fileID: 2574085499106340481}
   m_PrefabAsset: {fileID: 0}
---- !u!65 &7909875047128797092
+--- !u!114 &6468739785071299510
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3420929006457492432}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Mine
+  interactionDistance: 3
+  interactionType: 1
+  resourceType: 1
+  resourceAmount: 4
+  harvestTime: 3
+--- !u!65 &5090949340118712813
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -93,7 +114,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.3470283, y: 2.0009387, z: 2.33144}
   m_Center: {x: -0.017323136, y: 0.102147564, z: -0.10949828}
---- !u!114 &6468739785071299510
+--- !u!114 &1184286193518408568
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

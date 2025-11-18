@@ -62,17 +62,38 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c56ab8b13637a4c73be0e7be8634fd2c, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4007569363799864327}
+      addedObject: {fileID: 7075434742094434766}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c56ab8b13637a4c73be0e7be8634fd2c, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7075434742094434766}
+      addedObject: {fileID: 6962442765396884521}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c56ab8b13637a4c73be0e7be8634fd2c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8676014359129376766}
   m_SourcePrefab: {fileID: 100100000, guid: c56ab8b13637a4c73be0e7be8634fd2c, type: 3}
 --- !u!1 &5933342368107337750 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c56ab8b13637a4c73be0e7be8634fd2c, type: 3}
   m_PrefabInstance: {fileID: 6815668773410645319}
   m_PrefabAsset: {fileID: 0}
---- !u!136 &4007569363799864327
+--- !u!114 &7075434742094434766
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5933342368107337750}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Chop
+  interactionDistance: 3
+  interactionType: 0
+  resourceType: 0
+  resourceAmount: 5
+  harvestTime: 2
+--- !u!136 &6962442765396884521
 CapsuleCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -95,7 +116,7 @@ CapsuleCollider:
   m_Height: 3.7398293
   m_Direction: 1
   m_Center: {x: 0.34109235, y: 1.9638749, z: -0.21444018}
---- !u!114 &7075434742094434766
+--- !u!114 &8676014359129376766
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

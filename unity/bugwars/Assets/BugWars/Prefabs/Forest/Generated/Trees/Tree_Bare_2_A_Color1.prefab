@@ -62,17 +62,38 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 16343717a9be24943bcbcbaf589db6c3, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1437589842593219319}
+      addedObject: {fileID: 6361849520240497692}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 16343717a9be24943bcbcbaf589db6c3, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6361849520240497692}
+      addedObject: {fileID: 8080703973223022233}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 16343717a9be24943bcbcbaf589db6c3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 310151488370995727}
   m_SourcePrefab: {fileID: 100100000, guid: 16343717a9be24943bcbcbaf589db6c3, type: 3}
 --- !u!1 &1033427678939537435 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 16343717a9be24943bcbcbaf589db6c3, type: 3}
   m_PrefabInstance: {fileID: 186355325126991178}
   m_PrefabAsset: {fileID: 0}
---- !u!136 &1437589842593219319
+--- !u!114 &6361849520240497692
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1033427678939537435}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Chop
+  interactionDistance: 3
+  interactionType: 0
+  resourceType: 0
+  resourceAmount: 5
+  harvestTime: 2
+--- !u!136 &8080703973223022233
 CapsuleCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -95,7 +116,7 @@ CapsuleCollider:
   m_Height: 3.0742674
   m_Direction: 1
   m_Center: {x: 0.0941478, y: 1.563068, z: 0.090866804}
---- !u!114 &6361849520240497692
+--- !u!114 &310151488370995727
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

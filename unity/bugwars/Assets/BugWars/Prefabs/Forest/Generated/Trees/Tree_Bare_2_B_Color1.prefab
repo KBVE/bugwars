@@ -62,17 +62,38 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c18e8f1fd112c47a8a403ea36be794b6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1660751762126399519}
+      addedObject: {fileID: 7458370558268249967}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c18e8f1fd112c47a8a403ea36be794b6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7458370558268249967}
+      addedObject: {fileID: 7023851006241408900}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c18e8f1fd112c47a8a403ea36be794b6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2984210443736235887}
   m_SourcePrefab: {fileID: 100100000, guid: c18e8f1fd112c47a8a403ea36be794b6, type: 3}
 --- !u!1 &1326689957846189682 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c18e8f1fd112c47a8a403ea36be794b6, type: 3}
   m_PrefabInstance: {fileID: 2209069137694374691}
   m_PrefabAsset: {fileID: 0}
---- !u!136 &1660751762126399519
+--- !u!114 &7458370558268249967
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1326689957846189682}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Chop
+  interactionDistance: 3
+  interactionType: 0
+  resourceType: 0
+  resourceAmount: 5
+  harvestTime: 2
+--- !u!136 &7023851006241408900
 CapsuleCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -95,7 +116,7 @@ CapsuleCollider:
   m_Height: 4.43337
   m_Direction: 1
   m_Center: {x: 0.061697662, y: 2.4120133, z: 0.09822666}
---- !u!114 &7458370558268249967
+--- !u!114 &2984210443736235887
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
