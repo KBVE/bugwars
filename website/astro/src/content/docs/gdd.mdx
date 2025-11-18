@@ -49,6 +49,675 @@ The performance benefits of UniTask are substantial - it avoids the heap allocat
 UniTask also includes powerful operators for working with Unity's async operations, time-based delays, and cancellation tokens, giving us fine-grained control over asynchronous workflows.
 This is particularly important for Bug Wars' gameplay systems where we need responsive, non-blocking operations for enemy spawning, animation blending, and networked events.
 
+### R3 - Reactive Extensions for Unity
+
+[R3 GitHub Repository](https://github.com/Cysharp/R3)
+
+R3 is a modern reimplementation of Reactive Extensions (Rx) specifically designed for Unity and other .NET platforms, created by the author of UniRx with over 10 years of reactive programming experience. R3 represents a complete rethinking of reactive patterns for game development, addressing fundamental limitations in traditional Rx implementations while embracing modern C# language features and Unity's unique requirements.
+
+Unlike traditional Reactive Extensions which were designed for general-purpose asynchronous programming, R3 is built from the ground up for game engines and real-time interactive applications. It provides reactive event streams that respond to frame-based timing, player input, game state changes, and other in-memory events common in game development.
+
+#### What Makes R3 Different
+
+**Frame-Based Operations:**
+Traditional Rx libraries operate on wall-clock time (seconds, milliseconds) which poorly matches game engine execution models that run on frames. R3 introduces `FrameProvider` alongside the standard `TimeProvider`, enabling operators like `IntervalFrame`, `DelayFrame`, `ThrottleFrame`, and `DebounceFrame` that align naturally with Unity's Update loop. This allows developers to write reactive code that executes "every 5 frames" or "debounce for 10 frames" rather than awkwardly converting frames to time estimates.
+
+**Simplified Error Handling:**
+Traditional Rx terminates entire subscription chains when exceptions occur, requiring complex error recovery patterns. R3 fundamentally redesigns error handling - exceptions trigger `OnErrorResume` methods that give developers explicit control over recovery behavior without terminating the stream. This "errors are values" approach means reactive pipelines are more resilient and easier to reason about.
+
+**Performance-First Design:**
+R3 eliminates the `IScheduler` abstraction that caused significant overhead in traditional Rx, replacing it with the more efficient `TimeProvider` pattern from modern .NET. The framework uses abstract classes instead of interfaces, enabling better JIT optimization and reducing virtual call overhead. Subject implementations avoid `ImmutableArray` allocations that plagued UniRx performance. Benchmarks show R3 operations executing 2-10x faster than traditional Rx equivalents with dramatically reduced GC pressure.
+
+**Explicit Lifecycle Management:**
+R3 consolidates `OnError` and `OnCompleted` into a single `OnCompleted(Result result)` method, making subscription lifecycle explicit and preventing common memory leak patterns. Subscriptions are tracked explicitly, making it easier to diagnose and prevent resource leaks that can accumulate during long game sessions.
+
+#### Core Components
+
+**Observable Streams:**
+Observables represent sequences of events over time. In Bug Wars, observables can represent:
+- Player input events (button presses, movement input)
+- Health value changes
+- Enemy spawn triggers
+- Collision events
+- Animation state transitions
+- Frame-based timers for cooldowns and effects
+
+```csharp
+// Time-based observable (uses TimeProvider)
+Observable.Interval(TimeSpan.FromSeconds(1))
+    .Subscribe(x => Debug.Log($"Second elapsed: {x}"));
+
+// Frame-based observable (uses FrameProvider) - Unity-specific
+Observable.IntervalFrame(60) // Every 60 frames (~1 second at 60 FPS)
+    .Subscribe(x => Debug.Log($"Frame count: {x}"));
+
+// EveryUpdate provides frame-by-frame reactive updates
+Observable.EveryUpdate()
+    .Subscribe(_ => UpdateGameLogic());
+```
+
+**Operators - Transforming Event Streams:**
+R3 provides comprehensive LINQ-like operators for transforming, filtering, and combining event streams:
+
+- **Filtering**: `Where`, `Distinct`, `DistinctUntilChanged`, `Skip`, `Take`, `First`, `Last`
+- **Transformation**: `Select`, `SelectMany`, `Cast`, `OfType`
+- **Combination**: `Merge`, `Zip`, `CombineLatest`, `WithLatestFrom`
+- **Time-Based**: `Throttle`, `Debounce`, `Delay`, `Timeout`, `Buffer`, `Window`
+- **Frame-Based**: `ThrottleFrame`, `DebounceFrame`, `DelayFrame`, `BufferFrame` (Unity-specific)
+- **Aggregation**: `Scan`, `Aggregate`, `Count`, `Sum`, `Average`
+
+```csharp
+// Practical game example: Combo input detection
+inputStream
+    .Buffer(TimeSpan.FromSeconds(0.5)) // Group inputs within 0.5s windows
+    .Where(inputs => inputs.Count >= 3) // Require at least 3 inputs
+    .Subscribe(inputs => TriggerComboAttack(inputs));
+
+// Frame-based cooldown system
+attackButton
+    .ThrottleFrame(30) // Limit to once per 30 frames (~0.5s at 60 FPS)
+    .Subscribe(_ => ExecuteAttack());
+```
+
+**Subjects - Event Broadcasters:**
+Subjects act as both observable sources and observers, serving as event broadcasters that multiple systems can subscribe to:
+
+- `Subject<T>`: Basic event stream with no memory of past values
+- `BehaviorSubject<T>`: Maintains current value, new subscribers immediately receive latest value
+- `ReplaySubject<T>`: Buffers multiple past values, replaying them to new subscribers
+- `ReactiveProperty<T>`: Specialized BehaviorSubject with duplicate-elimination, ideal for data binding
+
+```csharp
+// Player health as ReactiveProperty
+public class PlayerHealth : MonoBehaviour
+{
+    private ReactiveProperty<int> health = new(100);
+
+    // Expose as read-only observable
+    public ReadOnlyReactiveProperty<int> Health => health;
+
+    public void TakeDamage(int amount)
+    {
+        health.Value -= amount; // Automatically notifies all subscribers
+    }
+}
+
+// UI subscribes to health changes
+playerHealth.Health
+    .Subscribe(newHealth => UpdateHealthBar(newHealth))
+    .AddTo(this); // Auto-dispose when GameObject is destroyed
+```
+
+**ReactiveProperty - Data Binding Foundation:**
+ReactiveProperty is R3's most powerful feature for game UI and state management. It wraps a value and notifies observers whenever that value changes, but only when the new value differs from the current value (duplicate elimination). This makes it perfect for:
+
+- Player stats (health, mana, stamina)
+- Game state flags (isPaused, isGameOver)
+- UI element states (button enabled/disabled)
+- Configuration values that affect multiple systems
+
+```csharp
+// Game pause state
+public class GameStateManager : MonoBehaviour
+{
+    private ReactiveProperty<bool> isPaused = new(false);
+    public ReadOnlyReactiveProperty<bool> IsPaused => isPaused;
+
+    public void TogglePause()
+    {
+        isPaused.Value = !isPaused.Value;
+        // All subscribers automatically notified
+    }
+}
+
+// Multiple systems react to pause state
+gameState.IsPaused
+    .Subscribe(paused => Time.timeScale = paused ? 0 : 1)
+    .AddTo(this);
+
+gameState.IsPaused
+    .Subscribe(paused => pauseMenu.SetActive(paused))
+    .AddTo(this);
+```
+
+#### Unity-Specific Features
+
+**FrameProvider - Game Loop Integration:**
+The `FrameProvider` is R3's killer feature for Unity development, providing frame-synchronized reactive operations:
+
+```csharp
+// Track value changes every frame
+Observable.EveryValueChanged(enemy, e => e.transform.position)
+    .Subscribe(pos => UpdateMinimapMarker(pos));
+
+// Execute logic on specific Unity lifecycle events
+Observable.EveryUpdate()
+    .Where(_ => isGameActive)
+    .Subscribe(_ => UpdateGameSimulation());
+
+Observable.EveryFixedUpdate()
+    .Subscribe(_ => UpdatePhysicsSimulation());
+
+Observable.EveryLateUpdate()
+    .Subscribe(_ => UpdateCameraTracking());
+```
+
+**Automatic Cleanup with AddTo:**
+R3 provides `AddTo(Component)` extension method for automatic subscription disposal when GameObjects are destroyed, preventing memory leaks:
+
+```csharp
+someObservable
+    .Subscribe(value => HandleValue(value))
+    .AddTo(this); // Auto-unsubscribe when this GameObject is destroyed
+```
+
+This pattern is critical for Unity development where components are frequently created and destroyed. Without proper cleanup, subscriptions can leak, causing performance degradation and unexpected behavior.
+
+**Integration with Unity Events:**
+R3 provides bridges to convert Unity's event systems into observable streams:
+
+```csharp
+// Convert UnityEvent to Observable
+button.onClick.AsObservable()
+    .Subscribe(_ => OnButtonClicked());
+
+// Convert Collision events to Observable
+this.OnCollisionEnterAsObservable()
+    .Subscribe(collision => HandleCollision(collision));
+```
+
+#### Use Cases in Bug Wars
+
+**Player Input Processing:**
+```csharp
+// Dash mechanic with cooldown
+dashInputObservable
+    .ThrottleFrame(120) // 2-second cooldown at 60 FPS
+    .Where(_ => !isDashing)
+    .Subscribe(_ => ExecuteDash())
+    .AddTo(this);
+```
+
+**Enemy Spawn System:**
+```csharp
+// Wave-based spawning with increasing difficulty
+Observable.IntervalFrame(180) // Spawn every 3 seconds
+    .Select((_, waveNumber) => waveNumber)
+    .Select(wave => CalculateSpawnCount(wave))
+    .Subscribe(count => SpawnEnemies(count))
+    .AddTo(this);
+```
+
+**Health Monitoring:**
+```csharp
+// Player health tracking with critical health warning
+playerHealth.Health
+    .Where(hp => hp <= 20)
+    .Subscribe(_ => TriggerLowHealthWarning())
+    .AddTo(this);
+
+// Game over on zero health
+playerHealth.Health
+    .Where(hp => hp <= 0)
+    .First() // Only trigger once
+    .Subscribe(_ => TriggerGameOver())
+    .AddTo(this);
+```
+
+**UI Data Binding:**
+```csharp
+// Reactive UI updates
+playerStats.Health
+    .Subscribe(hp => healthText.text = $"HP: {hp}")
+    .AddTo(this);
+
+playerStats.Score
+    .Subscribe(score => scoreText.text = $"Score: {score}")
+    .AddTo(this);
+```
+
+**Combo Detection System:**
+```csharp
+// Detect rapid sequential attacks for combo system
+attackInput
+    .Buffer(TimeSpan.FromSeconds(1)) // 1-second combo window
+    .Where(attacks => attacks.Count >= 3)
+    .Subscribe(attacks => ExecuteComboAttack(attacks.Count))
+    .AddTo(this);
+```
+
+#### Integration with Bug Wars Architecture
+
+R3 integrates seamlessly with our existing VContainer and EventManager architecture:
+
+**With VContainer:**
+- Managers can expose `ReactiveProperty` fields that other systems subscribe to via dependency injection
+- Services receive injected observables through constructor parameters
+- Reactive streams managed through singleton manager lifetimes
+
+**With EventManager:**
+- EventManager's UnityEvents can be converted to R3 observables via `AsObservable()`
+- R3 observables can trigger EventManager events when certain conditions occur
+- Hybrid approach: critical events use EventManager, while continuous state changes use R3
+
+**With UniTask:**
+- R3 observables can be converted to UniTask via `ToUniTask()` for async/await integration
+- UniTask operations can create observables via `Observable.FromUniTask()`
+- Combined approach enables both reactive streams and async workflows in the same codebase
+
+#### Performance Benefits for Bug Wars
+
+- **Zero Allocation**: Frame-based operators and ReactiveProperty updates produce no garbage, preventing GC spikes during gameplay
+- **Batch Processing**: Observable operators can batch operations, reducing per-frame overhead
+- **Lazy Evaluation**: Operators only execute when subscribed, avoiding wasted computation
+- **Efficient Filtering**: `Where` and `Distinct` operators prevent unnecessary downstream processing
+- **Controlled Execution**: `Throttle` and `Debounce` reduce event processing frequency for performance-critical systems
+
+R3 enables Bug Wars to implement complex reactive gameplay patterns (combo systems, cooldowns, state machines, UI binding) with clean, declarative code that performs excellently even in high-intensity scenarios with hundreds of entities and continuous input processing.
+
+### ObservableCollections - Reactive Collection System
+
+[ObservableCollections GitHub Repository](https://github.com/Cysharp/ObservableCollections/)
+
+ObservableCollections is a high-performance reactive collection library designed for .NET platforms including Unity, providing observable data structures that notify subscribers whenever the collection changes. Created by Cysharp (same creators as R3 and UniTask), ObservableCollections addresses the performance limitations of .NET's standard `ObservableCollection<T>` while adding powerful view synchronization and reactive programming integration.
+
+In game development, collections are fundamental - enemy lists, inventory items, active effects, spawned objects, quest objectives, and UI elements are all collections that change over time. ObservableCollections makes these dynamic collections reactive, enabling automatic UI updates, synchronized views, and efficient change propagation without manual polling or event wiring.
+
+#### What Makes ObservableCollections Special
+
+**Zero-Allocation Generic Events:**
+Standard .NET `ObservableCollection<T>` uses non-generic `NotifyCollectionChangedEventArgs` which boxes value types (int, float, structs), causing garbage allocation on every change. ObservableCollections uses fully generic events (`NotifyCollectionChangedEventHandler<T>` and `NotifyCollectionChangedEventArgs<T>`) that eliminate boxing, resulting in zero-allocation change notifications even for value-type collections.
+
+**Rich Change Notifications:**
+Unlike standard observable collections that only notify on add/remove/replace/move operations, ObservableCollections provides notifications for:
+- **Add**: Single or multiple items added
+- **Remove**: Single or multiple items removed
+- **Replace**: Items replaced at specific indices
+- **Move**: Items moved to different positions
+- **Reset**: Collection cleared or bulk-replaced
+- **Sort**: Collection sorted (new capability not in standard .NET)
+- **Reverse**: Collection reversed (new capability not in standard .NET)
+
+Sort and Reverse notifications are critical for game UI where leaderboards, inventory sorting, and priority-based lists need to reflect changes without full collection reconstruction.
+
+**Synchronized Views:**
+ObservableCollections' most powerful feature is synchronized views via the `ISynchronizedView<T, TView>` interface. Views are derived collections that automatically stay synchronized with their source collection through transformations:
+
+```csharp
+// Source collection of all enemies
+ObservableList<Enemy> allEnemies = new();
+
+// View of only alive enemies (automatically updates)
+var aliveEnemies = allEnemies.CreateView(enemy => enemy.IsAlive);
+
+// View sorted by distance from player (automatically re-sorts)
+var nearestEnemies = allEnemies
+    .CreateSortedView(enemy => Vector3.Distance(player.position, enemy.position));
+
+// View with transformed type (Enemy → UIElement)
+var enemyUIElements = allEnemies
+    .CreateView(enemy => new EnemyHealthBar(enemy));
+```
+
+Views eliminate the need for manually maintaining multiple synchronized lists - changes to the source collection automatically propagate through all views with efficient incremental updates.
+
+**Comprehensive Collection Types:**
+ObservableCollections provides seven fundamental data structures, each with observable change notifications:
+
+- **ObservableList<T>**: Observable version of `List<T>`, dynamic array with index access
+- **ObservableDictionary<TKey, TValue>**: Observable key-value store with fast lookups
+- **ObservableHashSet<T>**: Observable set with guaranteed uniqueness
+- **ObservableQueue<T>**: Observable FIFO queue for sequential processing
+- **ObservableStack<T>**: Observable LIFO stack for hierarchical operations
+- **ObservableRingBuffer<T>**: Observable circular buffer, perfect for fixed-size history tracking
+- **ObservableFixedSizeRingBuffer<T>**: Variant with strict size enforcement, ideal for rolling averages and frame buffers
+
+Each collection type provides the same interface as its standard .NET equivalent, making migration straightforward - simply replace `List<T>` with `ObservableList<T>` and add subscriptions.
+
+#### Core Features
+
+**Collection Change Observation:**
+```csharp
+ObservableList<Enemy> enemies = new();
+
+// Subscribe to all changes
+enemies.ObserveCountChanged()
+    .Subscribe(count => UpdateEnemyCounter(count));
+
+// Subscribe to specific change types
+enemies.ObserveAdd()
+    .Subscribe(e => OnEnemySpawned(e.Value));
+
+enemies.ObserveRemove()
+    .Subscribe(e => OnEnemyDestroyed(e.Value));
+
+enemies.ObserveReplace()
+    .Subscribe(e => OnEnemyReplaced(e.OldValue, e.NewValue));
+
+// Subscribe to any collection modification
+enemies.ObserveChanged()
+    .Subscribe(e => Debug.Log($"Collection changed: {e.Action}"));
+```
+
+**Filtered Views:**
+```csharp
+ObservableList<Entity> allEntities = new();
+
+// View of only enemies
+var enemies = allEntities.CreateView(entity => entity is Enemy);
+
+// View of entities within radius (predicate can access external state)
+var nearbyEntities = allEntities.CreateView(entity =>
+    Vector3.Distance(player.position, entity.position) < 50f);
+
+// Adding to source automatically updates views
+allEntities.Add(new Enemy()); // Automatically appears in 'enemies' view
+```
+
+**Sorted Views:**
+```csharp
+ObservableList<Enemy> enemies = new();
+
+// Sorted by health (ascending)
+var sortedByHealth = enemies.CreateSortedView(
+    enemy => enemy.Health,
+    comparer: Comparer<int>.Default);
+
+// Sorted by distance (custom comparison)
+var sortedByDistance = enemies.CreateSortedView(
+    enemy => Vector3.Distance(player.position, enemy.position));
+
+// View automatically re-sorts when source collection changes
+enemies.Add(newEnemy); // Inserted at correct sorted position
+enemies[0].Health -= 10; // Does NOT automatically re-sort (mutation detection limitation)
+enemies.Sort(); // Explicit sort triggers view update
+```
+
+**Transformed Views (Type Conversion):**
+```csharp
+ObservableList<Enemy> enemies = new();
+
+// Transform enemies into UI representations
+var healthBars = enemies.CreateView(
+    enemy => new EnemyHealthBar(enemy));
+
+// healthBars automatically contains HealthBar instances
+// Adding/removing enemies automatically adds/removes health bars
+```
+
+**Range Operations (Efficient Bulk Changes):**
+```csharp
+ObservableList<int> numbers = new();
+
+// Add multiple items with single notification
+numbers.AddRange(new[] { 1, 2, 3, 4, 5 });
+
+// Remove range with single notification
+numbers.RemoveRange(1, 3); // Remove 3 items starting at index 1
+
+// Efficient for UI updates - one refresh instead of five
+```
+
+**Ring Buffer for History Tracking:**
+```csharp
+// Track last 60 frames of player position
+ObservableRingBuffer<Vector3> positionHistory = new(60);
+
+void Update()
+{
+    positionHistory.Add(transform.position); // Automatically evicts oldest
+}
+
+// Useful for trail effects, undo systems, rolling averages
+float averageSpeed = positionHistory
+    .Zip(positionHistory.Skip(1), (a, b) => Vector3.Distance(a, b))
+    .Average();
+```
+
+#### Integration with R3
+
+ObservableCollections provides seamless R3 integration through extension methods that convert collection change events into observables:
+
+```csharp
+ObservableList<Enemy> enemies = new();
+
+// All change events as observable stream
+enemies.ObserveChanged()
+    .Subscribe(e => Debug.Log($"Action: {e.Action}, Index: {e.Index}"));
+
+// Specific change types
+enemies.ObserveAdd()
+    .Subscribe(added => SpawnEnemyVisual(added.Value));
+
+enemies.ObserveRemove()
+    .Subscribe(removed => DestroyEnemyVisual(removed.Value));
+
+// Count changes as reactive stream
+enemies.ObserveCountChanged()
+    .Subscribe(count => UpdateWaveProgress(count));
+
+// Combined with R3 operators
+enemies.ObserveAdd()
+    .ThrottleFrame(10) // Batch spawn notifications
+    .Subscribe(batch => SpawnEnemyBatch(batch));
+```
+
+This integration enables powerful reactive patterns - collections become observable event sources that can be transformed, filtered, and combined using R3's operator suite.
+
+#### Use Cases in Bug Wars
+
+**Enemy Management System:**
+```csharp
+public class EnemyManager : MonoBehaviour
+{
+    // Observable collection of all enemies
+    public ObservableList<Enemy> AllEnemies { get; } = new();
+
+    // Synchronized view of alive enemies only
+    public ISynchronizedView<Enemy> AliveEnemies { get; private set; }
+
+    // View sorted by distance from player
+    public ISynchronizedView<Enemy> NearestEnemies { get; private set; }
+
+    void Start()
+    {
+        AliveEnemies = AllEnemies.CreateView(e => e.IsAlive);
+
+        NearestEnemies = AllEnemies.CreateSortedView(e =>
+            Vector3.Distance(player.position, e.position));
+
+        // UI updates automatically when enemy count changes
+        AllEnemies.ObserveCountChanged()
+            .Subscribe(count => enemyCountText.text = $"Enemies: {count}")
+            .AddTo(this);
+
+        // Play sound when enemy spawns
+        AllEnemies.ObserveAdd()
+            .Subscribe(e => audioManager.PlaySpawnSound())
+            .AddTo(this);
+    }
+
+    public void SpawnEnemy(Vector3 position)
+    {
+        var enemy = Instantiate(enemyPrefab, position, Quaternion.identity);
+        AllEnemies.Add(enemy); // Automatically updates all views and triggers events
+    }
+
+    public void RemoveEnemy(Enemy enemy)
+    {
+        AllEnemies.Remove(enemy); // Automatically updates all views
+        Destroy(enemy.gameObject);
+    }
+}
+```
+
+**Inventory System with Reactive UI:**
+```csharp
+public class Inventory : MonoBehaviour
+{
+    // Observable inventory items
+    public ObservableList<InventoryItem> Items { get; } = new();
+
+    // View of equipped items
+    private ISynchronizedView<InventoryItem> equippedItems;
+
+    // View of consumable items
+    private ISynchronizedView<InventoryItem> consumables;
+
+    void Start()
+    {
+        equippedItems = Items.CreateView(item => item.IsEquipped);
+        consumables = Items.CreateView(item => item.Type == ItemType.Consumable);
+
+        // UI automatically updates when inventory changes
+        Items.ObserveChanged()
+            .Subscribe(_ => RefreshInventoryUI())
+            .AddTo(this);
+
+        // Show notification when rare item added
+        Items.ObserveAdd()
+            .Where(e => e.Value.Rarity == Rarity.Legendary)
+            .Subscribe(e => ShowItemAcquiredNotification(e.Value))
+            .AddTo(this);
+    }
+
+    public void AddItem(InventoryItem item)
+    {
+        Items.Add(item); // Automatically updates views and triggers UI refresh
+    }
+
+    public void SortByRarity()
+    {
+        Items.Sort((a, b) => b.Rarity.CompareTo(a.Rarity)); // Triggers sort notification
+    }
+}
+```
+
+**Active Effects System:**
+```csharp
+public class PlayerEffects : MonoBehaviour
+{
+    // Track active status effects
+    public ObservableList<StatusEffect> ActiveEffects { get; } = new();
+
+    // View of only buff effects
+    private ISynchronizedView<StatusEffect> activeBuffs;
+
+    // View of only debuff effects
+    private ISynchronizedView<StatusEffect> activeDebuffs;
+
+    void Start()
+    {
+        activeBuffs = ActiveEffects.CreateView(e => e.Type == EffectType.Buff);
+        activeDebuffs = ActiveEffects.CreateView(e => e.Type == EffectType.Debuff);
+
+        // Update UI icons when effects change
+        ActiveEffects.ObserveChanged()
+            .Subscribe(_ => UpdateEffectIcons())
+            .AddTo(this);
+
+        // Log when critical debuffs applied
+        activeDebuffs.ObserveAdd()
+            .Where(e => e.Value.Severity == Severity.Critical)
+            .Subscribe(e => Debug.LogWarning($"Critical debuff applied: {e.Value.Name}"))
+            .AddTo(this);
+    }
+
+    public void ApplyEffect(StatusEffect effect)
+    {
+        ActiveEffects.Add(effect);
+        // Views and UI automatically update
+    }
+
+    void Update()
+    {
+        // Remove expired effects
+        ActiveEffects.RemoveAll(e => e.IsExpired);
+        // Each removal triggers events and view updates
+    }
+}
+```
+
+**Leaderboard System:**
+```csharp
+public class LeaderboardManager : MonoBehaviour
+{
+    // Observable leaderboard entries
+    public ObservableList<LeaderboardEntry> Entries { get; } = new();
+
+    // Sorted view (top 10)
+    private ISynchronizedView<LeaderboardEntry> topTen;
+
+    void Start()
+    {
+        // Create descending sorted view by score
+        topTen = Entries.CreateSortedView(
+            entry => -entry.Score, // Negative for descending order
+            limit: 10); // Only keep top 10 in view
+
+        // UI updates automatically when leaderboard changes
+        topTen.ObserveChanged()
+            .Subscribe(_ => RefreshLeaderboardUI())
+            .AddTo(this);
+    }
+
+    public void SubmitScore(string playerName, int score)
+    {
+        var entry = new LeaderboardEntry(playerName, score);
+        Entries.Add(entry); // Automatically inserted in correct sorted position in view
+    }
+}
+```
+
+**Performance Monitoring (Ring Buffer):**
+```csharp
+public class PerformanceMonitor : MonoBehaviour
+{
+    // Track last 120 frames of FPS
+    private ObservableRingBuffer<float> fpsHistory = new(120);
+
+    void Update()
+    {
+        float currentFPS = 1f / Time.deltaTime;
+        fpsHistory.Add(currentFPS); // Oldest value automatically evicted
+
+        // Calculate rolling average
+        float averageFPS = fpsHistory.Average();
+        fpsText.text = $"FPS: {currentFPS:F0} (Avg: {averageFPS:F0})";
+    }
+}
+```
+
+#### Integration with Bug Wars Architecture
+
+**With VContainer:**
+- Managers can expose `ObservableList` or other observable collections as public properties
+- Systems receive collections via dependency injection
+- Collection subscriptions managed through manager lifetimes
+
+**With R3:**
+- Collection change events convert to R3 observables via `ObserveChanged()`, `ObserveAdd()`, etc.
+- R3 operators transform and filter collection events
+- Combined reactive streams enable complex data flow patterns
+
+**With EventManager:**
+- Collection changes can trigger EventManager events for critical state transitions
+- Hybrid approach: use ObservableCollections for granular change tracking, EventManager for major game events
+
+**With UniTask:**
+- Collection operations can be awaited via R3's `ToUniTask()` extension
+- Async operations can populate collections with progress tracking
+
+#### Performance Benefits
+
+- **Zero-Allocation Change Events**: Generic events eliminate boxing for value types
+- **Incremental View Updates**: Views update efficiently without full collection traversal
+- **Batch Operations**: Range operations (AddRange, RemoveRange) trigger single notifications
+- **Memory Efficiency**: Ring buffers prevent unbounded growth for history tracking
+- **Lazy Evaluation**: Views only compute when accessed, not on every source change
+
+ObservableCollections enables Bug Wars to implement complex data-driven systems (enemy management, inventory, effects, leaderboards) with automatic UI synchronization, efficient change propagation, and clean separation between data models and views - all with excellent performance characteristics suitable for real-time gameplay.
+
 ### Cinemachine - Procedural Camera System
 
 [Cinemachine Documentation](https://docs.unity3d.com/Packages/com.unity.cinemachine@latest)
@@ -1340,4 +2009,4 @@ BugWars_PressKit/
 
 ---
 
-*Last Updated: 2025-01-11 - Added Sprite Rendering System documentation (custom URP shader, mesh-based rendering, sprite atlas system, Samurai character implementation)*
+*Last Updated: 2025-11-18 - Added comprehensive documentation for R3 (Reactive Extensions) and ObservableCollections, including core concepts, Unity integration, practical code examples, and Bug Wars-specific use cases*
