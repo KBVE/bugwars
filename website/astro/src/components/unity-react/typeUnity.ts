@@ -75,6 +75,9 @@ export enum UnityEventType {
   CUSTOM = 'custom',
 
   // New standardized events (match Unity MessageTypes.cs)
+  // Bridge initialization
+  BRIDGE_READY = 'BridgeReady',
+
   // Game lifecycle
   GAME_PAUSED = 'GamePaused',
   GAME_RESUMED = 'GameResumed',

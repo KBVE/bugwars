@@ -10,8 +10,21 @@ namespace BugWars.JavaScriptBridge
     /// Main bridge component for Unity WebGL <-> JavaScript communication.
     /// This GameObject receives messages from the JavaScript/React layer via react-unity-webgl.
     ///
+    /// CRITICAL REQUIREMENT:
+    /// This component MUST be on a GameObject named "WebGLBridge" (case-sensitive)
+    /// because React uses: sendMessage('WebGLBridge', 'OnSessionUpdate', jsonData)
+    ///
+    /// When using VContainer, this is handled automatically via RegisterComponentOnNewGameObject.
+    /// If manually adding to scene, ensure GameObject.name == "WebGLBridge"
+    ///
+    /// Initialization Flow:
+    /// 1. VContainer creates/injects this component during container build
+    /// 2. Awake() runs and sets up the singleton
+    /// 3. Start() runs after VContainer injection is complete
+    /// 4. Unity sends "BridgeReady" signal to React
+    /// 5. React waits for "BridgeReady" before sending session data
+    ///
     /// Usage:
-    /// - Attach this script to a GameObject named "WebGLBridge" in your scene
     /// - JavaScript calls: sendMessage('WebGLBridge', 'OnSessionUpdate', jsonData)
     /// - Unity sends back: SendMessageToWeb("GameReady", jsonData)
     /// </summary>
@@ -21,6 +34,8 @@ namespace BugWars.JavaScriptBridge
         public static WebGLBridge Instance { get; private set; }
 
         [Inject] private EventManager _eventManager;
+
+        private bool _isReady = false;
 
         // External JavaScript functions (from react-unity-webgl)
         [DllImport("__Internal")]
@@ -34,13 +49,38 @@ namespace BugWars.JavaScriptBridge
             // Singleton pattern
             if (Instance != null && Instance != this)
             {
+                Debug.LogWarning($"[WebGLBridge] Duplicate instance detected. Destroying duplicate on '{gameObject.name}'.");
                 Destroy(gameObject);
                 return;
             }
             Instance = this;
             DontDestroyOnLoad(gameObject);
 
-            Debug.Log("[WebGLBridge] Initialized and ready for JavaScript communication");
+            // Validate GameObject name matches React's expectations
+            if (gameObject.name != "WebGLBridge")
+            {
+                Debug.LogWarning($"[WebGLBridge] GameObject name is '{gameObject.name}' but should be 'WebGLBridge'. " +
+                                "React Unity sendMessage calls may fail!");
+            }
+
+            Debug.Log("[WebGLBridge] Awake complete. GameObject instantiated.");
+        }
+
+        private void Start()
+        {
+            // Start() runs after VContainer injection is complete
+            // Send ready signal to React so it knows Unity is fully initialized
+            _isReady = true;
+
+            Debug.Log("[WebGLBridge] VContainer injection complete. Sending BridgeReady signal to React.");
+
+            // Notify React that Unity bridge is ready to receive messages
+            SendToWeb("BridgeReady", new
+            {
+                timestamp = DateTime.UtcNow.ToString("o"),
+                gameObjectName = gameObject.name,
+                version = Application.version
+            });
         }
 
         #region Incoming Messages from JavaScript
@@ -53,6 +93,12 @@ namespace BugWars.JavaScriptBridge
         {
             try
             {
+                if (!_isReady)
+                {
+                    Debug.LogWarning("[WebGLBridge] Received session update before bridge was ready! " +
+                                    "This may indicate a race condition. Message will still be processed.");
+                }
+
                 Debug.Log($"[WebGLBridge] Received session update: {sessionJson}");
                 var sessionData = JsonUtility.FromJson<SessionData>(sessionJson);
 

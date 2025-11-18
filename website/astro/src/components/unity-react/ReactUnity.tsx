@@ -111,6 +111,7 @@ export const ReactUnity: FC<ReactUnityProps> = ({
 }) => {
   const { session, ready: sessionReady } = useSession();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [bridgeReady, setBridgeReady] = useState(false);
 
   // Use the react-unity-webgl hook
   const {
@@ -148,10 +149,36 @@ export const ReactUnity: FC<ReactUnityProps> = ({
   }, [isLoaded, sendMessage, requestFullscreen, unload, onReady, startFullscreen, onUnityEvent]);
 
   /**
-   * Send session info to Unity when loaded and session is available
+   * Listen for Unity bridge ready signal
+   * Unity sends "BridgeReady" after VContainer initialization completes
    */
   useEffect(() => {
-    if (isLoaded && sessionReady && session) {
+    const handleBridgeReady = (data: string) => {
+      try {
+        const readyData = JSON.parse(data);
+        console.log('[ReactUnity] Unity bridge is ready:', readyData);
+        setBridgeReady(true);
+      } catch (error) {
+        console.error('[ReactUnity] Error parsing BridgeReady data:', error);
+        // Still mark as ready even if parsing fails
+        setBridgeReady(true);
+      }
+    };
+
+    addEventListener('BridgeReady', handleBridgeReady);
+
+    return () => {
+      removeEventListener('BridgeReady', handleBridgeReady);
+    };
+  }, [addEventListener, removeEventListener]);
+
+  /**
+   * Send session info to Unity when bridge is ready and session is available
+   * IMPORTANT: Wait for bridgeReady to avoid race condition where Unity's
+   * VContainer hasn't finished instantiating the WebGLBridge GameObject yet
+   */
+  useEffect(() => {
+    if (isLoaded && bridgeReady && sessionReady && session) {
       const user = session.user;
       // Extract username - check all OAuth provider fields
       // GitHub: user_name, Discord: global_name/name, Twitch: preferred_username
@@ -168,6 +195,12 @@ export const ReactUnity: FC<ReactUnityProps> = ({
 
       const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
 
+      console.log('[ReactUnity] Sending session update to Unity:', {
+        userId: user?.id,
+        displayName,
+        username
+      });
+
       sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({
         userId: user?.id,
         email: user?.email,
@@ -176,7 +209,7 @@ export const ReactUnity: FC<ReactUnityProps> = ({
         avatarUrl
       }));
     }
-  }, [isLoaded, sessionReady, session, sendMessage]);
+  }, [isLoaded, bridgeReady, sessionReady, session, sendMessage]);
 
   /**
    * Listen for custom Unity events
