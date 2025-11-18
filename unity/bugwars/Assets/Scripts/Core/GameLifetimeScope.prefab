@@ -297,8 +297,10 @@ MonoBehaviour:
   lookSensitivityX: 1
   lookSensitivityY: 1
   invertY: 1
-  defaultTiltAngle: 20
+  defaultTiltAngle: 15
   defaultPanOffset: 0
+  cameraHeight: 100000
+  cameraDistanceBehind: 21000
   cameraMode: 1
   autoRotateToMovement: 1
   autoRotateSpeed: 120
@@ -315,7 +317,7 @@ MonoBehaviour:
   enableRecenterButton: 0
   recenterKey: 118
   enableZoom: 1
-  defaultZoomDistance: -8.5
+  defaultZoomDistance: 8.5
 --- !u!1 &7897882360276293766
 GameObject:
   m_ObjectHideFlags: 0
@@ -366,11 +368,18 @@ MonoBehaviour:
   defaultTerrainMaterial: {fileID: 0}
   chunkSize: 20
   chunkResolution: 20
-  chunkLoadDistance: 2
+  hotChunkRadius: 3
+  warmChunkRadius: 8
+  coldChunkRadius: 14
   chunkUnloadDistance: 3
   enableDynamicLoading: 1
   enableFrustumCulling: 1
   cullingUpdateInterval: 0.5
+  chunkUpdateInterval: 0.25
+  targetFrameTime: 0.016
+  maxGenerationTimePerFrame: 0.005
+  minFramesBetweenChunks: 3
+  useProgressiveLoading: 1
   showDebugInfo: 1
 --- !u!1 &8462317456789012345
 GameObject:
@@ -486,4 +495,4 @@ MonoBehaviour:
   cameraLookSensitivity: 0.1
   cameraZoomSensitivity: 0.1
   invertCameraY: 1
-  cameraInputCaptured: 0
+  cameraInputCaptured: 1

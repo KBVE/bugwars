@@ -17,9 +17,7 @@
     justify-content: space-between;
     align-items: flex-start;
     padding: 20px;
-    background-color: rgba(24, 24, 27, 0.7); /* Zinc 900 with transparency */
-    border-bottom-width: 2px;
-    border-bottom-color: rgb(82, 82, 91); /* Zinc 600 */
+    /* Background removed - no transparent black bar */
     /* Enable pointer events for HUD elements */
     picking-mode: Position;
 }
