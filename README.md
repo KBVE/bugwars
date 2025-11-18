@@ -20,3 +20,6 @@ https://kaylousberg.itch.io/kaykit-adventurers
 
 KayKit Rigs
 https://kaylousberg.itch.io/kaykit-character-animations
+
+KayKit Forest
+https://kaylousberg.itch.io/kaykit-forest
