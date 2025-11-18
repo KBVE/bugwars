@@ -5,6 +5,7 @@ using VContainer.Unity;
 using BugWars.UI;
 using BugWars.Terrain;
 using BugWars.Entity;
+using BugWars.Interaction;
 using BugWars.JavaScriptBridge;
 
 namespace BugWars.Core
@@ -42,6 +43,9 @@ namespace BugWars.Core
         private CameraManager cameraManager;
         [SerializeField] [Tooltip("Optional - EntityManager component to register. Will create if not assigned.")]
         private EntityManager entityManager;
+        [SerializeField] [Tooltip("Optional - InteractionManager component to register. Will create if not assigned.")]
+        private InteractionManager interactionManager;
+
 
         protected override void Configure(IContainerBuilder builder)
         {
@@ -178,6 +182,18 @@ namespace BugWars.Core
             {
                 RegisterOrCreateManager<EntityManager>(builder, "EntityManager");
             }
+
+            // InteractionManager for R3-based object interactions (trees, rocks, bushes)
+            if (interactionManager != null)
+            {
+                builder.RegisterComponent(interactionManager).AsImplementedInterfaces().AsSelf();
+            }
+            else
+            {
+                var registration = builder.RegisterComponentOnNewGameObject<InteractionManager>(Lifetime.Singleton, "InteractionManager");
+                registration.DontDestroyOnLoad().AsImplementedInterfaces().AsSelf();
+            }
+
         }
 
         /// <summary>

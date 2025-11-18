@@ -600,6 +600,72 @@ namespace BugWars.Editor
                     defaultBox.size = localSize * 0.9f;
                     break;
             }
+
+            // Add InteractableObject component for R3 interaction system
+            AddInteractableComponent(instance, objectType);
+        }
+
+        /// <summary>
+        /// Add InteractableObject component with appropriate settings
+        /// </summary>
+        private static void AddInteractableComponent(GameObject instance, BugWars.Terrain.EnvironmentObjectType objectType)
+        {
+            // Check if InteractableObject type exists (may not be compiled yet)
+            var interactableType = System.Type.GetType("BugWars.Interaction.InteractableObject, Assembly-CSharp");
+            if (interactableType == null)
+            {
+                Debug.LogWarning("[PrefabGenerator] InteractableObject class not found. Skipping interaction component.");
+                return;
+            }
+
+            var interactable = instance.AddComponent(interactableType);
+
+            // Use reflection to set properties since we can't reference the class directly in editor code
+            var serializedObject = new UnityEditor.SerializedObject(interactable);
+
+            switch (objectType)
+            {
+                case BugWars.Terrain.EnvironmentObjectType.Tree:
+                    SetInteractableProperties(serializedObject, "Chop", 3f, "Chop", "Wood", 5, 2f);
+                    break;
+
+                case BugWars.Terrain.EnvironmentObjectType.Bush:
+                    SetInteractableProperties(serializedObject, "Harvest", 2f, "Harvest", "Berries", 3, 1f);
+                    break;
+
+                case BugWars.Terrain.EnvironmentObjectType.Rock:
+                    SetInteractableProperties(serializedObject, "Mine", 3f, "Mine", "Stone", 4, 3f);
+                    break;
+
+                case BugWars.Terrain.EnvironmentObjectType.Grass:
+                    SetInteractableProperties(serializedObject, "Harvest", 1.5f, "Harvest", "Herbs", 2, 0.5f);
+                    break;
+            }
+
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        private static void SetInteractableProperties(UnityEditor.SerializedObject obj, string prompt, float distance,
+            string interactionType, string resourceType, int amount, float harvestTime)
+        {
+            obj.FindProperty("interactionPrompt").stringValue = prompt;
+            obj.FindProperty("interactionDistance").floatValue = distance;
+
+            // Set enums by finding the index
+            var interactionTypeProp = obj.FindProperty("interactionType");
+            if (interactionTypeProp != null)
+            {
+                interactionTypeProp.enumValueIndex = System.Array.IndexOf(interactionTypeProp.enumNames, interactionType);
+            }
+
+            var resourceTypeProp = obj.FindProperty("resourceType");
+            if (resourceTypeProp != null)
+            {
+                resourceTypeProp.enumValueIndex = System.Array.IndexOf(resourceTypeProp.enumNames, resourceType);
+            }
+
+            obj.FindProperty("resourceAmount").intValue = amount;
+            obj.FindProperty("harvestTime").floatValue = harvestTime;
         }
     }
 }

@@ -216,14 +216,6 @@ namespace BugWars.JavaScriptBridge
     #region JSON Data Structures
 
     [Serializable]
-    public class Vector3Data
-    {
-        public float x;
-        public float y;
-        public float z;
-    }
-
-    [Serializable]
     public class QuaternionData
     {
         public float x;
