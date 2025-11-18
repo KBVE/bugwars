@@ -16,11 +16,23 @@ namespace BugWars.Entity.Player
         [SerializeField] private float jumpForce = 10f;
         [SerializeField] [Tooltip("Rotation speed for A/D keys (degrees per second). This controls how fast the character rotates when pressing A/D.")]
         private float playerRotationSpeed = 85f; // Change this for a/d rotation speed
+        
+        [Header("Ground Detection")]
+        [SerializeField] [Tooltip("Distance to check for ground below player")]
+        private float groundCheckDistance = 0.2f;
+        [SerializeField] [Tooltip("Layer mask for ground detection")]
+        private LayerMask groundLayerMask = -1; // All layers by default
+        [SerializeField] [Tooltip("Distance to snap player to ground surface")]
+        private float groundSnapDistance = 0.1f;
+        [SerializeField] [Tooltip("Maximum slope angle player can walk on (degrees)")]
+        private float maxSlopeAngle = 45f;
 
         private Vector3 moveDirection;
         private float rotationInput;
         private bool isGrounded;
         private bool useStandardWASD = true; // Use standard WASD controls (A/D rotate, W/S move forward/back)
+        private RaycastHit groundHit;
+        private Vector3 groundNormal = Vector3.up;
 
         protected override void Awake()
         {
@@ -59,6 +71,7 @@ namespace BugWars.Entity.Player
 
         private void FixedUpdate()
         {
+            CheckGrounded();
             MovePlayer();
         }
 
@@ -104,6 +117,66 @@ namespace BugWars.Entity.Player
             transform.Rotate(0f, rotationDelta, 0f, Space.Self);
         }
 
+        /// <summary>
+        /// Check if player is grounded using raycast
+        /// </summary>
+        private void CheckGrounded()
+        {
+            if (capsuleCollider == null) return;
+            
+            // Calculate raycast origin (bottom of capsule collider)
+            Vector3 rayOrigin = transform.position;
+            float capsuleHeight = capsuleCollider.height;
+            float capsuleRadius = capsuleCollider.radius;
+            rayOrigin.y -= (capsuleHeight * 0.5f - capsuleRadius);
+            
+            // Raycast down to detect ground
+            float rayDistance = groundCheckDistance + capsuleRadius;
+            isGrounded = Physics.Raycast(rayOrigin, Vector3.down, out groundHit, rayDistance, groundLayerMask);
+            
+            if (isGrounded)
+            {
+                groundNormal = groundHit.normal;
+                
+                // Check if slope is too steep
+                float slopeAngle = Vector3.Angle(groundNormal, Vector3.up);
+                if (slopeAngle > maxSlopeAngle)
+                {
+                    isGrounded = false; // Too steep to walk on
+                }
+            }
+            else
+            {
+                groundNormal = Vector3.up;
+            }
+        }
+        
+        /// <summary>
+        /// Snap player to ground surface if close enough
+        /// </summary>
+        private void SnapToGround()
+        {
+            if (!isGrounded || rb == null || capsuleCollider == null) return;
+            
+            // Calculate desired Y position (ground hit point + capsule bottom offset)
+            float capsuleHeight = capsuleCollider.height;
+            float capsuleRadius = capsuleCollider.radius;
+            float bottomOffset = capsuleHeight * 0.5f - capsuleRadius;
+            float desiredY = groundHit.point.y + bottomOffset;
+            
+            // Only snap if player is close to ground (not falling/jumping)
+            float currentY = transform.position.y;
+            float distanceToGround = Mathf.Abs(currentY - desiredY);
+            
+            if (distanceToGround < groundSnapDistance && rb.linearVelocity.y <= 0.1f)
+            {
+                // Smoothly snap to ground
+                Vector3 newPosition = transform.position;
+                newPosition.y = Mathf.Lerp(currentY, desiredY, Time.fixedDeltaTime * 10f);
+                transform.position = newPosition;
+            }
+        }
+        
         private void MovePlayer()
         {
             // Use base class Move method for physics-based movement
@@ -113,7 +186,9 @@ namespace BugWars.Entity.Player
             
             if (moveDirection.sqrMagnitude > 0.01f)
             {
-                Move(moveDirection);
+                // Adjust movement direction based on slope normal (slope-aligned movement)
+                Vector3 slopeAlignedDirection = GetSlopeAlignedDirection(moveDirection);
+                Move(slopeAlignedDirection);
             }
             else
             {
@@ -121,7 +196,34 @@ namespace BugWars.Entity.Player
                 Move(Vector3.zero);
             }
             
+            // Snap to ground after movement
+            SnapToGround();
+            
             moveSpeed = originalMoveSpeed; // Restore (though it shouldn't matter since we're the only one using it)
+        }
+        
+        /// <summary>
+        /// Adjusts movement direction to align with slope surface
+        /// Projects movement direction onto slope plane
+        /// </summary>
+        private Vector3 GetSlopeAlignedDirection(Vector3 inputDirection)
+        {
+            if (!isGrounded || groundNormal == Vector3.up)
+            {
+                // Flat ground or not grounded - use input direction as-is
+                return inputDirection;
+            }
+            
+            // Project movement direction onto slope plane
+            // This allows player to move along slopes naturally
+            Vector3 slopeRight = Vector3.Cross(groundNormal, Vector3.up).normalized;
+            Vector3 slopeForward = Vector3.Cross(slopeRight, groundNormal).normalized;
+            
+            // Project input direction onto slope plane
+            Vector3 projectedDirection = Vector3.ProjectOnPlane(inputDirection, groundNormal).normalized;
+            
+            // Maintain input magnitude for consistent speed
+            return projectedDirection * inputDirection.magnitude;
         }
 
         protected override void OnDeath()

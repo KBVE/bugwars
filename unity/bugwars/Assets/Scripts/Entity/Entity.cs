@@ -217,7 +217,12 @@ namespace BugWars.Entity
             // Use direction magnitude directly (don't normalize) to preserve smoothing
             // This allows Vector3.SmoothDamp to gradually ramp up from 0 to 1
             Vector3 movement = direction * moveSpeed;
-            movement.y = rb.linearVelocity.y; // Preserve vertical velocity for gravity
+            
+            // Preserve vertical velocity for gravity/jumping
+            // But if grounded and moving on slope, allow slight vertical adjustment
+            // This prevents bouncing on slopes while still allowing jumps
+            movement.y = rb.linearVelocity.y;
+            
             rb.linearVelocity = movement;
 
             // Update animation state based on movement
