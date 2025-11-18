@@ -338,17 +338,21 @@ namespace BugWars.Terrain
             {
                 meshFilter.mesh = lodMesh;
 
-                // ALWAYS update collider - player needs collision on ALL LODs to prevent falling through
-                // We use the high LOD mesh for collision even on lower visual LODs for accuracy
+                // Only update collider if it's not already set to High LOD mesh
+                // This prevents unnecessary physics system updates when switching visual LODs
                 if (lodMeshes.TryGetValue(TerrainLOD.High, out Mesh highLodMesh))
                 {
-                    meshCollider.sharedMesh = highLodMesh;
+                    if (meshCollider.sharedMesh != highLodMesh)
+                    {
+                        meshCollider.sharedMesh = highLodMesh;
+                    }
                 }
 
-                // Update bounds
+                // Update bounds (lightweight operation)
                 Bounds = meshRenderer.bounds;
 
-                // Reset fade-in when upgrading LOD
+                // Disable fade-in for WebGL performance (already disabled by default)
+                // Reset fade-in when upgrading LOD (only if enabled)
                 if (enableFadeIn && instanceMaterial != null)
                 {
                     fadeTimer = 0f;

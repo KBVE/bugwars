@@ -27,14 +27,19 @@ namespace BugWars.Terrain
         [SerializeField] private int chunkResolution = 15; // Reduced from 20 to 15 for WebGL performance (225 verts vs 400)
 
         [Header("Chunk Loading/Unloading")]
-        [SerializeField] private int hotChunkRadius = 6; // "Hot" chunks - CRITICAL 360° safety zone (loaded synchronously) - 13x13 grid = 169 chunks
-        [SerializeField] private int warmChunkRadius = 12; // "Warm" chunks - visible/important area (high priority async)
-        [SerializeField] private int coldChunkRadius = 18; // "Cold" chunks - preload area (low priority async)
-        [SerializeField] private int chunkUnloadDistance = 25; // Unload chunks beyond this distance
+        [SerializeField] private int hotChunkRadius = 3; // "Hot" chunks - CRITICAL 360° safety zone (loaded synchronously) - 7x7 grid = 49 chunks (reduced for WebGL)
+        [SerializeField] private int warmChunkRadius = 8; // "Warm" chunks - visible/important area (high priority async)
+        [SerializeField] private int coldChunkRadius = 14; // "Cold" chunks - preload area (low priority async)
+        [SerializeField] private int chunkUnloadDistance = 20; // Unload chunks beyond this distance
         [SerializeField] private bool enableDynamicLoading = true; // Enable async chunk streaming
         [SerializeField] private bool enableFrustumCulling = true; // Enable camera frustum culling
         [SerializeField] private float cullingUpdateInterval = 0.5f; // How often to update culling (seconds)
         [SerializeField] private float chunkUpdateInterval = 0.25f; // Reduced frequency for WebGL (4 times per second instead of 10)
+
+        [Header("WebGL Performance")]
+        [SerializeField] private float targetFrameTime = 0.016f; // Target 60 FPS (16ms per frame)
+        [SerializeField] private float maxGenerationTimePerFrame = 0.008f; // Max 8ms per frame for chunk generation (50% of frame budget)
+        [SerializeField] private int maxChunksPerBatch = 1; // Generate 1 chunk at a time for WebGL (reduced from 2)
 
         [Header("Debug")]
         [SerializeField] private bool showDebugInfo = true;
@@ -162,7 +167,7 @@ namespace BugWars.Terrain
             // Generate center chunk first (synchronously) so player has ground immediately
             await GenerateChunk(Vector2Int.zero);
 
-            // Generate remaining chunks in batches to prevent FPS spike
+            // Generate remaining chunks with frame-time budgeting to prevent FPS spikes
             List<Vector2Int> remainingChunks = new List<Vector2Int>();
             for (int x = -halfGrid; x <= halfGrid; x++)
             {
@@ -176,20 +181,33 @@ namespace BugWars.Terrain
                 }
             }
 
-            // Generate in very small batches (2 at a time) for WebGL - smoother frame rate
-            int batchSize = 2;
-            for (int i = 0; i < remainingChunks.Count; i += batchSize)
+            // Sort chunks by distance from center for optimal loading order
+            remainingChunks.Sort((a, b) =>
+                (a.x * a.x + a.y * a.y).CompareTo(b.x * b.x + b.y * b.y)
+            );
+
+            // Generate chunks with frame-time budgeting for smooth WebGL performance
+            for (int i = 0; i < remainingChunks.Count; i++)
             {
-                List<UniTask> batchTasks = new List<UniTask>();
-                for (int j = i; j < Mathf.Min(i + batchSize, remainingChunks.Count); j++)
+                float frameStartTime = Time.realtimeSinceStartup;
+
+                // Generate chunk
+                await GenerateChunk(remainingChunks[i]);
+
+                // Calculate how long this chunk took to generate
+                float generationTime = Time.realtimeSinceStartup - frameStartTime;
+
+                // If we exceeded our frame budget, yield extra frames to recover
+                if (generationTime > maxGenerationTimePerFrame)
                 {
-                    batchTasks.Add(GenerateChunk(remainingChunks[j]));
+                    int framesToYield = Mathf.CeilToInt(generationTime / targetFrameTime);
+                    await UniTask.DelayFrame(framesToYield);
                 }
-
-                await UniTask.WhenAll(batchTasks);
-
-                // Yield multiple frames for WebGL (smoother experience)
-                await UniTask.DelayFrame(2);
+                else
+                {
+                    // Always yield at least 1 frame for WebGL smoothness
+                    await UniTask.DelayFrame(1);
+                }
             }
 
             // Set initial LOD levels
