@@ -85,7 +85,9 @@ namespace BugWars.Entity
             }
 
             instance = this;
-            DontDestroyOnLoad(gameObject);
+
+            // Note: DontDestroyOnLoad is handled by VContainer's LifetimeScope
+            // No need to call it here - the LifetimeScope GameObject persists across scenes
 
             // Initialize player data if not already set
             if (playerData == null)

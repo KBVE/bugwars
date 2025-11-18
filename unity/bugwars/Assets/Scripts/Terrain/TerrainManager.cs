@@ -33,7 +33,7 @@ namespace BugWars.Terrain
         [SerializeField] private int coldChunkRadius = 6; // "Cold" chunks - preload area covering 6500x6500 units
         [SerializeField] private int chunkUnloadDistance = 10; // Unload chunks beyond this distance (much smaller radius needed with 500 unit chunks)
         [SerializeField] private bool enableDynamicLoading = true; // Enable async chunk streaming
-        [SerializeField] private bool enableFrustumCulling = true; // Enable camera frustum culling
+        [SerializeField] private bool enableFrustumCulling = false; // TEMPORARILY DISABLED - Enable camera frustum culling
         [SerializeField] private float cullingUpdateInterval = 0.5f; // How often to update culling (seconds)
         [SerializeField] private float chunkUpdateInterval = 0.5f; // Update chunks only 2 times per second (much less frequent with large chunks)
 
@@ -122,10 +122,23 @@ namespace BugWars.Terrain
             }
 
             // Update frustum culling at intervals
-            if (enableFrustumCulling && _cameraManager != null && Time.time - lastCullingUpdate > cullingUpdateInterval)
+            // COMPLETELY DISABLED FOR DEBUGGING - frustum culling is hiding all chunks!
+            // if (enableFrustumCulling && _cameraManager != null && Time.time - lastCullingUpdate > cullingUpdateInterval)
+            // {
+            //     UpdateChunkVisibility();
+            //     lastCullingUpdate = Time.time;
+            // }
+
+            // DEBUG: Log camera and chunk state periodically (every 10 seconds = 600 frames at 60fps)
+            if (showDebugInfo && _cameraManager != null && _cameraManager.MainCamera != null && Time.frameCount % 600 == 0)
             {
-                UpdateChunkVisibility();
-                lastCullingUpdate = Time.time;
+                Camera cam = _cameraManager.MainCamera;
+                int visibleCount = 0;
+                foreach (var chunk in activeChunks.Values)
+                {
+                    if (chunk != null && chunk.IsVisible) visibleCount++;
+                }
+                Debug.LogWarning($"[TerrainManager] STATUS: Camera={cam.transform.position}, Player={(_playerTransform != null ? _playerTransform.position.ToString() : "null")}, Chunks={visibleCount}/{activeChunks.Count} visible");
             }
         }
 
@@ -263,7 +276,6 @@ namespace BugWars.Terrain
             // Create chunk GameObject
             GameObject chunkObj = new GameObject($"TerrainChunk_{chunkCoord.x}_{chunkCoord.y}");
             chunkObj.transform.SetParent(chunksContainer.transform);
-            Debug.Log($"[TerrainManager] Created GameObject for chunk {chunkCoord}, parent: {(chunkObj.transform.parent != null ? chunkObj.transform.parent.name : "NULL")}");
 
             // Add and initialize TerrainChunk component
             TerrainChunk chunk = chunkObj.AddComponent<TerrainChunk>();
@@ -274,7 +286,6 @@ namespace BugWars.Terrain
 
             // Add to active chunks dictionary
             activeChunks[chunkCoord] = chunk;
-            Debug.Log($"[TerrainManager] Chunk {chunkCoord} generated and added to activeChunks. GameObject active: {chunkObj.activeSelf}, GameObject exists: {chunkObj != null}");
         }
 
         /// <summary>
@@ -284,6 +295,7 @@ namespace BugWars.Terrain
         {
             if (activeChunks.TryGetValue(chunkCoord, out TerrainChunk chunk))
             {
+                Debug.LogWarning($"[TerrainManager] DESTROYING chunk {chunkCoord} at position {chunk.transform.position}");
                 chunk.Unload();
                 Destroy(chunk.gameObject);
                 activeChunks.Remove(chunkCoord);
@@ -292,11 +304,11 @@ namespace BugWars.Terrain
 
         /// <summary>
         /// Update chunks based on player position - priority-based async chunk streaming
-        /// Hot chunks (radius 6): Load synchronously to prevent falling through terrain in ANY direction (360°)
-        /// - 13x13 grid = 169 chunks loaded BEFORE player can reach edge
-        /// - Covers 720 units in all directions (6 chunks * 120 units)
-        /// Warm chunks (radius 12): Load with high priority async for visible area
-        /// Cold chunks (radius 18): Load with low priority async for preload area
+        /// Hot chunks (radius 2): Load synchronously to prevent falling through terrain in ANY direction (360°)
+        /// - 5x5 grid = 25 chunks loaded BEFORE player can reach edge
+        /// - Covers 2500 units in all directions (2 chunks * 500 units)
+        /// Warm chunks (radius 4): Load with high priority async for visible area
+        /// Cold chunks (radius 6): Load with low priority async for preload area
         /// </summary>
         public async UniTask UpdateChunksAroundPosition(Vector3 playerPosition)
         {
@@ -309,6 +321,11 @@ namespace BugWars.Terrain
             // Only update if player moved to a different chunk
             if (playerChunk == currentPlayerChunkCoord)
                 return;
+
+            if (showDebugInfo)
+            {
+                Debug.Log($"[TerrainManager] Player moved to chunk {playerChunk} from {currentPlayerChunkCoord}. Position: {playerPosition}");
+            }
 
             currentPlayerChunkCoord = playerChunk;
 
@@ -330,8 +347,17 @@ namespace BugWars.Terrain
                 }
             }
 
+            if (chunksToUnload.Count > 0 && showDebugInfo)
+            {
+                Debug.Log($"[TerrainManager] Unloading {chunksToUnload.Count} chunks beyond distance {chunkUnloadDistance}");
+            }
+
             foreach (var chunkCoord in chunksToUnload)
             {
+                if (showDebugInfo)
+                {
+                    Debug.Log($"[TerrainManager] Unloading chunk {chunkCoord}");
+                }
                 UnloadChunk(chunkCoord);
             }
 
@@ -661,6 +687,27 @@ namespace BugWars.Terrain
             await GenerateInitialChunks();
 
             Debug.Log($"[TerrainManager] Terrain regenerated with {activeChunks.Count} chunks of size {chunkSize}x{chunkSize}");
+        }
+
+        /// <summary>
+        /// Force all terrain chunks to be visible (useful for debugging frustum culling issues)
+        /// </summary>
+        [ContextMenu("Force Show All Chunks")]
+        public void ForceShowAllChunks()
+        {
+            Debug.Log($"[TerrainManager] Forcing all {activeChunks.Count} chunks to be visible");
+
+            int showCount = 0;
+            foreach (var chunk in activeChunks.Values)
+            {
+                if (chunk != null)
+                {
+                    chunk.Show();
+                    showCount++;
+                }
+            }
+
+            Debug.Log($"[TerrainManager] Made {showCount} chunks visible");
         }
 
         /// <summary>

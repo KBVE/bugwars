@@ -135,6 +135,9 @@ namespace BugWars.Terrain
                 instanceMaterial.SetFloat(ColorMultiplierProperty, 0f);
             }
 
+            // Ensure chunk is visible when created
+            Show();
+
             IsGenerated = true;
         }
 
@@ -405,6 +408,7 @@ namespace BugWars.Terrain
         {
             if (meshRenderer != null)
             {
+                Debug.LogWarning($"[TerrainChunk] HIDING chunk {gameObject.name} at position {transform.position}");
                 meshRenderer.enabled = false;
                 IsVisible = false;
             }

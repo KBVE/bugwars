@@ -893,20 +893,21 @@ namespace BugWars.Core
                 virtualCamera.Follow = config.target;
                 virtualCamera.LookAt = null; // PanTilt handles rotation, not LookAt
 
-                // Debug: Log camera and target positions BEFORE repositioning
-                Debug.Log($"[CameraManager] BEFORE Reposition - Camera Position: {virtualCamera.transform.position} | Target Position: {config.target.position}");
+                // Debug: Log camera and target positions
+                Debug.Log($"[CameraManager] Camera Position: {virtualCamera.transform.position} | Target Position: {config.target.position}");
                 Debug.Log($"[CameraManager] Camera Rotation: {virtualCamera.transform.rotation.eulerAngles}");
 
-                // Ensure virtual camera starts above the player, not below
-                if (config.target != null && virtualCamera.transform.position.y < config.target.position.y)
+                // CRITICAL FIX: Only reposition camera if it's at origin or very far from player
+                // The camera Y check was broken - it was comparing world Y incorrectly
+                // This was causing camera to teleport 100,000 units away!
+                float distanceToPlayer = Vector3.Distance(virtualCamera.transform.position, config.target.position);
+                if (distanceToPlayer > 1000f || virtualCamera.transform.position == Vector3.zero)
                 {
-                    Vector3 startPos = config.target.position + Vector3.up * 5f + Vector3.back * 5f;
+                    // Camera is too far or at origin - position it near player
+                    Vector3 startPos = config.target.position + new Vector3(0f, cameraHeight, -cameraDistanceBehind);
                     virtualCamera.transform.position = startPos;
-                    Debug.Log($"[CameraManager] Repositioned virtual camera above player: {startPos}");
+                    Debug.Log($"[CameraManager] Repositioned camera near player (was {distanceToPlayer}m away): {startPos}");
                 }
-
-                // Debug: Log camera position AFTER repositioning
-                Debug.Log($"[CameraManager] AFTER Reposition - Camera Position: {virtualCamera.transform.position}");
 
                 // List all components on the virtual camera
                 var components = virtualCamera.GetComponents<UnityEngine.Component>();

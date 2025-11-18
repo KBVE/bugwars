@@ -36,6 +36,8 @@ namespace BugWars.Core
         private GameManager gameManager;
         [SerializeField] [Tooltip("Optional - TerrainManager component to register. Will create if not assigned.")]
         private TerrainManager terrainManager;
+        [SerializeField] [Tooltip("Optional - EnvironmentManager component to register. Will create if not assigned.")]
+        private EnvironmentManager environmentManager;
         [SerializeField] [Tooltip("Optional - CameraManager component to register. Will create if not assigned.")]
         private CameraManager cameraManager;
         [SerializeField] [Tooltip("Optional - EntityManager component to register. Will create if not assigned.")]
@@ -144,6 +146,17 @@ namespace BugWars.Core
                 var registration = builder.RegisterComponentOnNewGameObject<TerrainManager>(Lifetime.Singleton, "TerrainManager");
                 registration.DontDestroyOnLoad().AsImplementedInterfaces().AsSelf();
                 builder.RegisterBuildCallback(container => container.Resolve<TerrainManager>());
+            }
+
+            // EnvironmentManager for environmental objects (trees, rocks, bushes) - depends on TerrainManager
+            if (environmentManager != null)
+            {
+                builder.RegisterComponent(environmentManager).AsImplementedInterfaces().AsSelf();
+            }
+            else
+            {
+                var registration = builder.RegisterComponentOnNewGameObject<EnvironmentManager>(Lifetime.Singleton, "EnvironmentManager");
+                registration.DontDestroyOnLoad().AsImplementedInterfaces().AsSelf();
             }
 
             // CameraManager for camera control using Cinemachine
