@@ -122,7 +122,6 @@ namespace BugWars.Core
     /// </summary>
     public class CameraManager : MonoBehaviour
     {
-        #region Singleton
         private static CameraManager _instance;
         public static CameraManager Instance
         {
@@ -135,9 +134,7 @@ namespace BugWars.Core
                 return _instance;
             }
         }
-        #endregion
 
-        #region Dependencies
         private EventManager _eventManager;
         private InputManager _inputManager;
 
@@ -148,9 +145,7 @@ namespace BugWars.Core
             _inputManager = inputManager;
             Debug.Log("[CameraManager] Dependencies injected via Construct()");
         }
-        #endregion
 
-        #region Settings
         [Header("Settings")]
         [SerializeField] private bool debugMode = true; // Enabled for debugging camera setup
         [SerializeField] [Tooltip("Force camera settings from Inspector values on Awake (ensures consistency across team machines). Disable to allow manual camera modifications.")]
@@ -164,9 +159,7 @@ namespace BugWars.Core
 
         [SerializeField] [Tooltip("Include inactive virtual cameras in discovery")]
         private bool includeInactiveCameras = false;
-        #endregion
 
-        #region Camera References
         private Camera _mainCamera;
         private CinemachineBrain _cinemachineBrain;
 
@@ -326,9 +319,7 @@ namespace BugWars.Core
         /// Gets the total number of discovered virtual cameras
         /// </summary>
         public int VirtualCameraCount => _allVirtualCameras.Count;
-        #endregion
 
-        #region Unity Lifecycle
         private void Awake()
         {
             // Initialize camera settings (ensures consistency across team project machines)
@@ -643,12 +634,15 @@ namespace BugWars.Core
                 {
                     if (cameraSystem == CameraSystemType.OrbitalFollow && _orbitalFollow != null)
                     {
-                        // OrbitalFollow: Update radius and height offset
+                        // OrbitalFollow: Update radius based on zoom (Cinemachine 3.x)
                         _orbitalFollow.Radius = _currentZoomDistance;
+
+                        // Maintain height ratio in TargetOffset
                         float baseHeight = _baseCameraOffset.y;
                         float baseDistance = Mathf.Abs(_baseCameraOffset.z);
                         float heightRatio = baseHeight / baseDistance;
-                        _orbitalFollow.HeightOffset = _currentZoomDistance * heightRatio;
+                        float zoomHeight = _currentZoomDistance * heightRatio;
+                        _orbitalFollow.TargetOffset = new Vector3(0f, zoomHeight, 0f);
                     }
                     else if (_positionComposer != null)
                     {
@@ -730,8 +724,7 @@ namespace BugWars.Core
                         }
                     }
                 }
-            }
-            
+
             // Handle auto-rotation for simple third-person cameras
             UpdateSimpleThirdPersonRotation();
         }
@@ -744,9 +737,7 @@ namespace BugWars.Core
             UnsubscribeFromEvents();
             ClearCameraCache();
         }
-        #endregion
 
-        #region Event Management
         private void SubscribeToEvents()
         {
             // Subscribe to camera control events from EventManager
@@ -1073,6 +1064,7 @@ namespace BugWars.Core
 
             if (debugMode)
             {
+                string modeName = isFirstPerson ? "FIRST-PERSON" : "THIRD-PERSON";
                 float tiltAngle = isFirstPerson ? 0f : defaultTiltAngle;
                 Debug.Log($"[CameraManager] Configured {modeName} Camera (PositionComposer):");
                 Debug.Log($"  - Mode: {cameraMode}");
@@ -1126,28 +1118,43 @@ namespace BugWars.Core
                 );
             }
             
-            // Configure OrbitalFollow with similar settings to PositionComposer
+            // Configure OrbitalFollow with Cinemachine 3.x API
             orbitalFollow.Radius = _currentZoomDistance; // Distance from target (zoom control)
-            orbitalFollow.HeightOffset = baseHeight; // Height above target (similar to TargetOffset.y)
-            orbitalFollow.Damping = damping; // Use same damping settings
-            
-            // Disable orbital rotation - we want fixed behind player (WoW-style, not orbital)
-            orbitalFollow.RotationMode = CinemachineOrbitalFollow.RotationModes.UserControlled;
-            orbitalFollow.HorizontalAxis.Enabled = false; // Disable horizontal rotation
-            orbitalFollow.VerticalAxis.Enabled = false; // Disable vertical rotation
-            
-            // Set initial rotation to behind player (0° = same as player forward)
+            orbitalFollow.TargetOffset = new Vector3(0f, baseHeight, 0f); // Height offset in target-local space
+            orbitalFollow.OrbitStyle = CinemachineOrbitalFollow.OrbitStyles.Sphere; // Simple sphere mode
+
+            // Configure TrackerSettings for damping (Cinemachine 3.x)
+            var trackerSettings = orbitalFollow.TrackerSettings;
+            trackerSettings.PositionDamping = damping; // Use TrackerSettings for damping
+            trackerSettings.RotationDamping = Vector3.zero; // No rotation damping (PanTilt handles rotation)
+            orbitalFollow.TrackerSettings = trackerSettings;
+
+            // Configure horizontal axis - locked to behind player (0 degrees)
             var horizontalAxis = orbitalFollow.HorizontalAxis;
-            horizontalAxis.Value = 0f;
+            horizontalAxis.Value = 0f; // Start at 0 (behind player)
             horizontalAxis.Center = 0f;
+            horizontalAxis.Range = new Vector2(-180f, 180f); // Full range
+            horizontalAxis.Wrap = true; // Wrap at 360 degrees
+            horizontalAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false }; // No auto-recentering
             orbitalFollow.HorizontalAxis = horizontalAxis;
-            
-            // Set vertical angle to match default tilt
+
+            // Configure vertical axis - fixed at default tilt angle
             var verticalAxis = orbitalFollow.VerticalAxis;
-            verticalAxis.Value = defaultTiltAngle;
+            verticalAxis.Value = defaultTiltAngle; // Use Inspector tilt angle
             verticalAxis.Center = defaultTiltAngle;
-            verticalAxis.Range = new Vector2(defaultTiltAngle, defaultTiltAngle); // Fixed angle
+            verticalAxis.Range = new Vector2(defaultTiltAngle, defaultTiltAngle); // Fixed angle (no vertical rotation)
+            verticalAxis.Wrap = false;
+            verticalAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
             orbitalFollow.VerticalAxis = verticalAxis;
+
+            // Configure radial axis - controls zoom distance scale
+            var radialAxis = orbitalFollow.RadialAxis;
+            radialAxis.Value = 1f; // Default scale (1.0 = no scaling)
+            radialAxis.Center = 1f;
+            radialAxis.Range = new Vector2(0.5f, 2f); // Allow 50% to 200% scale
+            radialAxis.Wrap = false;
+            radialAxis.Recentering = new InputAxis.RecenteringSettings { Enabled = false };
+            orbitalFollow.RadialAxis = radialAxis;
             
             // Store reference for zoom
             _orbitalFollow = orbitalFollow;
@@ -1167,11 +1174,11 @@ namespace BugWars.Core
             
             if (debugMode)
             {
-                Debug.Log($"[CameraManager] Configured THIRD-PERSON Camera (OrbitalFollow):");
+                Debug.Log($"[CameraManager] Configured THIRD-PERSON Camera (OrbitalFollow - Cinemachine 3.x):");
                 Debug.Log($"  - Radius: {orbitalFollow.Radius} (zoom distance)");
-                Debug.Log($"  - Height Offset: {orbitalFollow.HeightOffset}");
-                Debug.Log($"  - Damping: {orbitalFollow.Damping}");
-                Debug.Log($"  - Rotation: Disabled (fixed behind player)");
+                Debug.Log($"  - Target Offset: {orbitalFollow.TargetOffset}");
+                Debug.Log($"  - Position Damping: {orbitalFollow.TrackerSettings.PositionDamping}");
+                Debug.Log($"  - Orbit Style: {orbitalFollow.OrbitStyle}");
                 Debug.Log($"  - Following: {config.target.name}");
             }
         }
@@ -1366,9 +1373,7 @@ namespace BugWars.Core
                 MainCamera.fieldOfView = _currentSprintFOV;
             }
         }
-        #endregion
 
-        #region Virtual Camera Discovery
         /// <summary>
         /// Discovers all Cinemachine Virtual Cameras in the scene and caches them
         /// </summary>
@@ -1446,9 +1451,7 @@ namespace BugWars.Core
 
             DiscoverVirtualCameras();
         }
-        #endregion
 
-        #region Camera Access Methods
         /// <summary>
         /// Gets a virtual camera by name
         /// </summary>
@@ -1497,9 +1500,7 @@ namespace BugWars.Core
         {
             return _virtualCamerasByName.Keys.ToArray();
         }
-        #endregion
 
-        #region Camera Control Methods
         /// <summary>
         /// Activates a virtual camera by name (sets its priority high)
         /// </summary>
@@ -1622,9 +1623,7 @@ namespace BugWars.Core
                     Debug.Log($"[CameraManager] Set camera '{cameraName}' enabled: {enabled}");
             }
         }
-        #endregion
 
-        #region Blend Control
         /// <summary>
         /// Sets the default blend style for camera transitions
         /// </summary>
@@ -1638,9 +1637,7 @@ namespace BugWars.Core
                     Debug.Log($"[CameraManager] Set default blend: {style}, time: {time}s");
             }
         }
-        #endregion
 
-        #region Camera Effects (Shake, FOV, etc.)
 
         /// <summary>
         /// Triggers a camera shake impulse
@@ -1809,13 +1806,9 @@ namespace BugWars.Core
             SetCameraFOV(60f, duration); // Default FOV
         }
 
-        #endregion
 
-        #region Camera Rig Builders - REMOVED (only using SimpleThirdPerson now)
         // Old rig builder methods removed - we only use SimpleThirdPerson now
-        #endregion
 
-        #region Frustum Culling Helpers
         /// <summary>
         /// Checks if a point is within the camera's view frustum
         /// </summary>
@@ -1881,9 +1874,7 @@ namespace BugWars.Core
             if (MainCamera == null) return Vector3.forward;
             return MainCamera.transform.forward;
         }
-        #endregion
 
-        #region Debug Helpers
         /// <summary>
         /// Logs all discovered cameras and their current state
         /// </summary>
@@ -1902,7 +1893,6 @@ namespace BugWars.Core
             }
             Debug.Log($"[CameraManager] ========================");
         }
-        #endregion
 
         // Mouse input handlers removed - SimpleThirdPerson camera is auto-follow only (no mouse control)
         private void OnCameraLookInput(Vector2 delta)
@@ -1990,17 +1980,18 @@ namespace BugWars.Core
             
             if (cameraSystem == CameraSystemType.OrbitalFollow && _orbitalFollow != null)
             {
-                // OrbitalFollow: Use Radius for zoom (built-in distance control)
+                // OrbitalFollow: Use Radius for zoom (Cinemachine 3.x)
                 _orbitalFollow.Radius = _currentZoomDistance;
-                
-                // Maintain height ratio
+
+                // Maintain height ratio in TargetOffset
                 float baseHeight = _baseCameraOffset.y;
                 float baseDistance = Mathf.Abs(_baseCameraOffset.z);
                 float heightRatio = baseHeight / baseDistance;
-                _orbitalFollow.HeightOffset = _currentZoomDistance * heightRatio;
-                
+                float zoomHeight = _currentZoomDistance * heightRatio;
+                _orbitalFollow.TargetOffset = new Vector3(0f, zoomHeight, 0f);
+
                 if (debugMode)
-                    Debug.Log($"[CameraManager] Applied WoW-style zoom (OrbitalFollow): radius={_currentZoomDistance}, height={_orbitalFollow.HeightOffset}");
+                    Debug.Log($"[CameraManager] Applied WoW-style zoom (OrbitalFollow): radius={_currentZoomDistance}, height={zoomHeight}");
             }
             else if (_positionComposer != null)
             {
@@ -2030,13 +2021,11 @@ namespace BugWars.Core
             
             _targetZoomDistance = defaultZoomDistance;
             _isResettingZoom = true;
-            
+
             if (debugMode)
                 Debug.Log($"[CameraManager] Resetting zoom to default: {defaultZoomDistance}");
         }
     }
-
-    #region Camera Preference System
 
     /// <summary>
     /// Interface for entities that want to specify their preferred camera configuration
@@ -2088,6 +2077,4 @@ namespace BugWars.Core
         /// </summary>
         public const string Player = "Player";
     }
-
-    #endregion
 }

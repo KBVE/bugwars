@@ -10,7 +10,7 @@ namespace BugWars.Terrain
 {
     /// <summary>
     /// Manages procedural terrain generation using a chunk-based system
-    /// Generates a 3x3 grid of low-poly terrain chunks around the player
+    /// Generates terrain chunks progressively around the player for WebGL optimization
     /// Uses Perlin noise for height generation with configurable seed
     /// Supports async chunk loading/unloading and frustum culling for performance
     /// </summary>
@@ -19,12 +19,12 @@ namespace BugWars.Terrain
         [Header("Terrain Generation Settings")]
         [SerializeField] private int seed = 12345;
         [SerializeField] private float noiseScale = 0.05f;
-        [SerializeField] private int chunkGridSize = 3; // 3x3 grid (9 initial chunks) - reduced for better performance
+        [SerializeField] private int chunkGridSize = 1; // 1x1 grid (SINGLE chunk initially) - minimal for WebGL, rest loads progressively
         [SerializeField] private Material defaultTerrainMaterial;
 
         [Header("Chunk Settings")]
         [SerializeField] private int chunkSize = 120; // Increased from 80 to 120 for better coverage
-        [SerializeField] private int chunkResolution = 15; // Reduced from 20 to 15 for WebGL performance (225 verts vs 400)
+        [SerializeField] private int chunkResolution = 12; // Reduced from 15 to 12 for WebGL performance (144 verts vs 225) - 36% reduction
 
         [Header("Chunk Loading/Unloading")]
         [SerializeField] private int hotChunkRadius = 3; // "Hot" chunks - CRITICAL 360° safety zone (loaded synchronously) - 7x7 grid = 49 chunks (reduced for WebGL)
@@ -38,8 +38,9 @@ namespace BugWars.Terrain
 
         [Header("WebGL Performance")]
         [SerializeField] private float targetFrameTime = 0.016f; // Target 60 FPS (16ms per frame)
-        [SerializeField] private float maxGenerationTimePerFrame = 0.008f; // Max 8ms per frame for chunk generation (50% of frame budget)
-        [SerializeField] private int maxChunksPerBatch = 1; // Generate 1 chunk at a time for WebGL (reduced from 2)
+        [SerializeField] private float maxGenerationTimePerFrame = 0.005f; // Max 5ms per frame for chunk generation (30% of frame budget)
+        [SerializeField] private int minFramesBetweenChunks = 3; // Minimum frames to wait between chunk generations (WebGL needs breathing room)
+        [SerializeField] private bool useProgressiveLoading = true; // Spread chunk generation over more frames
 
         [Header("Debug")]
         [SerializeField] private bool showDebugInfo = true;
@@ -60,6 +61,10 @@ namespace BugWars.Terrain
         // Culling state
         private float lastCullingUpdate = 0f;
         private float lastChunkUpdate = 0f;
+
+        // LOD update throttling
+        private Queue<TerrainChunk> chunksNeedingLODUpdate = new Queue<TerrainChunk>();
+        private int maxLODUpdatesPerFrame = 2; // Limit LOD updates per frame for WebGL
 
         /// <summary>
         /// VContainer dependency injection
@@ -100,14 +105,17 @@ namespace BugWars.Terrain
                 }
             }
 
+            // Process queued LOD updates (throttled for WebGL performance)
+            ProcessLODUpdateQueue();
+
             // Continuously update chunks around player position
             if (_playerTransform != null && enableDynamicLoading && Time.time - lastChunkUpdate > chunkUpdateInterval)
             {
                 UpdateChunksAroundPosition(_playerTransform.position).Forget();
 
-                // Also update LOD levels based on current player position
+                // Queue LOD updates instead of applying immediately
                 Vector2Int playerChunk = WorldPositionToChunkCoord(_playerTransform.position);
-                UpdateChunkLODs(playerChunk);
+                QueueChunkLODUpdates(playerChunk);
 
                 lastChunkUpdate = Time.time;
             }
@@ -186,7 +194,7 @@ namespace BugWars.Terrain
                 (a.x * a.x + a.y * a.y).CompareTo(b.x * b.x + b.y * b.y)
             );
 
-            // Generate chunks with frame-time budgeting for smooth WebGL performance
+            // Generate chunks with aggressive frame-time budgeting for smooth WebGL performance
             for (int i = 0; i < remainingChunks.Count; i++)
             {
                 float frameStartTime = Time.realtimeSinceStartup;
@@ -197,15 +205,24 @@ namespace BugWars.Terrain
                 // Calculate how long this chunk took to generate
                 float generationTime = Time.realtimeSinceStartup - frameStartTime;
 
-                // If we exceeded our frame budget, yield extra frames to recover
-                if (generationTime > maxGenerationTimePerFrame)
+                // WebGL progressive loading: spread generation over MORE frames for smoother experience
+                if (useProgressiveLoading)
                 {
-                    int framesToYield = Mathf.CeilToInt(generationTime / targetFrameTime);
+                    // Always wait minimum frames regardless of generation time
+                    int framesToYield = minFramesBetweenChunks;
+
+                    // If we exceeded our budget, add even more frames
+                    if (generationTime > maxGenerationTimePerFrame)
+                    {
+                        int extraFrames = Mathf.CeilToInt((generationTime - maxGenerationTimePerFrame) / targetFrameTime);
+                        framesToYield += extraFrames;
+                    }
+
                     await UniTask.DelayFrame(framesToYield);
                 }
                 else
                 {
-                    // Always yield at least 1 frame for WebGL smoothness
+                    // Legacy behavior: minimal delay
                     await UniTask.DelayFrame(1);
                 }
             }
@@ -401,13 +418,18 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Update LOD levels for all chunks based on distance from player
-        /// Hot zone (0-6): High LOD (full detail)
-        /// Warm zone (7-12): Medium LOD (half resolution)
-        /// Cold zone (13-18): Low LOD (quarter resolution)
+        /// Queue LOD updates for all chunks based on distance from player
+        /// Instead of applying immediately, chunks are queued and processed over multiple frames
+        /// Hot zone (0-3): High LOD (full detail)
+        /// Warm zone (4-8): Medium LOD (half resolution)
+        /// Cold zone (9-14): Low LOD (quarter resolution)
         /// </summary>
-        private void UpdateChunkLODs(Vector2Int playerChunk)
+        private void QueueChunkLODUpdates(Vector2Int playerChunk)
         {
+            // Clear existing queue
+            chunksNeedingLODUpdate.Clear();
+
+            // Build queue of chunks that need LOD updates
             foreach (var kvp in activeChunks)
             {
                 Vector2Int chunkCoord = kvp.Key;
@@ -422,7 +444,7 @@ namespace BugWars.Terrain
                     Mathf.Abs(chunkCoord.y - playerChunk.y)
                 );
 
-                // Assign LOD based on distance
+                // Determine target LOD based on distance
                 TerrainLOD targetLOD;
                 if (distance <= hotChunkRadius)
                 {
@@ -437,9 +459,67 @@ namespace BugWars.Terrain
                     targetLOD = TerrainLOD.Low; // Cold zone: low detail
                 }
 
-                // Apply LOD change
-                chunk.SetLOD(targetLOD);
+                // Only queue if LOD needs to change
+                if (chunk.CurrentLOD != targetLOD)
+                {
+                    chunksNeedingLODUpdate.Enqueue(chunk);
+                }
             }
+        }
+
+        /// <summary>
+        /// Process queued LOD updates, limited to maxLODUpdatesPerFrame for smooth performance
+        /// </summary>
+        private void ProcessLODUpdateQueue()
+        {
+            int updatesThisFrame = 0;
+
+            while (chunksNeedingLODUpdate.Count > 0 && updatesThisFrame < maxLODUpdatesPerFrame)
+            {
+                TerrainChunk chunk = chunksNeedingLODUpdate.Dequeue();
+
+                if (chunk != null && chunk.IsGenerated)
+                {
+                    // Recalculate target LOD based on current player position
+                    Vector2Int playerChunk = _playerTransform != null
+                        ? WorldPositionToChunkCoord(_playerTransform.position)
+                        : Vector2Int.zero;
+
+                    int distance = Mathf.Max(
+                        Mathf.Abs(chunk.ChunkCoord.x - playerChunk.x),
+                        Mathf.Abs(chunk.ChunkCoord.y - playerChunk.y)
+                    );
+
+                    TerrainLOD targetLOD;
+                    if (distance <= hotChunkRadius)
+                    {
+                        targetLOD = TerrainLOD.High;
+                    }
+                    else if (distance <= warmChunkRadius)
+                    {
+                        targetLOD = TerrainLOD.Medium;
+                    }
+                    else
+                    {
+                        targetLOD = TerrainLOD.Low;
+                    }
+
+                    // Apply LOD change if still needed
+                    if (chunk.CurrentLOD != targetLOD)
+                    {
+                        chunk.SetLOD(targetLOD);
+                        updatesThisFrame++;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Update LOD levels for all chunks immediately (legacy, use QueueChunkLODUpdates instead)
+        /// </summary>
+        private void UpdateChunkLODs(Vector2Int playerChunk)
+        {
+            QueueChunkLODUpdates(playerChunk);
         }
 
         /// <summary>
