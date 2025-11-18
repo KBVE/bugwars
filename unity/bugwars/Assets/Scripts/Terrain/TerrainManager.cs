@@ -19,25 +19,29 @@ namespace BugWars.Terrain
         [Header("Terrain Generation Settings")]
         [SerializeField] private int seed = 12345;
         [SerializeField] private float noiseScale = 0.05f;
-        [SerializeField] private int chunkGridSize = 7; // 7x7 grid (49 initial chunks)
+        [SerializeField] private int chunkGridSize = 3; // 3x3 grid (9 initial chunks) - reduced for better performance
         [SerializeField] private Material defaultTerrainMaterial;
 
         [Header("Chunk Settings")]
-        [SerializeField] private int chunkSize = 80; // Quadrupled from 20 to 80
-        [SerializeField] private int chunkResolution = 20; // Vertices per chunk side
+        [SerializeField] private int chunkSize = 120; // Increased from 80 to 120 for better coverage
+        [SerializeField] private int chunkResolution = 15; // Reduced from 20 to 15 for WebGL performance (225 verts vs 400)
 
         [Header("Chunk Loading/Unloading")]
-        [SerializeField] private int chunkLoadDistance = 4; // Load chunks within this distance (in chunk units)
-        [SerializeField] private int chunkUnloadDistance = 6; // Unload chunks beyond this distance
+        [SerializeField] private int hotChunkRadius = 6; // "Hot" chunks - CRITICAL 360° safety zone (loaded synchronously) - 13x13 grid = 169 chunks
+        [SerializeField] private int warmChunkRadius = 12; // "Warm" chunks - visible/important area (high priority async)
+        [SerializeField] private int coldChunkRadius = 18; // "Cold" chunks - preload area (low priority async)
+        [SerializeField] private int chunkUnloadDistance = 25; // Unload chunks beyond this distance
         [SerializeField] private bool enableDynamicLoading = true; // Enable async chunk streaming
         [SerializeField] private bool enableFrustumCulling = true; // Enable camera frustum culling
         [SerializeField] private float cullingUpdateInterval = 0.5f; // How often to update culling (seconds)
+        [SerializeField] private float chunkUpdateInterval = 0.25f; // Reduced frequency for WebGL (4 times per second instead of 10)
 
         [Header("Debug")]
         [SerializeField] private bool showDebugInfo = true;
 
         // Dependencies
         private CameraManager _cameraManager;
+        private Transform _playerTransform; // Track player position for chunk streaming
 
         // Chunk management
         private Dictionary<Vector2Int, TerrainChunk> activeChunks = new Dictionary<Vector2Int, TerrainChunk>();
@@ -50,6 +54,7 @@ namespace BugWars.Terrain
 
         // Culling state
         private float lastCullingUpdate = 0f;
+        private float lastChunkUpdate = 0f;
 
         /// <summary>
         /// VContainer dependency injection
@@ -76,11 +81,34 @@ namespace BugWars.Terrain
 
         private void Update()
         {
-            if (!isInitialized || !enableFrustumCulling || _cameraManager == null)
+            if (!isInitialized)
                 return;
 
+            // Find player if not yet cached
+            if (_playerTransform == null)
+            {
+                GameObject player = GameObject.FindGameObjectWithTag("Player");
+                if (player != null)
+                {
+                    _playerTransform = player.transform;
+                    Debug.Log("[TerrainManager] Found player for chunk streaming");
+                }
+            }
+
+            // Continuously update chunks around player position
+            if (_playerTransform != null && enableDynamicLoading && Time.time - lastChunkUpdate > chunkUpdateInterval)
+            {
+                UpdateChunksAroundPosition(_playerTransform.position).Forget();
+
+                // Also update LOD levels based on current player position
+                Vector2Int playerChunk = WorldPositionToChunkCoord(_playerTransform.position);
+                UpdateChunkLODs(playerChunk);
+
+                lastChunkUpdate = Time.time;
+            }
+
             // Update frustum culling at intervals
-            if (Time.time - lastCullingUpdate > cullingUpdateInterval)
+            if (enableFrustumCulling && _cameraManager != null && Time.time - lastCullingUpdate > cullingUpdateInterval)
             {
                 UpdateChunkVisibility();
                 lastCullingUpdate = Time.time;
@@ -113,10 +141,11 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Generates the initial 7x7 grid of chunks centered at (0,0)
-        /// Creates 49 terrain chunks for a large explorable world
+        /// Generates the initial 3x3 grid of chunks centered at (0,0)
+        /// Creates 9 terrain chunks for immediate player area
         /// Player starts at center chunk (0,0)
-        /// Total world size: 560x560 units (7 chunks * 80 units each)
+        /// Total world size: 360x360 units (3 chunks * 120 units each)
+        /// Additional chunks load dynamically as player moves
         /// </summary>
         public async UniTask GenerateInitialChunks()
         {
@@ -129,26 +158,50 @@ namespace BugWars.Terrain
             isGenerating = true;
 
             int halfGrid = chunkGridSize / 2;
-            List<UniTask> generationTasks = new List<UniTask>();
 
-            // Generate chunks in a grid centered around player position (0,0)
+            // Generate center chunk first (synchronously) so player has ground immediately
+            await GenerateChunk(Vector2Int.zero);
+
+            // Generate remaining chunks in batches to prevent FPS spike
+            List<Vector2Int> remainingChunks = new List<Vector2Int>();
             for (int x = -halfGrid; x <= halfGrid; x++)
             {
                 for (int z = -halfGrid; z <= halfGrid; z++)
                 {
                     Vector2Int chunkCoord = new Vector2Int(x, z);
-                    generationTasks.Add(GenerateChunk(chunkCoord));
+                    if (chunkCoord != Vector2Int.zero) // Skip center (already generated)
+                    {
+                        remainingChunks.Add(chunkCoord);
+                    }
                 }
             }
 
-            // Wait for all chunks to generate in parallel
-            await UniTask.WhenAll(generationTasks);
+            // Generate in very small batches (2 at a time) for WebGL - smoother frame rate
+            int batchSize = 2;
+            for (int i = 0; i < remainingChunks.Count; i += batchSize)
+            {
+                List<UniTask> batchTasks = new List<UniTask>();
+                for (int j = i; j < Mathf.Min(i + batchSize, remainingChunks.Count); j++)
+                {
+                    batchTasks.Add(GenerateChunk(remainingChunks[j]));
+                }
+
+                await UniTask.WhenAll(batchTasks);
+
+                // Yield multiple frames for WebGL (smoother experience)
+                await UniTask.DelayFrame(2);
+            }
+
+            // Set initial LOD levels
+            Vector2Int playerChunk = Vector2Int.zero;
+            UpdateChunkLODs(playerChunk);
 
             isGenerating = false;
 
             if (showDebugInfo)
             {
                 LogChunkGrid();
+                Debug.Log($"[TerrainManager] Initial {activeChunks.Count} chunks generated with batched loading");
             }
         }
 
@@ -202,8 +255,12 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Update chunks based on player position - async chunk streaming
-        /// Loads chunks within load distance and unloads chunks beyond unload distance
+        /// Update chunks based on player position - priority-based async chunk streaming
+        /// Hot chunks (radius 6): Load synchronously to prevent falling through terrain in ANY direction (360°)
+        /// - 13x13 grid = 169 chunks loaded BEFORE player can reach edge
+        /// - Covers 720 units in all directions (6 chunks * 120 units)
+        /// Warm chunks (radius 12): Load with high priority async for visible area
+        /// Cold chunks (radius 18): Load with low priority async for preload area
         /// </summary>
         public async UniTask UpdateChunksAroundPosition(Vector3 playerPosition)
         {
@@ -221,18 +278,7 @@ namespace BugWars.Terrain
 
             isGenerating = true;
 
-            // Determine which chunks should be loaded
-            HashSet<Vector2Int> chunksToLoad = new HashSet<Vector2Int>();
-            for (int x = -chunkLoadDistance; x <= chunkLoadDistance; x++)
-            {
-                for (int z = -chunkLoadDistance; z <= chunkLoadDistance; z++)
-                {
-                    Vector2Int chunkCoord = playerChunk + new Vector2Int(x, z);
-                    chunksToLoad.Add(chunkCoord);
-                }
-            }
-
-            // Unload chunks that are too far away
+            // === STEP 1: Unload distant chunks first ===
             List<Vector2Int> chunksToUnload = new List<Vector2Int>();
             foreach (var kvp in activeChunks)
             {
@@ -248,29 +294,134 @@ namespace BugWars.Terrain
                 }
             }
 
-            // Unload distant chunks
             foreach (var chunkCoord in chunksToUnload)
             {
                 UnloadChunk(chunkCoord);
             }
 
-            // Load new chunks asynchronously
-            List<UniTask> loadTasks = new List<UniTask>();
-            foreach (var chunkCoord in chunksToLoad)
+            // === STEP 2: Load HOT chunks synchronously (immediate vicinity) ===
+            // These chunks MUST be loaded immediately to prevent falling through terrain
+            // Radius 6 = 13x13 grid = 169 chunks = 720 units in ALL directions (360° coverage)
+            int hotChunksLoaded = 0;
+            for (int x = -hotChunkRadius; x <= hotChunkRadius; x++)
             {
-                if (!activeChunks.ContainsKey(chunkCoord))
+                for (int z = -hotChunkRadius; z <= hotChunkRadius; z++)
                 {
-                    loadTasks.Add(GenerateChunk(chunkCoord));
+                    Vector2Int chunkCoord = playerChunk + new Vector2Int(x, z);
+                    if (!activeChunks.ContainsKey(chunkCoord))
+                    {
+                        await GenerateChunk(chunkCoord); // Synchronous await - waits for completion
+                        hotChunksLoaded++;
+                    }
                 }
             }
 
-            // Wait for all new chunks to load
-            if (loadTasks.Count > 0)
+            if (hotChunksLoaded > 0 && showDebugInfo)
             {
-                await UniTask.WhenAll(loadTasks);
+                Debug.Log($"[TerrainManager] Loaded {hotChunksLoaded} hot chunks for 360° safety at player chunk {playerChunk}");
+            }
+
+            // Update LOD levels for all hot chunks to High
+            UpdateChunkLODs(playerChunk);
+
+            // === STEP 3: Load WARM chunks with high priority (parallel async) ===
+            // These are chunks in the visible/important area around the player
+            List<UniTask> warmTasks = new List<UniTask>();
+            for (int x = -warmChunkRadius; x <= warmChunkRadius; x++)
+            {
+                for (int z = -warmChunkRadius; z <= warmChunkRadius; z++)
+                {
+                    int distance = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
+
+                    // Skip if already covered by hot chunks
+                    if (distance <= hotChunkRadius)
+                        continue;
+
+                    Vector2Int chunkCoord = playerChunk + new Vector2Int(x, z);
+                    if (!activeChunks.ContainsKey(chunkCoord))
+                    {
+                        warmTasks.Add(GenerateChunk(chunkCoord));
+                    }
+                }
+            }
+
+            // Wait for all warm chunks to load in parallel
+            if (warmTasks.Count > 0)
+            {
+                await UniTask.WhenAll(warmTasks);
+            }
+
+            // === STEP 4: Load COLD chunks with low priority (fire and forget) ===
+            // These are preload chunks in the outer ring - load in background without blocking
+            List<UniTask> coldTasks = new List<UniTask>();
+            for (int x = -coldChunkRadius; x <= coldChunkRadius; x++)
+            {
+                for (int z = -coldChunkRadius; z <= coldChunkRadius; z++)
+                {
+                    int distance = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
+
+                    // Skip if already covered by hot or warm chunks
+                    if (distance <= warmChunkRadius)
+                        continue;
+
+                    Vector2Int chunkCoord = playerChunk + new Vector2Int(x, z);
+                    if (!activeChunks.ContainsKey(chunkCoord))
+                    {
+                        coldTasks.Add(GenerateChunk(chunkCoord));
+                    }
+                }
+            }
+
+            // Start cold chunk loading but don't wait for completion (fire and forget)
+            // They'll load in the background while player continues moving
+            if (coldTasks.Count > 0)
+            {
+                UniTask.WhenAll(coldTasks).Forget();
             }
 
             isGenerating = false;
+        }
+
+        /// <summary>
+        /// Update LOD levels for all chunks based on distance from player
+        /// Hot zone (0-6): High LOD (full detail)
+        /// Warm zone (7-12): Medium LOD (half resolution)
+        /// Cold zone (13-18): Low LOD (quarter resolution)
+        /// </summary>
+        private void UpdateChunkLODs(Vector2Int playerChunk)
+        {
+            foreach (var kvp in activeChunks)
+            {
+                Vector2Int chunkCoord = kvp.Key;
+                TerrainChunk chunk = kvp.Value;
+
+                if (chunk == null || !chunk.IsGenerated)
+                    continue;
+
+                // Calculate Chebyshev distance (max of x and z distance)
+                int distance = Mathf.Max(
+                    Mathf.Abs(chunkCoord.x - playerChunk.x),
+                    Mathf.Abs(chunkCoord.y - playerChunk.y)
+                );
+
+                // Assign LOD based on distance
+                TerrainLOD targetLOD;
+                if (distance <= hotChunkRadius)
+                {
+                    targetLOD = TerrainLOD.High; // Hot zone: full detail
+                }
+                else if (distance <= warmChunkRadius)
+                {
+                    targetLOD = TerrainLOD.Medium; // Warm zone: medium detail
+                }
+                else
+                {
+                    targetLOD = TerrainLOD.Low; // Cold zone: low detail
+                }
+
+                // Apply LOD change
+                chunk.SetLOD(targetLOD);
+            }
         }
 
         /// <summary>

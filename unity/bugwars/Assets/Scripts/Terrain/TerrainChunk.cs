@@ -1,19 +1,35 @@
 using UnityEngine;
 using Cysharp.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace BugWars.Terrain
 {
     /// <summary>
+    /// Level of Detail for terrain chunks
+    /// </summary>
+    public enum TerrainLOD
+    {
+        High = 0,   // Full resolution (20x20 vertices) - Hot chunks
+        Medium = 1, // Half resolution (10x10 vertices) - Warm chunks
+        Low = 2     // Quarter resolution (5x5 vertices) - Cold chunks
+    }
+
+    /// <summary>
     /// Represents a single terrain chunk with low-poly mesh generation
     /// Handles mesh creation and rendering for procedurally generated terrain
+    /// Supports multiple LOD levels for performance optimization
     /// </summary>
     public class TerrainChunk : MonoBehaviour
     {
         [Header("Chunk Settings")]
-        [SerializeField] private int chunkSize = 80; // Quadrupled from 20 to 80
-        [SerializeField] private int resolution = 20; // Vertices per side
+        [SerializeField] private int chunkSize = 120; // Increased from 80 to 120 for better coverage
+        [SerializeField] private int resolution = 15; // Reduced from 20 to 15 for WebGL performance
         [SerializeField] private float heightMultiplier = 3f;
         [SerializeField] private Material terrainMaterial;
+
+        [Header("Fade-In Settings")]
+        [SerializeField] private bool enableFadeIn = false; // Disabled by default for WebGL performance
+        [SerializeField] private float fadeInDuration = 0.3f; // Smooth fade-in over 0.3 seconds
 
         private MeshFilter meshFilter;
         private MeshRenderer meshRenderer;
@@ -22,10 +38,20 @@ namespace BugWars.Terrain
         private float noiseScale;
         private int seed;
 
+        // Fade-in state
+        private float fadeTimer = 0f;
+        private Material instanceMaterial; // Instance material for per-chunk fade
+        private static readonly int ColorMultiplierProperty = Shader.PropertyToID("_ColorMultiplier");
+
+        // LOD state
+        private TerrainLOD currentLOD = TerrainLOD.Low; // Start at low LOD
+        private Dictionary<TerrainLOD, Mesh> lodMeshes = new Dictionary<TerrainLOD, Mesh>(); // Cache meshes for each LOD
+
         public Vector2Int ChunkCoord => chunkCoord;
         public bool IsGenerated { get; private set; }
         public bool IsVisible { get; private set; } = true;
         public Bounds Bounds { get; private set; }
+        public TerrainLOD CurrentLOD => currentLOD;
 
         /// <summary>
         /// Initialize the chunk with generation parameters
@@ -49,7 +75,9 @@ namespace BugWars.Terrain
 
             if (terrainMaterial != null)
             {
-                meshRenderer.material = terrainMaterial;
+                // Create an instance of the material for per-chunk fade control
+                instanceMaterial = new Material(terrainMaterial);
+                meshRenderer.material = instanceMaterial;
             }
 
             // Position chunk based on coordinates
@@ -58,17 +86,54 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
+        /// Update fade-in animation
+        /// </summary>
+        private void Update()
+        {
+            // Handle fade-in animation
+            if (enableFadeIn && fadeTimer < fadeInDuration && IsGenerated)
+            {
+                fadeTimer += Time.deltaTime;
+                float fadeProgress = Mathf.Clamp01(fadeTimer / fadeInDuration);
+
+                // Smooth fade using easing function
+                float easedProgress = Mathf.SmoothStep(0f, 1f, fadeProgress);
+
+                // Update material color multiplier for fade effect
+                if (instanceMaterial != null)
+                {
+                    instanceMaterial.SetFloat(ColorMultiplierProperty, easedProgress);
+                }
+            }
+        }
+
+        /// <summary>
         /// Generate the terrain mesh asynchronously using UniTask
+        /// Only generates High LOD initially - other LODs generated on-demand
         /// </summary>
         public async UniTask GenerateMeshAsync()
         {
             if (IsGenerated) return;
 
-            // Move mesh generation to background thread to avoid blocking main thread
-            var meshData = await UniTask.RunOnThreadPool(() => GenerateMeshData());
+            // Only generate High LOD mesh immediately - this is critical for collision
+            var meshData = await UniTask.RunOnThreadPool(() => GenerateMeshData(TerrainLOD.High));
 
-            // Apply mesh on main thread (Unity requirement)
-            ApplyMesh(meshData);
+            // Create and cache the high LOD mesh
+            Mesh highMesh = CreateMeshFromData(meshData, TerrainLOD.High);
+            lodMeshes[TerrainLOD.High] = highMesh;
+
+            // Set to high LOD initially (will be updated based on distance)
+            currentLOD = TerrainLOD.High;
+            meshFilter.mesh = highMesh;
+            meshCollider.sharedMesh = highMesh;
+            Bounds = meshRenderer.bounds;
+
+            // Initialize fade-in
+            if (enableFadeIn && instanceMaterial != null)
+            {
+                fadeTimer = 0f;
+                instanceMaterial.SetFloat(ColorMultiplierProperty, 0f);
+            }
 
             IsGenerated = true;
         }
@@ -78,24 +143,36 @@ namespace BugWars.Terrain
         /// This runs on a background thread for performance
         /// Creates a simple top surface terrain plane
         /// </summary>
-        private MeshData GenerateMeshData()
+        private MeshData GenerateMeshData(TerrainLOD lod)
         {
+            // Calculate resolution based on LOD level
+            int lodResolution = lod switch
+            {
+                TerrainLOD.High => resolution,         // 20x20 vertices
+                TerrainLOD.Medium => resolution / 2,   // 10x10 vertices
+                TerrainLOD.Low => resolution / 4,      // 5x5 vertices
+                _ => resolution
+            };
+
+            // Ensure minimum resolution of 2x2
+            lodResolution = Mathf.Max(2, lodResolution);
+
             // Calculate array sizes for just the top surface
-            int vertCount = resolution * resolution;
-            int triCount = (resolution - 1) * (resolution - 1) * 6;
+            int vertCount = lodResolution * lodResolution;
+            int triCount = (lodResolution - 1) * (lodResolution - 1) * 6;
 
             MeshData meshData = new MeshData(vertCount, triCount);
 
             float halfSize = chunkSize * 0.5f;
-            float stepSize = chunkSize / (float)(resolution - 1);
+            float stepSize = chunkSize / (float)(lodResolution - 1);
 
             int vertexIndex = 0;
             int triIndex = 0;
 
             // === GENERATE TOP SURFACE ===
-            for (int y = 0; y < resolution; y++)
+            for (int y = 0; y < lodResolution; y++)
             {
-                for (int x = 0; x < resolution; x++)
+                for (int x = 0; x < lodResolution; x++)
                 {
                     // Calculate world position for noise sampling
                     float worldX = chunkCoord.x * chunkSize + x * stepSize;
@@ -115,22 +192,22 @@ namespace BugWars.Terrain
                     );
 
                     meshData.vertices[vertexIndex] = position;
-                    meshData.uvs[vertexIndex] = new Vector2(x / (float)(resolution - 1), y / (float)(resolution - 1));
+                    meshData.uvs[vertexIndex] = new Vector2(x / (float)(lodResolution - 1), y / (float)(lodResolution - 1));
 
                     // Calculate and assign vertex color for terrain variation
                     meshData.colors[vertexIndex] = CalculateTerrainColor(worldX, worldZ, height);
 
                     // Generate triangles for the current quad
-                    if (x < resolution - 1 && y < resolution - 1)
+                    if (x < lodResolution - 1 && y < lodResolution - 1)
                     {
                         int i = vertexIndex;
                         // First triangle
                         meshData.triangles[triIndex++] = i;
-                        meshData.triangles[triIndex++] = i + resolution;
-                        meshData.triangles[triIndex++] = i + resolution + 1;
+                        meshData.triangles[triIndex++] = i + lodResolution;
+                        meshData.triangles[triIndex++] = i + lodResolution + 1;
                         // Second triangle
                         meshData.triangles[triIndex++] = i;
-                        meshData.triangles[triIndex++] = i + resolution + 1;
+                        meshData.triangles[triIndex++] = i + lodResolution + 1;
                         meshData.triangles[triIndex++] = i + 1;
                     }
 
@@ -216,33 +293,68 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Apply generated mesh data to Unity mesh components
-        /// Must be called on main thread
+        /// Create a mesh from mesh data (called on main thread)
         /// </summary>
-        private void ApplyMesh(MeshData meshData)
+        private Mesh CreateMeshFromData(MeshData meshData, TerrainLOD lod)
         {
             Mesh mesh = new Mesh();
-            mesh.name = $"TerrainChunk_{chunkCoord.x}_{chunkCoord.y}";
+            mesh.name = $"TerrainChunk_{chunkCoord.x}_{chunkCoord.y}_LOD{lod}";
             mesh.vertices = meshData.vertices;
             mesh.triangles = meshData.triangles;
             mesh.uv = meshData.uvs;
             mesh.colors = meshData.colors;
 
-            // Don't calculate normals - we'll use flat normals from the shader
-            // This prevents lighting discontinuities at chunk boundaries
-            // mesh.RecalculateNormals();
-            // SmoothEdgeNormals(mesh);
-
-            // Instead, create flat normals manually for consistent lighting
+            // Create flat normals manually for consistent lighting
             CreateFlatNormals(mesh);
 
             mesh.RecalculateBounds();
 
-            meshFilter.mesh = mesh;
-            meshCollider.sharedMesh = mesh;
+            return mesh;
+        }
 
-            // Cache the bounds for frustum culling
-            Bounds = meshRenderer.bounds;
+        /// <summary>
+        /// Set the LOD level for this chunk
+        /// Generates LOD mesh on-demand if not cached, then switches to it
+        /// WebGL-optimized: generates async to prevent main thread blocking
+        /// </summary>
+        public async void SetLOD(TerrainLOD newLOD)
+        {
+            if (currentLOD == newLOD)
+                return;
+
+            // Generate the LOD mesh if it doesn't exist yet (on-demand generation)
+            if (!lodMeshes.ContainsKey(newLOD))
+            {
+                // Generate mesh data async on thread pool (WebGL performance)
+                var meshData = await UniTask.RunOnThreadPool(() => GenerateMeshData(newLOD));
+                Mesh newMesh = CreateMeshFromData(meshData, newLOD);
+                lodMeshes[newLOD] = newMesh;
+            }
+
+            currentLOD = newLOD;
+
+            // Switch to the cached mesh for this LOD level
+            if (lodMeshes.TryGetValue(newLOD, out Mesh lodMesh))
+            {
+                meshFilter.mesh = lodMesh;
+
+                // ALWAYS update collider - player needs collision on ALL LODs to prevent falling through
+                // We use the high LOD mesh for collision even on lower visual LODs for accuracy
+                if (lodMeshes.TryGetValue(TerrainLOD.High, out Mesh highLodMesh))
+                {
+                    meshCollider.sharedMesh = highLodMesh;
+                }
+
+                // Update bounds
+                Bounds = meshRenderer.bounds;
+
+                // Reset fade-in when upgrading LOD
+                if (enableFadeIn && instanceMaterial != null)
+                {
+                    fadeTimer = 0f;
+                    instanceMaterial.SetFloat(ColorMultiplierProperty, 0f);
+                }
+            }
         }
 
         /// <summary>
@@ -250,9 +362,21 @@ namespace BugWars.Terrain
         /// </summary>
         public void Unload()
         {
-            if (meshFilter.mesh != null)
+            // Clean up all LOD meshes
+            foreach (var lodMesh in lodMeshes.Values)
             {
-                Destroy(meshFilter.mesh);
+                if (lodMesh != null)
+                {
+                    Destroy(lodMesh);
+                }
+            }
+            lodMeshes.Clear();
+
+            // Clean up instance material to prevent memory leaks
+            if (instanceMaterial != null)
+            {
+                Destroy(instanceMaterial);
+                instanceMaterial = null;
             }
 
             IsGenerated = false;
