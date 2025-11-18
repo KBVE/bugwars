@@ -188,30 +188,55 @@ namespace BugWars.Core
             // InteractionManager for R3-based object interactions (trees, rocks, bushes)
             if (interactionManager != null)
             {
-                builder.RegisterComponent(interactionManager).AsImplementedInterfaces().AsSelf();
+                builder.RegisterComponent(interactionManager).AsSelf();
+
+                // Configure after registration
+                LayerMask interactableMask = 1 << 8; // Layer 8 (Interactable)
+                interactionManager.Configure(100f, interactableMask);
             }
             else
             {
                 var registration = builder.RegisterComponentOnNewGameObject<InteractionManager>(Lifetime.Singleton, "InteractionManager");
-                registration.DontDestroyOnLoad().AsImplementedInterfaces().AsSelf();
+                registration.DontDestroyOnLoad().AsSelf();
+
+                // Configure the InteractionManager after container is built
+                builder.RegisterBuildCallback(container =>
+                {
+                    var manager = container.Resolve<InteractionManager>();
+                    LayerMask interactableMask = 1 << 8; // Layer 8 (Interactable)
+
+                    // Configure will set values and call Initialize()
+                    manager.Configure(100f, interactableMask);
+                });
             }
 
-            // InteractionPromptUIToolkit - UI for interaction prompts (instantiate from prefab if provided)
+            // InteractionPromptUIToolkit - UI for interaction prompts
+            // Use RegisterInstance with a callback to properly handle DI and setup
             if (interactionPromptUIPrefab != null)
             {
-                GameObject uiInstance = Instantiate(interactionPromptUIPrefab);
-                uiInstance.name = "InteractionPromptUIToolkit";
-                DontDestroyOnLoad(uiInstance);
+                builder.RegisterBuildCallback(container =>
+                {
+                    GameObject uiInstance = container.Instantiate(interactionPromptUIPrefab);
+                    uiInstance.name = "InteractionPromptUIToolkit";
 
-                var uiComponent = uiInstance.GetComponent<BugWars.Interaction.InteractionPromptUIToolkit>();
-                if (uiComponent != null)
-                {
-                    builder.RegisterComponent(uiComponent);
-                }
-                else
-                {
-                    Debug.LogError("[GameLifetimeScope] InteractionPromptUIToolkit prefab does not have InteractionPromptUIToolkit component!");
-                }
+                    // Set to Ignore Raycast layer so interaction raycasts don't hit the UI
+                    uiInstance.layer = LayerMask.NameToLayer("Ignore Raycast");
+
+                    DontDestroyOnLoad(uiInstance);
+
+                    var uiComponent = uiInstance.GetComponent<BugWars.Interaction.InteractionPromptUIToolkit>();
+                    if (uiComponent != null)
+                    {
+                        // Manually inject dependencies since this was instantiated after container build
+                        var interactionMgr = container.Resolve<InteractionManager>();
+                        uiComponent.Construct(interactionMgr);
+                        Debug.Log("[GameLifetimeScope] InteractionPromptUIToolkit instantiated and dependencies injected");
+                    }
+                    else
+                    {
+                        Debug.LogError("[GameLifetimeScope] InteractionPromptUIToolkit prefab does not have InteractionPromptUIToolkit component!");
+                    }
+                });
             }
 
         }

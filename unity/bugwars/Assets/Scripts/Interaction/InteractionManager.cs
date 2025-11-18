@@ -12,7 +12,7 @@ namespace BugWars.Interaction
     /// Manages player interactions using R3 reactive raycast system
     /// Handles proximity detection, raycasting, and interaction prompts
     /// </summary>
-    public class InteractionManager : MonoBehaviour, IStartable
+    public class InteractionManager : MonoBehaviour
     {
         [Header("Raycast Settings")]
         [SerializeField] private float raycastDistance = 5f;
@@ -43,37 +43,68 @@ namespace BugWars.Interaction
         // Tracked interactables
         private HashSet<InteractableObject> nearbyInteractables = new();
 
-        void IStartable.Start()
+        // Debug visualization
+        private LineRenderer raycastLine;
+
+        /// <summary>
+        /// Configure interaction settings programmatically and initialize the manager
+        /// </summary>
+        public void Configure(float distance, LayerMask layer)
         {
+            raycastDistance = distance;
+            interactableLayer = layer;
+            Debug.Log($"[InteractionManager] Configured with distance: {distance}, layer: {layer.value}");
+
+            // Initialize immediately after configuration
             Initialize();
         }
 
         private void Initialize()
         {
-            Debug.Log("[InteractionManager] Initialize() called");
-
             // Find player (TODO: Inject via VContainer when player system is ready)
             playerTransform = GameObject.FindGameObjectWithTag("Player")?.transform;
             if (playerTransform == null)
             {
-                Debug.LogWarning("[InteractionManager] Player not found! Using main camera instead.");
                 playerCamera = Camera.main;
             }
             else
             {
                 playerCamera = Camera.main;
-                Debug.Log($"[InteractionManager] Found player at {playerTransform.position}");
             }
 
-            Debug.Log($"[InteractionManager] Camera: {(playerCamera != null ? playerCamera.name : "NULL")}");
-            Debug.Log($"[InteractionManager] Interactable Layer Mask: {interactableLayer.value}");
-            Debug.Log($"[InteractionManager] Raycast Distance: {raycastDistance}, Radius: {raycastRadius}");
+            // Create LineRenderer for runtime raycast visualization
+            CreateRaycastVisualizer();
 
             SetupRaycastStream();
             SetupProximityStream();
             SetupInputStream();
 
-            Debug.Log("[InteractionManager] Initialization complete!");
+            Debug.Log($"[InteractionManager] Initialized - Layer mask: {interactableLayer.value}, Raycast distance: {raycastDistance}");
+
+            // Count interactables without spamming logs
+            var allInteractables = FindObjectsByType<InteractableObject>(FindObjectsSortMode.None);
+            if (allInteractables.Length > 0)
+            {
+                Debug.Log($"[InteractionManager] Found {allInteractables.Length} interactable objects in scene");
+            }
+            else
+            {
+                Debug.LogWarning("[InteractionManager] No InteractableObject components found in scene! Make sure environment objects have been spawned.");
+            }
+        }
+
+        private void CreateRaycastVisualizer()
+        {
+            GameObject lineObj = new GameObject("RaycastVisualizer");
+            lineObj.transform.SetParent(transform);
+            raycastLine = lineObj.AddComponent<LineRenderer>();
+
+            // Configure LineRenderer for visibility
+            raycastLine.material = new Material(Shader.Find("Sprites/Default"));
+            raycastLine.startWidth = 0.02f;
+            raycastLine.endWidth = 0.02f;
+            raycastLine.positionCount = 2;
+            raycastLine.useWorldSpace = true;
         }
 
         /// <summary>
@@ -110,14 +141,14 @@ namespace BugWars.Interaction
         /// </summary>
         private void SetupInputStream()
         {
-            // Detect E key press using new Input System
+            // E key interaction
             Observable.EveryUpdate()
                 .Where(_ => Keyboard.current != null && Keyboard.current[interactKey].wasPressedThisFrame)
                 .Where(_ => _currentTarget.Value != null && !_isInteracting.Value)
                 .Subscribe(_ => StartInteraction())
                 .AddTo(this);
 
-            // Alternative: Mouse click interaction using new Input System
+            // Mouse click interaction
             Observable.EveryUpdate()
                 .Where(_ => Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
                 .Where(_ => _currentTarget.Value != null && !_isInteracting.Value)
@@ -131,29 +162,43 @@ namespace BugWars.Interaction
         private InteractableObject PerformRaycast()
         {
             if (playerCamera == null)
-            {
-                Debug.LogWarning("[InteractionManager] PerformRaycast: playerCamera is null!");
                 return null;
-            }
 
             Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
 
-            // Use SphereCast for more forgiving targeting
-            if (Physics.SphereCast(ray, raycastRadius, out RaycastHit hit, raycastDistance, interactableLayer))
+            Color lineColor = Color.red;
+            float lineLength = raycastDistance;
+            InteractableObject result = null;
+
+            // Check for interactable hit
+            if (Physics.SphereCast(ray, raycastRadius, out RaycastHit interactableHit, raycastDistance, interactableLayer))
             {
-                var interactable = hit.collider.GetComponent<InteractableObject>();
+                lineColor = Color.green;
+                lineLength = interactableHit.distance;
+
+                var interactable = interactableHit.collider.GetComponent<InteractableObject>();
                 if (interactable != null)
                 {
-                    Debug.Log($"[InteractionManager] Found interactable: {interactable.name} at distance {hit.distance}");
-                    return interactable;
-                }
-                else
-                {
-                    Debug.LogWarning($"[InteractionManager] Hit object {hit.collider.name} but it has no InteractableObject component!");
+                    result = interactable;
                 }
             }
+            else if (Physics.SphereCast(ray, raycastRadius, out RaycastHit anyHit, raycastDistance))
+            {
+                // Yellow = hit something but not interactable
+                lineColor = Color.yellow;
+                lineLength = anyHit.distance;
+            }
 
-            return null;
+            // Update LineRenderer visualization (visible in Game view!)
+            if (raycastLine != null)
+            {
+                raycastLine.SetPosition(0, ray.origin);
+                raycastLine.SetPosition(1, ray.origin + ray.direction * lineLength);
+                raycastLine.startColor = lineColor;
+                raycastLine.endColor = lineColor;
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -259,6 +304,11 @@ namespace BugWars.Interaction
             _currentTarget?.Dispose();
             _onInteractionCompleted?.Dispose();
             _isInteracting?.Dispose();
+
+            if (raycastLine != null)
+            {
+                Destroy(raycastLine.gameObject);
+            }
         }
 
         private void OnDrawGizmos()
@@ -272,10 +322,73 @@ namespace BugWars.Interaction
 
             if (playerCamera != null)
             {
-                // Draw raycast line
+                // Draw raycast line and sphere cast visualization
                 Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
-                Gizmos.color = _currentTarget.Value != null ? Color.green : Color.red;
+
+                // Test raycast to determine color
+                bool hitAnything = Physics.SphereCast(ray, raycastRadius, out RaycastHit anyHit, raycastDistance);
+                bool hitInteractable = Physics.SphereCast(ray, raycastRadius, out RaycastHit interactableHit, raycastDistance, interactableLayer);
+
+                // Color coding:
+                // Green = hit interactable on Layer 8
+                // Yellow = hit something but not on interactable layer
+                // Red = hit nothing
+                if (hitInteractable)
+                {
+                    Gizmos.color = Color.green;
+                }
+                else if (hitAnything)
+                {
+                    Gizmos.color = Color.yellow;
+                }
+                else
+                {
+                    Gizmos.color = Color.red;
+                }
+
+                // Draw main raycast line
                 Gizmos.DrawRay(ray.origin, ray.direction * raycastDistance);
+
+                // Draw sphere at ray origin to show SphereCast radius
+                Gizmos.color = new Color(1f, 1f, 1f, 0.3f); // Semi-transparent white
+                Gizmos.DrawWireSphere(ray.origin, raycastRadius);
+
+                // Draw sphere at raycast end point
+                Vector3 endPoint = ray.origin + ray.direction * raycastDistance;
+                Gizmos.DrawWireSphere(endPoint, raycastRadius);
+
+                // If we hit something, draw hit point and info
+                if (hitInteractable)
+                {
+                    Gizmos.color = Color.green;
+                    Gizmos.DrawSphere(interactableHit.point, 0.2f);
+                    Gizmos.DrawLine(interactableHit.point, interactableHit.point + interactableHit.normal * 1f);
+
+                    // Draw sphere at hit distance to show where SphereCast detected
+                    Gizmos.color = new Color(0f, 1f, 0f, 0.5f); // Semi-transparent green
+                    Gizmos.DrawWireSphere(ray.origin + ray.direction * interactableHit.distance, raycastRadius);
+                }
+                else if (hitAnything)
+                {
+                    Gizmos.color = Color.yellow;
+                    Gizmos.DrawSphere(anyHit.point, 0.2f);
+                    Gizmos.DrawLine(anyHit.point, anyHit.point + anyHit.normal * 1f);
+
+                    // Draw sphere at hit distance
+                    Gizmos.color = new Color(1f, 1f, 0f, 0.5f); // Semi-transparent yellow
+                    Gizmos.DrawWireSphere(ray.origin + ray.direction * anyHit.distance, raycastRadius);
+                }
+
+                // Draw current target outline if we have one
+                if (_currentTarget.Value != null)
+                {
+                    Gizmos.color = Color.cyan;
+                    Bounds bounds = _currentTarget.Value.GetComponent<Collider>()?.bounds ?? default;
+                    if (bounds != default)
+                    {
+                        Gizmos.DrawWireCube(bounds.center, bounds.size);
+                    }
+                }
             }
         }
     }

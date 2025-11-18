@@ -85,13 +85,10 @@ namespace BugWars.Interaction
         /// </summary>
         private void SetupReactiveUI()
         {
-            Debug.Log("[InteractionPromptUIToolkit] SetupReactiveUI() called");
-
             // Show/hide prompt based on current target
             interactionManager.CurrentTarget
                 .Subscribe(target =>
                 {
-                    Debug.Log($"[InteractionPromptUIToolkit] CurrentTarget changed: {(target != null ? target.name : "NULL")}");
                     if (target != null)
                     {
                         ShowPrompt(target);
@@ -107,7 +104,6 @@ namespace BugWars.Interaction
             interactionManager.IsInteracting
                 .Subscribe(isInteracting =>
                 {
-                    Debug.Log($"[InteractionPromptUIToolkit] IsInteracting changed: {isInteracting}");
                     if (isInteracting)
                     {
                         ShowProgressBar();
@@ -121,21 +117,13 @@ namespace BugWars.Interaction
 
             // Hide prompt initially
             HidePrompt();
-            Debug.Log("[InteractionPromptUIToolkit] Reactive UI setup complete!");
         }
 
         private void ShowPrompt(InteractableObject target)
         {
-            Debug.Log($"[InteractionPromptUIToolkit] ShowPrompt() called for {target.name}");
-
             if (promptContainer != null)
             {
                 promptContainer.style.display = DisplayStyle.Flex;
-                Debug.Log("[InteractionPromptUIToolkit] Set promptContainer display to Flex");
-            }
-            else
-            {
-                Debug.LogError("[InteractionPromptUIToolkit] promptContainer is NULL!");
             }
 
             if (promptText != null)
@@ -143,11 +131,6 @@ namespace BugWars.Interaction
                 // Format: "Tree\nPress E to chop"
                 string objectName = target.name.Replace("(Clone)", "").Trim();
                 promptText.text = $"{objectName}\n{target.InteractionPrompt}";
-                Debug.Log($"[InteractionPromptUIToolkit] Set promptText to: {promptText.text}");
-            }
-            else
-            {
-                Debug.LogError("[InteractionPromptUIToolkit] promptText is NULL!");
             }
 
             // Position world-space UI if enabled
@@ -159,8 +142,6 @@ namespace BugWars.Interaction
 
         private void HidePrompt()
         {
-            Debug.Log("[InteractionPromptUIToolkit] HidePrompt() called");
-
             if (promptContainer != null)
             {
                 promptContainer.style.display = DisplayStyle.None;
