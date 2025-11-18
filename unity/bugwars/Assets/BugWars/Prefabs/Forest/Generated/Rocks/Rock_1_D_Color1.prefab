@@ -52,20 +52,27 @@ PrefabInstance:
       propertyPath: m_Name
       value: Rock_1_D_Color1
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: eacd1e483a370498fb5a7980f5d08311, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: eacd1e483a370498fb5a7980f5d08311, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4471252205518582475}
+      addedObject: {fileID: 3018152782682339361}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: eacd1e483a370498fb5a7980f5d08311, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2378184485826329389}
   m_SourcePrefab: {fileID: 100100000, guid: eacd1e483a370498fb5a7980f5d08311, type: 3}
 --- !u!1 &1335543689006228937 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: eacd1e483a370498fb5a7980f5d08311, type: 3}
   m_PrefabInstance: {fileID: 2182456060654524568}
   m_PrefabAsset: {fileID: 0}
---- !u!65 &4471252205518582475
+--- !u!65 &3018152782682339361
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -86,3 +93,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.8343553, y: 1.0169762, z: 1.0409554}
   m_Center: {x: -0.07673627, y: 0.5649866, z: -0.046440814}
+--- !u!114 &2378184485826329389
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1335543689006228937}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Mine
+  interactionDistance: 3
+  interactionType: 1
+  resourceType: 1
+  resourceAmount: 4
+  harvestTime: 3

@@ -52,20 +52,27 @@ PrefabInstance:
       propertyPath: m_Name
       value: Bush_3_B_Color1
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: b6346022de3444c959ee1581aaff2672, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b6346022de3444c959ee1581aaff2672, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2410523843761671282}
+      addedObject: {fileID: 7610812472317211412}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b6346022de3444c959ee1581aaff2672, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3598442368853835631}
   m_SourcePrefab: {fileID: 100100000, guid: b6346022de3444c959ee1581aaff2672, type: 3}
 --- !u!1 &3847150254128351485 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: b6346022de3444c959ee1581aaff2672, type: 3}
   m_PrefabInstance: {fileID: 4153087501010138540}
   m_PrefabAsset: {fileID: 0}
---- !u!135 &2410523843761671282
+--- !u!135 &7610812472317211412
 SphereCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -86,3 +93,21 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.6733345
   m_Center: {x: 0, y: 0.375653, z: 0.000000058007643}
+--- !u!114 &3598442368853835631
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3847150254128351485}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Harvest
+  interactionDistance: 2
+  interactionType: 2
+  resourceType: 2
+  resourceAmount: 3
+  harvestTime: 1

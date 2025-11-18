@@ -52,20 +52,27 @@ PrefabInstance:
       propertyPath: m_Name
       value: Tree_4_B_Color1
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 76eb6657e04b6424fa09d5dbbef248ff, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 76eb6657e04b6424fa09d5dbbef248ff, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7818483362565166014}
+      addedObject: {fileID: 5744520152122540880}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 76eb6657e04b6424fa09d5dbbef248ff, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 280667502261561351}
   m_SourcePrefab: {fileID: 100100000, guid: 76eb6657e04b6424fa09d5dbbef248ff, type: 3}
 --- !u!1 &877832961515896471 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 76eb6657e04b6424fa09d5dbbef248ff, type: 3}
   m_PrefabInstance: {fileID: 67511923448841158}
   m_PrefabAsset: {fileID: 0}
---- !u!136 &7818483362565166014
+--- !u!136 &5744520152122540880
 CapsuleCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -88,3 +95,21 @@ CapsuleCollider:
   m_Height: 5.554073
   m_Direction: 1
   m_Center: {x: -0.043759942, y: 3.0949066, z: -0.21125367}
+--- !u!114 &280667502261561351
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 877832961515896471}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Chop
+  interactionDistance: 3
+  interactionType: 0
+  resourceType: 0
+  resourceAmount: 5
+  harvestTime: 2

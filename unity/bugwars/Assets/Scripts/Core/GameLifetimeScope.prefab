@@ -365,10 +365,10 @@ MonoBehaviour:
   raycastRadius: 0.5
   interactableLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 256
   proximityCheckRadius: 10
   proximityCheckInterval: 0.5
-  interactKey: 101
+  interactKey: 19
 --- !u!1 &5658335548533922212
 GameObject:
   m_ObjectHideFlags: 0
@@ -624,6 +624,7 @@ MonoBehaviour:
   cameraManager: {fileID: 9078858066107133751}
   entityManager: {fileID: 7079581847023201318}
   interactionManager: {fileID: 6383346758455814039}
+  interactionPromptUIPrefab: {fileID: 4969149913543290532, guid: 742516da40d2846238c87a57e285e990, type: 3}
 --- !u!1 &9191352141979102719
 GameObject:
   m_ObjectHideFlags: 0

@@ -45,6 +45,8 @@ namespace BugWars.Core
         private EntityManager entityManager;
         [SerializeField] [Tooltip("Optional - InteractionManager component to register. Will create if not assigned.")]
         private InteractionManager interactionManager;
+        [SerializeField] [Tooltip("Optional - InteractionPromptUIToolkit prefab to instantiate. If not assigned, interaction UI will not be shown.")]
+        private GameObject interactionPromptUIPrefab;
 
 
         protected override void Configure(IContainerBuilder builder)
@@ -192,6 +194,24 @@ namespace BugWars.Core
             {
                 var registration = builder.RegisterComponentOnNewGameObject<InteractionManager>(Lifetime.Singleton, "InteractionManager");
                 registration.DontDestroyOnLoad().AsImplementedInterfaces().AsSelf();
+            }
+
+            // InteractionPromptUIToolkit - UI for interaction prompts (instantiate from prefab if provided)
+            if (interactionPromptUIPrefab != null)
+            {
+                GameObject uiInstance = Instantiate(interactionPromptUIPrefab);
+                uiInstance.name = "InteractionPromptUIToolkit";
+                DontDestroyOnLoad(uiInstance);
+
+                var uiComponent = uiInstance.GetComponent<BugWars.Interaction.InteractionPromptUIToolkit>();
+                if (uiComponent != null)
+                {
+                    builder.RegisterComponent(uiComponent);
+                }
+                else
+                {
+                    Debug.LogError("[GameLifetimeScope] InteractionPromptUIToolkit prefab does not have InteractionPromptUIToolkit component!");
+                }
             }
 
         }

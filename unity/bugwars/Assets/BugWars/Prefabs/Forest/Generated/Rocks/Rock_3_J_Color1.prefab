@@ -52,20 +52,27 @@ PrefabInstance:
       propertyPath: m_Name
       value: Rock_3_J_Color1
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 5f1c9d59129b940ac8a630808023397c, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 5f1c9d59129b940ac8a630808023397c, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6594040657973525237}
+      addedObject: {fileID: 5807340206983745664}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 5f1c9d59129b940ac8a630808023397c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8871802909982441876}
   m_SourcePrefab: {fileID: 100100000, guid: 5f1c9d59129b940ac8a630808023397c, type: 3}
 --- !u!1 &7494233772908935396 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 5f1c9d59129b940ac8a630808023397c, type: 3}
   m_PrefabInstance: {fileID: 7260282230901425589}
   m_PrefabAsset: {fileID: 0}
---- !u!65 &6594040657973525237
+--- !u!65 &5807340206983745664
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -86,3 +93,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.7756174, y: 1.7061386, z: 1.5625756}
   m_Center: {x: -0.08061874, y: 0.0304668, z: 0.0392366}
+--- !u!114 &8871802909982441876
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7494233772908935396}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Mine
+  interactionDistance: 3
+  interactionType: 1
+  resourceType: 1
+  resourceAmount: 4
+  harvestTime: 3

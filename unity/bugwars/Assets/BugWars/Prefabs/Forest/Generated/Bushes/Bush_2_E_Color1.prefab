@@ -52,20 +52,27 @@ PrefabInstance:
       propertyPath: m_Name
       value: Bush_2_E_Color1
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 58e037c5ec60147549e8c50f79f46978, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 58e037c5ec60147549e8c50f79f46978, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1732018152663779368}
+      addedObject: {fileID: 1619944848146240938}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 58e037c5ec60147549e8c50f79f46978, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 564528654782143576}
   m_SourcePrefab: {fileID: 100100000, guid: 58e037c5ec60147549e8c50f79f46978, type: 3}
 --- !u!1 &218853611756234917 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 58e037c5ec60147549e8c50f79f46978, type: 3}
   m_PrefabInstance: {fileID: 1137422662780818932}
   m_PrefabAsset: {fileID: 0}
---- !u!135 &1732018152663779368
+--- !u!135 &1619944848146240938
 SphereCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -86,3 +93,21 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.93920803
   m_Center: {x: -0.04922855, y: 0.66599995, z: -0.07553183}
+--- !u!114 &564528654782143576
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 218853611756234917}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Harvest
+  interactionDistance: 2
+  interactionType: 2
+  resourceType: 2
+  resourceAmount: 3
+  harvestTime: 1

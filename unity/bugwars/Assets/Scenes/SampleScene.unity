@@ -2611,6 +2611,14 @@ PrefabInstance:
       propertyPath: chunkUpdateInterval
       value: 0.5
       objectReference: {fileID: 0}
+    - target: {fileID: 6383346758455814039, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
+      propertyPath: interactKey
+      value: 19
+      objectReference: {fileID: 0}
+    - target: {fileID: 6383346758455814039, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
+      propertyPath: interactableLayer.m_Bits
+      value: 256
+      objectReference: {fileID: 0}
     - target: {fileID: 8462317456789012345, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
       propertyPath: m_Name
       value: GameLifetimeScope

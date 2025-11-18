@@ -52,20 +52,27 @@ PrefabInstance:
       propertyPath: m_Name
       value: Rock_2_C_Color1
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: da0db8ce83d2b4ce58609e442bfb3eca, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: da0db8ce83d2b4ce58609e442bfb3eca, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 873477564229963614}
+      addedObject: {fileID: 779126805422544538}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: da0db8ce83d2b4ce58609e442bfb3eca, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4381314178280199618}
   m_SourcePrefab: {fileID: 100100000, guid: da0db8ce83d2b4ce58609e442bfb3eca, type: 3}
 --- !u!1 &7988928107898291479 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: da0db8ce83d2b4ce58609e442bfb3eca, type: 3}
   m_PrefabInstance: {fileID: 7070429419174918214}
   m_PrefabAsset: {fileID: 0}
---- !u!65 &873477564229963614
+--- !u!65 &779126805422544538
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -86,3 +93,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.1657361, y: 1.1935822, z: 1.1657362}
   m_Center: {x: -0.00002026558, y: 0.6631415, z: 0.000000011169824}
+--- !u!114 &4381314178280199618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7988928107898291479}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Mine
+  interactionDistance: 3
+  interactionType: 1
+  resourceType: 1
+  resourceAmount: 4
+  harvestTime: 3

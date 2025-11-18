@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using R3;
 using System;
 using System.Collections.Generic;
@@ -23,7 +24,7 @@ namespace BugWars.Interaction
         [SerializeField] private float proximityCheckInterval = 0.5f;
 
         [Header("Input Settings")]
-        [SerializeField] private KeyCode interactKey = KeyCode.E;
+        [SerializeField] private Key interactKey = Key.E;
 
         // R3 Reactive properties
         private readonly ReactiveProperty<InteractableObject> _currentTarget = new(null);
@@ -49,6 +50,8 @@ namespace BugWars.Interaction
 
         private void Initialize()
         {
+            Debug.Log("[InteractionManager] Initialize() called");
+
             // Find player (TODO: Inject via VContainer when player system is ready)
             playerTransform = GameObject.FindGameObjectWithTag("Player")?.transform;
             if (playerTransform == null)
@@ -59,11 +62,18 @@ namespace BugWars.Interaction
             else
             {
                 playerCamera = Camera.main;
+                Debug.Log($"[InteractionManager] Found player at {playerTransform.position}");
             }
+
+            Debug.Log($"[InteractionManager] Camera: {(playerCamera != null ? playerCamera.name : "NULL")}");
+            Debug.Log($"[InteractionManager] Interactable Layer Mask: {interactableLayer.value}");
+            Debug.Log($"[InteractionManager] Raycast Distance: {raycastDistance}, Radius: {raycastRadius}");
 
             SetupRaycastStream();
             SetupProximityStream();
             SetupInputStream();
+
+            Debug.Log("[InteractionManager] Initialization complete!");
         }
 
         /// <summary>
@@ -96,19 +106,20 @@ namespace BugWars.Interaction
 
         /// <summary>
         /// R3 Input stream - handles interaction key presses reactively
+        /// Uses new Input System instead of legacy Input
         /// </summary>
         private void SetupInputStream()
         {
-            // Detect E key press
+            // Detect E key press using new Input System
             Observable.EveryUpdate()
-                .Where(_ => Input.GetKeyDown(interactKey))
+                .Where(_ => Keyboard.current != null && Keyboard.current[interactKey].wasPressedThisFrame)
                 .Where(_ => _currentTarget.Value != null && !_isInteracting.Value)
                 .Subscribe(_ => StartInteraction())
                 .AddTo(this);
 
-            // Alternative: Mouse click interaction
+            // Alternative: Mouse click interaction using new Input System
             Observable.EveryUpdate()
-                .Where(_ => Input.GetMouseButtonDown(0)) // Left click
+                .Where(_ => Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
                 .Where(_ => _currentTarget.Value != null && !_isInteracting.Value)
                 .Subscribe(_ => StartInteraction())
                 .AddTo(this);
@@ -120,7 +131,10 @@ namespace BugWars.Interaction
         private InteractableObject PerformRaycast()
         {
             if (playerCamera == null)
+            {
+                Debug.LogWarning("[InteractionManager] PerformRaycast: playerCamera is null!");
                 return null;
+            }
 
             Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
 
@@ -130,7 +144,12 @@ namespace BugWars.Interaction
                 var interactable = hit.collider.GetComponent<InteractableObject>();
                 if (interactable != null)
                 {
+                    Debug.Log($"[InteractionManager] Found interactable: {interactable.name} at distance {hit.distance}");
                     return interactable;
+                }
+                else
+                {
+                    Debug.LogWarning($"[InteractionManager] Hit object {hit.collider.name} but it has no InteractableObject component!");
                 }
             }
 

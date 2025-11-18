@@ -643,6 +643,10 @@ namespace BugWars.Editor
             }
 
             serializedObject.ApplyModifiedProperties();
+
+            // Set GameObject to Interactable layer for raycasting
+            instance.layer = 8; // Interactable layer
+            Debug.Log($"[PrefabGenerator] Set {instance.name} to Interactable layer (8)");
         }
 
         private static void SetInteractableProperties(UnityEditor.SerializedObject obj, string prompt, float distance,

@@ -13,6 +13,9 @@ https://craftpix.net/freebies/free-shinobi-sprites-pixel-art/
 4 Direction Male Character Pixel Art
 https://free-game-assets.itch.io/free-base-4-direction-male-character-pixel-art
 
+Dragonfly Sprite
+https://elthen.itch.io/2d-pixel-art-dragonfly-sprites
+
 ##### Low Poly:
 
 KayKit Character Pack : Adventures

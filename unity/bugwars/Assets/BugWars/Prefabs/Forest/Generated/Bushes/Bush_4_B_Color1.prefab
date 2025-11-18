@@ -52,20 +52,27 @@ PrefabInstance:
       propertyPath: m_Name
       value: Bush_4_B_Color1
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 14f426503fb5a4dd283183ced43e8e60, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 14f426503fb5a4dd283183ced43e8e60, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 473052535383435099}
+      addedObject: {fileID: 4015806013234776458}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 14f426503fb5a4dd283183ced43e8e60, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5194018756232855359}
   m_SourcePrefab: {fileID: 100100000, guid: 14f426503fb5a4dd283183ced43e8e60, type: 3}
 --- !u!1 &977575706748692262 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 14f426503fb5a4dd283183ced43e8e60, type: 3}
   m_PrefabInstance: {fileID: 94683605800032887}
   m_PrefabAsset: {fileID: 0}
---- !u!135 &473052535383435099
+--- !u!135 &4015806013234776458
 SphereCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -86,3 +93,21 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.39633474
   m_Center: {x: 0.00000011920929, y: 0.3685175, z: -4.3447557e-10}
+--- !u!114 &5194018756232855359
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 977575706748692262}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8274d351b68814d05b2719c5b6e6c63d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractableObject
+  interactionPrompt: Harvest
+  interactionDistance: 2
+  interactionType: 2
+  resourceType: 2
+  resourceAmount: 3
+  harvestTime: 1

@@ -1,0 +1,35 @@
+/* Interaction Prompt Styles */
+
+.prompt-panel {
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 10px;
+    border-width: 2px;
+    border-color: rgba(255, 255, 255, 0.2);
+    padding: 20px;
+}
+
+.prompt-text {
+    font-size: 24px;
+    color: white;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.progress-fill {
+    background-color: rgb(76, 204, 102);
+    border-radius: 4px;
+    transition-property: width;
+    transition-duration: 0.1s;
+    transition-timing-function: ease-out;
+}
+
+/* Animation for showing/hiding */
+.prompt-panel--hidden {
+    display: none;
+}
+
+.prompt-panel--visible {
+    display: flex;
+}
