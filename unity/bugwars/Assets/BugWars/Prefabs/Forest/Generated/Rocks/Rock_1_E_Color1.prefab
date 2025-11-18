@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1001 &2045929581862143132
+--- !u!1001 &4504564528563607491
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -55,5 +55,34 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c152ae49b31a84e52882b5732189330b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7019059879925646099}
   m_SourcePrefab: {fileID: 100100000, guid: c152ae49b31a84e52882b5732189330b, type: 3}
+--- !u!1 &3621461738128861842 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c152ae49b31a84e52882b5732189330b, type: 3}
+  m_PrefabInstance: {fileID: 4504564528563607491}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &7019059879925646099
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3621461738128861842}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.9, y: 1.0169762, z: 0.97682947}
+  m_Center: {x: 0, y: 0.56498665, z: -0.10967019}

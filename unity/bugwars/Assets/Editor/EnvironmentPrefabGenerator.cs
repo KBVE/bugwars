@@ -187,6 +187,9 @@ namespace BugWars.Editor
                 ApplyMaterialToInstance(instance, defaultMaterial);
             }
 
+            // Add cheap collision based on object type
+            AddCollisionToInstance(instance, objectType);
+
             // Save as prefab variant
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(instance, prefabPath);
 
@@ -212,6 +215,77 @@ namespace BugWars.Editor
                     materials[i] = material;
                 }
                 renderer.sharedMaterials = materials;
+            }
+        }
+
+        /// <summary>
+        /// Add cheap collision boxes based on object type
+        /// Uses simple primitives (capsule for trees, box for rocks, etc.) instead of expensive mesh colliders
+        /// </summary>
+        private void AddCollisionToInstance(GameObject instance, BugWars.Terrain.EnvironmentObjectType objectType)
+        {
+            // Remove any existing colliders to avoid duplicates
+            Collider[] existingColliders = instance.GetComponentsInChildren<Collider>();
+            foreach (var collider in existingColliders)
+            {
+                DestroyImmediate(collider);
+            }
+
+            // Calculate bounds from renderers
+            Renderer[] renderers = instance.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
+                return;
+
+            Bounds bounds = renderers[0].bounds;
+            foreach (var renderer in renderers)
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+
+            // Convert to local space
+            Vector3 localCenter = instance.transform.InverseTransformPoint(bounds.center);
+            Vector3 localSize = bounds.size;
+
+            switch (objectType)
+            {
+                case BugWars.Terrain.EnvironmentObjectType.Tree:
+                    // Trees: Capsule collider (cheap, good for cylindrical trunks)
+                    CapsuleCollider treeCapsule = instance.AddComponent<CapsuleCollider>();
+                    treeCapsule.center = localCenter;
+                    treeCapsule.radius = Mathf.Max(localSize.x, localSize.z) * 0.3f; // 30% of width for trunk
+                    treeCapsule.height = localSize.y * 0.8f; // 80% of height (ignore top foliage)
+                    treeCapsule.direction = 1; // Y-axis
+                    Debug.Log($"[Collision] Added CapsuleCollider to tree: radius={treeCapsule.radius:F2}, height={treeCapsule.height:F2}");
+                    break;
+
+                case BugWars.Terrain.EnvironmentObjectType.Bush:
+                    // Bushes: Sphere collider (cheap, good for round shapes)
+                    SphereCollider bushSphere = instance.AddComponent<SphereCollider>();
+                    bushSphere.center = localCenter;
+                    bushSphere.radius = Mathf.Max(localSize.x, localSize.y, localSize.z) * 0.4f; // 40% of max dimension
+                    Debug.Log($"[Collision] Added SphereCollider to bush: radius={bushSphere.radius:F2}");
+                    break;
+
+                case BugWars.Terrain.EnvironmentObjectType.Rock:
+                    // Rocks: Box collider (cheap, good for angular shapes)
+                    BoxCollider rockBox = instance.AddComponent<BoxCollider>();
+                    rockBox.center = localCenter;
+                    rockBox.size = localSize * 0.9f; // 90% of actual size for better fit
+                    Debug.Log($"[Collision] Added BoxCollider to rock: size={rockBox.size}");
+                    break;
+
+                case BugWars.Terrain.EnvironmentObjectType.Grass:
+                    // Grass: No collider (grass should not block movement)
+                    Debug.Log($"[Collision] Skipping collider for grass (non-blocking)");
+                    break;
+
+                default:
+                    // Default: Box collider
+                    BoxCollider defaultBox = instance.AddComponent<BoxCollider>();
+                    defaultBox.center = localCenter;
+                    defaultBox.size = localSize * 0.9f;
+                    Debug.Log($"[Collision] Added default BoxCollider: size={defaultBox.size}");
+                    break;
             }
         }
 
@@ -282,107 +356,250 @@ namespace BugWars.Editor
     }
 
     /// <summary>
-    /// Quick menu item to generate prefabs with default settings
+    /// Helper methods for prefab generation
     /// </summary>
-    public static class QuickEnvironmentPrefabGenerator
+    public static class PrefabGeneratorHelpers
     {
-        [MenuItem("KBVE/Tools/Quick Generate Forest Prefabs")]
-        public static void QuickGenerate()
+
+        /// <summary>
+        /// Add collision to existing prefabs and assign to EnvironmentManager
+        /// </summary>
+        [MenuItem("KBVE/Tools/Update Prefabs with Collision + Assign to Manager")]
+        public static void UpdateExistingPrefabs()
         {
-            string sourcePath = "Assets/BugWars/Prefabs/Forest/Models";
             string targetPath = "Assets/BugWars/Prefabs/Forest/Generated";
 
-            if (!AssetDatabase.IsValidFolder(sourcePath))
+            if (!AssetDatabase.IsValidFolder(targetPath))
             {
-                EditorUtility.DisplayDialog("Error", $"Source folder not found: {sourcePath}", "OK");
+                EditorUtility.DisplayDialog("Error", $"Generated prefabs folder not found: {targetPath}", "OK");
                 return;
             }
 
             bool proceed = EditorUtility.DisplayDialog(
-                "Quick Generate Prefabs",
-                $"This will generate prefabs from:\n{sourcePath}\n\nTo:\n{targetPath}\n\nContinue?",
+                "Update Prefabs",
+                "This will:\n1. Add collision boxes to all existing prefabs\n2. Assign them to EnvironmentManager\n\nContinue?",
                 "Yes",
                 "Cancel");
 
             if (!proceed)
                 return;
 
-            // Create target folders
-            EnsureTargetFoldersExist(targetPath);
+            int updated = 0;
 
-            string[] fbxGuids = AssetDatabase.FindAssets("t:Model", new[] { sourcePath });
-            int created = 0;
-
-            foreach (var guid in fbxGuids)
+            // Process each subfolder
+            string[] subfolders = { "Trees", "Bushes", "Rocks", "Grass" };
+            foreach (var subfolder in subfolders)
             {
-                string fbxPath = AssetDatabase.GUIDToAssetPath(guid);
-                GameObject fbxModel = AssetDatabase.LoadAssetAtPath<GameObject>(fbxPath);
-
-                if (fbxModel == null)
+                string folderPath = Path.Combine(targetPath, subfolder);
+                if (!AssetDatabase.IsValidFolder(folderPath))
                     continue;
 
-                string fileName = Path.GetFileNameWithoutExtension(fbxPath);
-                var objectType = DetermineType(fileName);
-                string subfolder = GetSubfolder(objectType);
-                string prefabPath = Path.Combine(targetPath, subfolder, $"{fileName}.prefab");
+                string[] prefabGuids = AssetDatabase.FindAssets("t:Prefab", new[] { folderPath });
+                BugWars.Terrain.EnvironmentObjectType objectType = GetTypeFromSubfolder(subfolder);
 
-                // Skip if already exists
-                if (File.Exists(prefabPath))
-                    continue;
+                foreach (var guid in prefabGuids)
+                {
+                    string prefabPath = AssetDatabase.GUIDToAssetPath(guid);
+                    GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
 
-                GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(fbxModel);
-                GameObject prefab = PrefabUtility.SaveAsPrefabAsset(instance, prefabPath);
-                Object.DestroyImmediate(instance);
+                    if (prefab == null)
+                        continue;
 
-                if (prefab != null)
-                    created++;
+                    // Load prefab for editing
+                    GameObject prefabInstance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+
+                    // Add collision
+                    AddCollisionToQuickInstance(prefabInstance, objectType);
+
+                    // Save changes back to prefab
+                    PrefabUtility.SaveAsPrefabAsset(prefabInstance, prefabPath);
+                    Object.DestroyImmediate(prefabInstance);
+
+                    updated++;
+                }
             }
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            EditorUtility.DisplayDialog("Complete", $"Created {created} new prefabs!", "OK");
-            Debug.Log($"[QuickPrefabGenerator] Created {created} prefabs");
+            // Now assign to EnvironmentManager
+            AssignPrefabsToEnvironmentManager(targetPath);
+
+            EditorUtility.DisplayDialog("Complete",
+                $"Updated {updated} prefabs with collision boxes!\nAssigned to EnvironmentManager.",
+                "OK");
+            Debug.Log($"[UpdatePrefabs] Updated {updated} prefabs and assigned to EnvironmentManager");
         }
 
-        private static void EnsureTargetFoldersExist(string targetPath)
+        /// <summary>
+        /// Assign all generated prefabs to EnvironmentManager
+        /// </summary>
+        private static void AssignPrefabsToEnvironmentManager(string generatedPath)
         {
-            if (!AssetDatabase.IsValidFolder(targetPath))
+            // Find EnvironmentManager in the scene
+            BugWars.Terrain.EnvironmentManager envManager = Object.FindFirstObjectByType<BugWars.Terrain.EnvironmentManager>();
+
+            if (envManager == null)
             {
-                AssetDatabase.CreateFolder("Assets/BugWars/Prefabs/Forest", "Generated");
+                Debug.LogWarning("[UpdatePrefabs] EnvironmentManager not found in scene. Skipping assignment.");
+                return;
             }
 
-            string[] subfolders = { "Trees", "Bushes", "Rocks", "Grass" };
-            foreach (var sub in subfolders)
+            // Use SerializedObject to modify the EnvironmentManager
+            UnityEditor.SerializedObject serializedManager = new UnityEditor.SerializedObject(envManager);
+
+            int treesAdded = PopulatePrefabListFromFolder(serializedManager, "treeAssets", Path.Combine(generatedPath, "Trees"), BugWars.Terrain.EnvironmentObjectType.Tree);
+            int bushesAdded = PopulatePrefabListFromFolder(serializedManager, "bushAssets", Path.Combine(generatedPath, "Bushes"), BugWars.Terrain.EnvironmentObjectType.Bush);
+            int rocksAdded = PopulatePrefabListFromFolder(serializedManager, "rockAssets", Path.Combine(generatedPath, "Rocks"), BugWars.Terrain.EnvironmentObjectType.Rock);
+            int grassAdded = PopulatePrefabListFromFolder(serializedManager, "grassAssets", Path.Combine(generatedPath, "Grass"), BugWars.Terrain.EnvironmentObjectType.Grass);
+
+            // Apply changes
+            serializedManager.ApplyModifiedProperties();
+            EditorUtility.SetDirty(envManager);
+            AssetDatabase.SaveAssets();
+
+            Debug.Log($"[UpdatePrefabs] Assigned to EnvironmentManager: {treesAdded} trees, {bushesAdded} bushes, {rocksAdded} rocks, {grassAdded} grass");
+        }
+
+        private static int PopulatePrefabListFromFolder(UnityEditor.SerializedObject serializedManager, string propertyName, string folderPath, BugWars.Terrain.EnvironmentObjectType type)
+        {
+            if (!AssetDatabase.IsValidFolder(folderPath))
+                return 0;
+
+            string[] prefabGuids = AssetDatabase.FindAssets("t:Prefab", new[] { folderPath });
+
+            if (prefabGuids.Length == 0)
+                return 0;
+
+            // Get the array property
+            UnityEditor.SerializedProperty arrayProperty = serializedManager.FindProperty(propertyName);
+
+            if (arrayProperty == null)
             {
-                string path = Path.Combine(targetPath, sub);
-                if (!AssetDatabase.IsValidFolder(path))
+                Debug.LogError($"[UpdatePrefabs] Property '{propertyName}' not found on EnvironmentManager");
+                return 0;
+            }
+
+            // Clear existing array
+            arrayProperty.ClearArray();
+
+            int added = 0;
+
+            foreach (string guid in prefabGuids)
+            {
+                string prefabPath = AssetDatabase.GUIDToAssetPath(guid);
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+
+                if (prefab == null)
+                    continue;
+
+                // Add new element to array
+                arrayProperty.InsertArrayElementAtIndex(arrayProperty.arraySize);
+                UnityEditor.SerializedProperty element = arrayProperty.GetArrayElementAtIndex(arrayProperty.arraySize - 1);
+
+                // Set properties on EnvironmentAsset
+                element.FindPropertyRelative("assetName").stringValue = prefab.name;
+                element.FindPropertyRelative("prefab").objectReferenceValue = prefab;
+                element.FindPropertyRelative("type").enumValueIndex = (int)type;
+                element.FindPropertyRelative("spawnWeight").floatValue = 1f;
+
+                // Set scale variation based on type
+                switch (type)
                 {
-                    AssetDatabase.CreateFolder(targetPath, sub);
+                    case BugWars.Terrain.EnvironmentObjectType.Tree:
+                        element.FindPropertyRelative("minScale").floatValue = 0.9f;
+                        element.FindPropertyRelative("maxScale").floatValue = 1.3f;
+                        break;
+                    case BugWars.Terrain.EnvironmentObjectType.Bush:
+                        element.FindPropertyRelative("minScale").floatValue = 0.8f;
+                        element.FindPropertyRelative("maxScale").floatValue = 1.2f;
+                        break;
+                    case BugWars.Terrain.EnvironmentObjectType.Rock:
+                        element.FindPropertyRelative("minScale").floatValue = 0.7f;
+                        element.FindPropertyRelative("maxScale").floatValue = 1.4f;
+                        break;
+                    case BugWars.Terrain.EnvironmentObjectType.Grass:
+                        element.FindPropertyRelative("minScale").floatValue = 0.9f;
+                        element.FindPropertyRelative("maxScale").floatValue = 1.1f;
+                        break;
                 }
+
+                added++;
             }
+
+            return added;
         }
 
-        private static BugWars.Terrain.EnvironmentObjectType DetermineType(string name)
+        private static BugWars.Terrain.EnvironmentObjectType GetTypeFromSubfolder(string subfolder)
         {
-            string lower = name.ToLower();
-            if (lower.Contains("tree")) return BugWars.Terrain.EnvironmentObjectType.Tree;
-            if (lower.Contains("bush")) return BugWars.Terrain.EnvironmentObjectType.Bush;
-            if (lower.Contains("rock")) return BugWars.Terrain.EnvironmentObjectType.Rock;
-            if (lower.Contains("grass")) return BugWars.Terrain.EnvironmentObjectType.Grass;
-            return BugWars.Terrain.EnvironmentObjectType.Rock;
-        }
-
-        private static string GetSubfolder(BugWars.Terrain.EnvironmentObjectType type)
-        {
-            return type switch
+            return subfolder switch
             {
-                BugWars.Terrain.EnvironmentObjectType.Tree => "Trees",
-                BugWars.Terrain.EnvironmentObjectType.Bush => "Bushes",
-                BugWars.Terrain.EnvironmentObjectType.Rock => "Rocks",
-                BugWars.Terrain.EnvironmentObjectType.Grass => "Grass",
-                _ => "Other"
+                "Trees" => BugWars.Terrain.EnvironmentObjectType.Tree,
+                "Bushes" => BugWars.Terrain.EnvironmentObjectType.Bush,
+                "Rocks" => BugWars.Terrain.EnvironmentObjectType.Rock,
+                "Grass" => BugWars.Terrain.EnvironmentObjectType.Grass,
+                _ => BugWars.Terrain.EnvironmentObjectType.Rock
             };
+        }
+
+        /// <summary>
+        /// Add cheap collision to prefab instances (same logic as main generator)
+        /// </summary>
+        private static void AddCollisionToQuickInstance(GameObject instance, BugWars.Terrain.EnvironmentObjectType objectType)
+        {
+            // Remove existing colliders
+            Collider[] existingColliders = instance.GetComponentsInChildren<Collider>();
+            foreach (var collider in existingColliders)
+            {
+                Object.DestroyImmediate(collider);
+            }
+
+            // Calculate bounds
+            Renderer[] renderers = instance.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
+                return;
+
+            Bounds bounds = renderers[0].bounds;
+            foreach (var renderer in renderers)
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+
+            Vector3 localCenter = instance.transform.InverseTransformPoint(bounds.center);
+            Vector3 localSize = bounds.size;
+
+            switch (objectType)
+            {
+                case BugWars.Terrain.EnvironmentObjectType.Tree:
+                    CapsuleCollider treeCapsule = instance.AddComponent<CapsuleCollider>();
+                    treeCapsule.center = localCenter;
+                    treeCapsule.radius = Mathf.Max(localSize.x, localSize.z) * 0.3f;
+                    treeCapsule.height = localSize.y * 0.8f;
+                    treeCapsule.direction = 1;
+                    break;
+
+                case BugWars.Terrain.EnvironmentObjectType.Bush:
+                    SphereCollider bushSphere = instance.AddComponent<SphereCollider>();
+                    bushSphere.center = localCenter;
+                    bushSphere.radius = Mathf.Max(localSize.x, localSize.y, localSize.z) * 0.4f;
+                    break;
+
+                case BugWars.Terrain.EnvironmentObjectType.Rock:
+                    BoxCollider rockBox = instance.AddComponent<BoxCollider>();
+                    rockBox.center = localCenter;
+                    rockBox.size = localSize * 0.9f;
+                    break;
+
+                case BugWars.Terrain.EnvironmentObjectType.Grass:
+                    // No collider for grass
+                    break;
+
+                default:
+                    BoxCollider defaultBox = instance.AddComponent<BoxCollider>();
+                    defaultBox.center = localCenter;
+                    defaultBox.size = localSize * 0.9f;
+                    break;
+            }
         }
     }
 }

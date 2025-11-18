@@ -201,7 +201,7 @@ namespace BugWars.Terrain
 
         [Header("Performance")]
         [SerializeField] private bool useObjectPooling = false; // Future enhancement
-        [SerializeField] private int maxObjectsPerFrame = 10; // Limit spawns per frame to prevent lag
+        [SerializeField] private int maxObjectsPerFrame = 50; // Limit spawns per frame to prevent lag (increased from 10)
         [SerializeField] private bool enableDynamicSpawning = true; // Spawn objects as chunks load
 
         [Header("Debug")]
@@ -424,15 +424,15 @@ namespace BugWars.Terrain
                 if (asset == null || asset.prefab == null)
                     continue;
 
-                // Spawn object
-                GameObject spawnedObject = await SpawnEnvironmentObject(asset, position, chunkCoord);
+                // Spawn object (synchronous - batching happens below)
+                GameObject spawnedObject = SpawnEnvironmentObject(asset, position, chunkCoord);
                 if (spawnedObject != null)
                 {
                     chunkData.spawnedObjects.Add(spawnedObject);
                     spawnedPositions.Add(position);
                     objectsSpawned++;
 
-                    // Yield every N objects to prevent frame drops
+                    // Yield every N objects to prevent frame drops (reduced overhead from yielding per object)
                     if (objectsSpawned % maxObjectsPerFrame == 0)
                     {
                         await UniTask.Yield();
@@ -442,9 +442,9 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Spawn a single environment object
+        /// Spawn a single environment object (synchronous - batching handled by caller)
         /// </summary>
-        private async UniTask<GameObject> SpawnEnvironmentObject(EnvironmentAsset asset, Vector3 position, Vector2Int chunkCoord)
+        private GameObject SpawnEnvironmentObject(EnvironmentAsset asset, Vector3 position, Vector2Int chunkCoord)
         {
             // Adjust height to terrain surface
             float terrainHeight = GetTerrainHeightAtPosition(position);
@@ -464,7 +464,6 @@ namespace BugWars.Terrain
             // Name for debugging
             obj.name = $"{asset.assetName}_Chunk{chunkCoord.x}_{chunkCoord.y}";
 
-            await UniTask.Yield();
             return obj;
         }
 
