@@ -127,6 +127,34 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 4995667870493464573, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
+      propertyPath: chunkSize
+      value: 500
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995667870493464573, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
+      propertyPath: hotChunkRadius
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995667870493464573, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
+      propertyPath: chunkResolution
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995667870493464573, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
+      propertyPath: coldChunkRadius
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995667870493464573, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
+      propertyPath: warmChunkRadius
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995667870493464573, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
+      propertyPath: chunkUnloadDistance
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 4995667870493464573, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
+      propertyPath: chunkUpdateInterval
+      value: 0.5
+      objectReference: {fileID: 0}
     - target: {fileID: 8462317456789012345, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
       propertyPath: m_Name
       value: GameLifetimeScope
@@ -169,6 +197,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8462317456789012346, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9078858066107133751, guid: 1a2b3c4d5e6f7890abcdef1234567890, type: 3}
+      propertyPath: cameraSystem
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

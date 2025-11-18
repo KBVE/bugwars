@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using VContainer;
@@ -23,18 +24,18 @@ namespace BugWars.Terrain
         [SerializeField] private Material defaultTerrainMaterial;
 
         [Header("Chunk Settings")]
-        [SerializeField] private int chunkSize = 120; // Increased from 80 to 120 for better coverage
-        [SerializeField] private int chunkResolution = 12; // Reduced from 15 to 12 for WebGL performance (144 verts vs 225) - 36% reduction
+        [SerializeField] private int chunkSize = 500; // 500x500 unit chunks = MASSIVE reduction in chunk count for performance
+        [SerializeField] private int chunkResolution = 30; // 30x30 = 900 vertices per chunk - good detail with fewer chunks
 
         [Header("Chunk Loading/Unloading")]
-        [SerializeField] private int hotChunkRadius = 3; // "Hot" chunks - CRITICAL 360° safety zone (loaded synchronously) - 7x7 grid = 49 chunks (reduced for WebGL)
-        [SerializeField] private int warmChunkRadius = 8; // "Warm" chunks - visible/important area (high priority async)
-        [SerializeField] private int coldChunkRadius = 14; // "Cold" chunks - preload area (low priority async)
-        [SerializeField] private int chunkUnloadDistance = 20; // Unload chunks beyond this distance
+        [SerializeField] private int hotChunkRadius = 2; // "Hot" chunks - 5x5 = 25 chunks covering 2500x2500 units (500 unit chunks)
+        [SerializeField] private int warmChunkRadius = 4; // "Warm" chunks - 9x9 = 81 chunks covering 4500x4500 units
+        [SerializeField] private int coldChunkRadius = 6; // "Cold" chunks - preload area covering 6500x6500 units
+        [SerializeField] private int chunkUnloadDistance = 10; // Unload chunks beyond this distance (much smaller radius needed with 500 unit chunks)
         [SerializeField] private bool enableDynamicLoading = true; // Enable async chunk streaming
         [SerializeField] private bool enableFrustumCulling = true; // Enable camera frustum culling
         [SerializeField] private float cullingUpdateInterval = 0.5f; // How often to update culling (seconds)
-        [SerializeField] private float chunkUpdateInterval = 0.25f; // Reduced frequency for WebGL (4 times per second instead of 10)
+        [SerializeField] private float chunkUpdateInterval = 0.5f; // Update chunks only 2 times per second (much less frequent with large chunks)
 
         [Header("WebGL Performance")]
         [SerializeField] private float targetFrameTime = 0.016f; // Target 60 FPS (16ms per frame)
@@ -630,6 +631,36 @@ namespace BugWars.Terrain
             // Update seed and regenerate
             seed = newSeed;
             await GenerateInitialChunks();
+        }
+
+        /// <summary>
+        /// Force regenerate all terrain with current settings
+        /// Useful for applying new chunk size/resolution settings at runtime
+        /// </summary>
+        [ContextMenu("Force Regenerate Terrain")]
+        public async void ForceRegenerateTerrain()
+        {
+            Debug.Log("[TerrainManager] Force regenerating terrain with current settings");
+
+            // Clear existing chunks
+            foreach (var chunk in activeChunks.Values.ToList())
+            {
+                chunk.Unload();
+                Destroy(chunk.gameObject);
+            }
+            activeChunks.Clear();
+
+            // Destroy old chunks container if it exists
+            if (chunksContainer != null)
+            {
+                Destroy(chunksContainer);
+            }
+
+            // Reinitialize and regenerate
+            InitializeTerrainSystem();
+            await GenerateInitialChunks();
+
+            Debug.Log($"[TerrainManager] Terrain regenerated with {activeChunks.Count} chunks of size {chunkSize}x{chunkSize}");
         }
 
         /// <summary>

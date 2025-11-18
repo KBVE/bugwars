@@ -9,9 +9,9 @@ namespace BugWars.Terrain
     /// </summary>
     public enum TerrainLOD
     {
-        High = 0,   // Full resolution (20x20 vertices) - Hot chunks
-        Medium = 1, // Half resolution (10x10 vertices) - Warm chunks
-        Low = 2     // Quarter resolution (5x5 vertices) - Cold chunks
+        High = 0,   // Full resolution (30x30 = 900 vertices) - Hot chunks
+        Medium = 1, // Half resolution (15x15 = 225 vertices) - Warm chunks
+        Low = 2     // Quarter resolution (7x7 = 49 vertices) - Cold chunks
     }
 
     /// <summary>
@@ -22,8 +22,8 @@ namespace BugWars.Terrain
     public class TerrainChunk : MonoBehaviour
     {
         [Header("Chunk Settings")]
-        [SerializeField] private int chunkSize = 120; // Increased from 80 to 120 for better coverage
-        [SerializeField] private int resolution = 15; // Reduced from 20 to 15 for WebGL performance
+        [SerializeField] private int chunkSize = 500; // 500x500 unit chunks = MASSIVE reduction in chunk count for performance
+        [SerializeField] private int resolution = 30; // 30x30 = 900 vertices per chunk - good detail with fewer chunks
         [SerializeField] private float heightMultiplier = 3f;
         [SerializeField] private Material terrainMaterial;
 
