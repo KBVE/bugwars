@@ -57,11 +57,27 @@ namespace BugWars.Core
             // WebGLBridge depends on EventManager - register after EventManager
             if (webGLBridge != null)
             {
+                // Validate the GameObject name matches what React expects
+                if (webGLBridge.gameObject.name != "WebGLBridge")
+                {
+                    Debug.LogWarning($"[GameLifetimeScope] WebGLBridge GameObject has incorrect name '{webGLBridge.gameObject.name}'. " +
+                                    "Renaming to 'WebGLBridge' to ensure React Unity sendMessage works correctly.");
+                    webGLBridge.gameObject.name = "WebGLBridge";
+                }
                 builder.RegisterComponent(webGLBridge);
+                // Force resolution to ensure GameObject exists before React tries to send messages
+                builder.RegisterBuildCallback(container => container.Resolve<WebGLBridge>());
             }
             else
             {
-                RegisterOrCreateManager<WebGLBridge>(builder, "WebGLBridge");
+                // Create new WebGLBridge GameObject with correct name
+                builder.RegisterComponentOnNewGameObject<WebGLBridge>(Lifetime.Singleton, "WebGLBridge")
+                    .DontDestroyOnLoad();
+
+                // CRITICAL: Force eager instantiation so GameObject exists before React sends messages
+                // Without this, VContainer uses lazy instantiation and the GameObject won't exist
+                // when React calls sendMessage('WebGLBridge', 'OnSessionUpdate', ...)
+                builder.RegisterBuildCallback(container => container.Resolve<WebGLBridge>());
             }
 
             // InputManager depends on EventManager
