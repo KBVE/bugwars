@@ -87,9 +87,20 @@ namespace BugWars.Entity.Actions
 
         protected override void OnProgressUpdate(float progress)
         {
-            // Check if target still exists and is in range
-            if (target == null || !IsInRange())
+            // CRITICAL: Cancel if target no longer exists (destroyed by another player/NPC)
+            if (target == null)
             {
+                if (showDebugLogs)
+                    Debug.LogWarning($"[HarvestAction] Target destroyed during harvest - cancelling");
+                Cancel();
+                return;
+            }
+
+            // CRITICAL: Cancel if player moved out of range
+            if (!IsInRange())
+            {
+                if (showDebugLogs)
+                    Debug.LogWarning($"[HarvestAction] Player moved out of range - cancelling harvest");
                 Cancel();
                 return;
             }
@@ -104,12 +115,63 @@ namespace BugWars.Entity.Actions
 
         protected override ActionResult OnActionComplete()
         {
-            // Calculate resources gained
+            // CRITICAL: Destroy object FIRST before calculating/giving rewards
+            // This prevents exploit where player moves away but still gets reward
+
+            // SAFETY CHECK: Verify target still exists at completion
+            if (target == null || interactableTarget == null)
+            {
+                if (showDebugLogs)
+                    Debug.LogError($"[HarvestAction] Target was destroyed before completion - no reward given");
+
+                return new ActionResult
+                {
+                    Success = false,
+                    Message = "Target no longer exists",
+                    Data = null
+                };
+            }
+
+            // SAFETY CHECK: Verify still in range at completion
+            if (!IsInRange())
+            {
+                if (showDebugLogs)
+                    Debug.LogError($"[HarvestAction] Player moved out of range before completion - no reward given");
+
+                return new ActionResult
+                {
+                    Success = false,
+                    Message = "Moved out of range",
+                    Data = null
+                };
+            }
+
+            // Calculate resources gained (cache before destroying object)
             resourceAmount = Random.Range(
                 interactableTarget != null ? Mathf.Max(1, (int)(interactableTarget.Resource == ResourceType.Wood ? 5 : 3)) : 1,
                 interactableTarget != null ? Mathf.Max(2, (int)(interactableTarget.Resource == ResourceType.Wood ? 8 : 6)) : 2
             );
 
+            // Cache target reference before destroying
+            GameObject harvestedObject = target;
+
+            // STEP 1: End interaction to release the lock on this object
+            if (interactableTarget != null)
+            {
+                interactableTarget.EndInteraction();
+            }
+
+            // STEP 2: Destroy target BEFORE creating reward result
+            if (destroyTargetOnComplete && target != null)
+            {
+                if (showDebugLogs)
+                    Debug.Log($"[HarvestAction] Destroying {target.name}");
+
+                Destroy(target);
+                target = null; // Clear reference immediately
+            }
+
+            // STEP 3: NOW create result with reward data (AFTER object is destroyed)
             ActionResult result = new ActionResult
             {
                 Success = true,
@@ -118,24 +180,9 @@ namespace BugWars.Entity.Actions
                 {
                     ResourceType = resourceType,
                     Amount = resourceAmount,
-                    HarvestedObject = target
+                    HarvestedObject = harvestedObject // Use cached reference
                 }
             };
-
-            // CRITICAL: End interaction to release the lock on this object
-            if (interactableTarget != null)
-            {
-                interactableTarget.EndInteraction();
-            }
-
-            // Destroy target if configured
-            if (destroyTargetOnComplete && target != null)
-            {
-                if (showDebugLogs)
-                    Debug.Log($"[HarvestAction] Destroying {target.name}");
-
-                Destroy(target);
-            }
 
             return result;
         }
