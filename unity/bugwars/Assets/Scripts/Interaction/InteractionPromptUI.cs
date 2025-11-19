@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using R3;
 using VContainer;
+using Cysharp.Threading.Tasks;
 
 namespace BugWars.Interaction
 {
@@ -24,6 +25,8 @@ namespace BugWars.Interaction
 
         // Dependencies (injected via VContainer)
         private InteractionManager interactionManager;
+        private BugWars.Entity.Actions.EntityActionManager playerActionManager;
+        private BugWars.Entity.Actions.HarvestAction harvestAction;
         private Camera mainCamera;
 
         [Inject]
@@ -32,7 +35,7 @@ namespace BugWars.Interaction
             interactionManager = manager;
         }
 
-        private void Start()
+        private async void Start()
         {
             mainCamera = Camera.main;
 
@@ -43,42 +46,65 @@ namespace BugWars.Interaction
                 return;
             }
 
+            // Wait for InteractionManager to initialize and get EntityActionManager
+            await Cysharp.Threading.Tasks.UniTask.WaitUntil(() => interactionManager.PlayerEntityActionManager != null, cancellationToken: this.GetCancellationTokenOnDestroy());
+
+            playerActionManager = interactionManager.PlayerEntityActionManager;
+            if (playerActionManager == null)
+            {
+                Debug.LogError("[InteractionPromptUI] EntityActionManager not found on InteractionManager after wait!");
+                enabled = false;
+                return;
+            }
+
+            // Get harvest action component
+            harvestAction = playerActionManager.GetComponent<BugWars.Entity.Actions.HarvestAction>();
+            if (harvestAction == null)
+            {
+                Debug.LogError("[InteractionPromptUI] HarvestAction not found on player!");
+                enabled = false;
+                return;
+            }
+
             SetupReactiveUI();
         }
 
         /// <summary>
         /// Setup R3 reactive bindings for UI updates
+        /// Subscribes directly to EntityActionManager (single source of truth)
         /// </summary>
         private void SetupReactiveUI()
         {
-            // Show/hide prompt based on current target
+            // Hide prompt initially to prevent flash
+            HidePrompt();
+
+            // Show/hide prompt based on current target (only when not performing action)
+            // Skip initial value to prevent flash
             interactionManager.CurrentTarget
+                .Skip(1) // CRITICAL: Skip initial null/default value to prevent UI flash on startup
                 .Subscribe(target =>
                 {
-                    if (target != null)
+                    if (target != null && !playerActionManager.IsPerformingAction.CurrentValue)
                     {
                         ShowPrompt(target);
                     }
-                    else
+                    else if (target == null)
                     {
                         HidePrompt();
                     }
                 })
                 .AddTo(this);
 
-            // Update progress bar during interaction
-            interactionManager.IsInteracting
-                .Where(isInteracting => isInteracting)
+            // CRITICAL: Subscribe directly to EntityActionManager.IsPerformingAction (single source of truth)
+            playerActionManager.IsPerformingAction
+                .Where(isPerforming => isPerforming)
                 .Subscribe(_ => ShowProgressBar())
                 .AddTo(this);
 
-            interactionManager.IsInteracting
-                .Where(isInteracting => !isInteracting)
+            playerActionManager.IsPerformingAction
+                .Where(isPerforming => !isPerforming)
                 .Subscribe(_ => HideProgressBar())
                 .AddTo(this);
-
-            // Hide prompt initially
-            HidePrompt();
         }
 
         private void ShowPrompt(InteractableObject target)
@@ -116,13 +142,15 @@ namespace BugWars.Interaction
                 progressBar.gameObject.SetActive(true);
                 progressBar.fillAmount = 0f;
 
-                // Animate progress bar with R3
-                Observable.EveryUpdate()
-                    .TakeUntil(interactionManager.IsInteracting.Where(x => !x))
-                    .Subscribe(_ =>
+                // CRITICAL: Subscribe directly to HarvestAction.Progress (single source of truth)
+                harvestAction.Progress
+                    .TakeWhile(_ => playerActionManager.IsPerformingAction.CurrentValue)
+                    .Subscribe(progress =>
                     {
-                        // TODO: Get actual progress from InteractableObject
-                        progressBar.fillAmount = Mathf.Min(progressBar.fillAmount + Time.deltaTime * 0.5f, 1f);
+                        if (progressBar != null)
+                        {
+                            progressBar.fillAmount = progress;
+                        }
                     })
                     .AddTo(this);
             }

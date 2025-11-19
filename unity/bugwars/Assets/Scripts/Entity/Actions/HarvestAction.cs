@@ -11,11 +11,22 @@ namespace BugWars.Entity.Actions
     public class HarvestAction : EntityAction
     {
         [Header("Harvest Settings")]
-        [SerializeField] private float harvestRange = 3f;
+        [SerializeField] private float harvestRange = 6f; // Slightly larger than raycast (5f) to account for object size and prevent edge cases
         [SerializeField] private bool destroyTargetOnComplete = true;
 
         // Harvest-specific data
         private InteractableObject interactableTarget;
+
+        /// <summary>
+        /// Public setter to configure harvest range at runtime
+        /// Allows InteractionManager to sync with its raycast distance
+        /// </summary>
+        public void SetHarvestRange(float range)
+        {
+            harvestRange = range;
+            if (showDebugLogs)
+                Debug.Log($"[HarvestAction] Harvest range set to: {range}");
+        }
         private ResourceType resourceType;
         private int resourceAmount;
 
@@ -46,19 +57,21 @@ namespace BugWars.Entity.Actions
                 return false;
             }
 
-            // Get InteractableObject component if not already set
+            // CRITICAL: ALWAYS get and configure from the current target
+            // This ensures we use the correct harvest time for THIS specific object
+            interactableTarget = target.GetComponent<InteractableObject>();
             if (interactableTarget == null)
             {
-                interactableTarget = target.GetComponent<InteractableObject>();
-                if (interactableTarget == null)
-                {
-                    if (showDebugLogs)
-                        Debug.LogError($"[HarvestAction] Target {target.name} has no InteractableObject component!");
-                    return false;
-                }
-
-                ConfigureFromInteractable(interactableTarget);
+                if (showDebugLogs)
+                    Debug.LogError($"[HarvestAction] Target {target.name} has no InteractableObject component!");
+                return false;
             }
+
+            // Configure action duration from this specific interactable
+            ConfigureFromInteractable(interactableTarget);
+
+            if (showDebugLogs)
+                Debug.Log($"[HarvestAction] Action duration set to: {actionDuration}s for {target.name}");
 
             // Check range
             if (!IsInRange())
@@ -87,6 +100,11 @@ namespace BugWars.Entity.Actions
 
         protected override void OnProgressUpdate(float progress)
         {
+            // CRITICAL: Don't check target if action is completing/completed
+            // This prevents race condition warning when object is destroyed on completion
+            if (State.CurrentValue != ActionState.InProgress)
+                return;
+
             // CRITICAL: Cancel if target no longer exists (destroyed by another player/NPC)
             if (target == null)
             {
@@ -171,7 +189,10 @@ namespace BugWars.Entity.Actions
                 target = null; // Clear reference immediately
             }
 
-            // STEP 3: NOW create result with reward data (AFTER object is destroyed)
+            // STEP 3: Clear interactableTarget reference for next action
+            interactableTarget = null;
+
+            // STEP 4: NOW create result with reward data (AFTER object is destroyed)
             ActionResult result = new ActionResult
             {
                 Success = true,
@@ -196,6 +217,7 @@ namespace BugWars.Entity.Actions
             if (interactableTarget != null)
             {
                 interactableTarget.EndInteraction();
+                interactableTarget = null; // Clear reference for next action
             }
 
             // Clean up any visual effects, sounds, etc.

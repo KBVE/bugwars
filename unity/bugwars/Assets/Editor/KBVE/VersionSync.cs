@@ -105,7 +105,9 @@ namespace KBVE.Editor
         private static string GetCargoVersion()
         {
             // Build path to Cargo.toml (Unity project is in unity/bugwars/)
-            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", ".."));
+            // Application.dataPath = .../bugwars/unity/bugwars/Assets
+            // Need to go up 3 levels: Assets -> bugwars -> unity -> bugwars (root)
+            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", ".."));
             string cargoTomlPath = Path.Combine(projectRoot, CARGO_TOML_PATH);
 
             if (!File.Exists(cargoTomlPath))

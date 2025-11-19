@@ -3,6 +3,7 @@ using UnityEngine.UIElements;
 using R3;
 using VContainer;
 using System;
+using Cysharp.Threading.Tasks;
 
 namespace BugWars.Interaction
 {
@@ -37,6 +38,8 @@ namespace BugWars.Interaction
 
         // Dependencies (injected via VContainer)
         private InteractionManager interactionManager;
+        private BugWars.Entity.Actions.EntityActionManager playerActionManager;
+        private BugWars.Entity.Actions.HarvestAction harvestAction;
         private UIDocument uiDocument;
         private Camera mainCamera;
 
@@ -51,13 +54,33 @@ namespace BugWars.Interaction
             uiDocument = GetComponent<UIDocument>();
         }
 
-        private void Start()
+        private async void Start()
         {
             mainCamera = Camera.main;
 
             if (interactionManager == null)
             {
                 Debug.LogError("[InteractionPromptUIToolkit] InteractionManager not injected! Make sure it's registered in GameLifetimeScope.");
+                enabled = false;
+                return;
+            }
+
+            // Wait for InteractionManager to initialize and get EntityActionManager
+            await UniTask.WaitUntil(() => interactionManager.PlayerEntityActionManager != null, cancellationToken: this.GetCancellationTokenOnDestroy());
+
+            playerActionManager = interactionManager.PlayerEntityActionManager;
+            if (playerActionManager == null)
+            {
+                Debug.LogError("[InteractionPromptUIToolkit] EntityActionManager not found on InteractionManager after wait!");
+                enabled = false;
+                return;
+            }
+
+            // Get harvest action component
+            harvestAction = playerActionManager.GetComponent<BugWars.Entity.Actions.HarvestAction>();
+            if (harvestAction == null)
+            {
+                Debug.LogError("[InteractionPromptUIToolkit] HarvestAction not found on player!");
                 enabled = false;
                 return;
             }
@@ -70,6 +93,10 @@ namespace BugWars.Interaction
             }
 
             QueryUIElements();
+
+            // CRITICAL: Hide UI immediately before setting up subscriptions to prevent flash
+            HidePrompt();
+
             SetupReactiveUI();
         }
 
@@ -98,14 +125,17 @@ namespace BugWars.Interaction
 
         /// <summary>
         /// Setup R3 reactive bindings for UI updates
+        /// Subscribes directly to EntityActionManager (single source of truth)
         /// </summary>
         private void SetupReactiveUI()
         {
-            // Show/hide prompt based on current target (only when not interacting)
+            // Show/hide prompt based on current target (only when not performing action)
+            // Skip initial value to prevent flash
             interactionManager.CurrentTarget
+                .Skip(1) // CRITICAL: Skip initial null/default value to prevent UI flash on startup
                 .Subscribe(target =>
                 {
-                    if (target != null && !interactionManager.IsInteracting.CurrentValue)
+                    if (target != null && !playerActionManager.IsPerformingAction.CurrentValue)
                     {
                         ShowPrompt(target);
                     }
@@ -116,27 +146,40 @@ namespace BugWars.Interaction
                 })
                 .AddTo(this);
 
-            // Handle interaction state changes
-            interactionManager.IsInteracting
-                .Subscribe(isInteracting =>
+            // CRITICAL: Subscribe directly to EntityActionManager.IsPerformingAction (single source of truth)
+            playerActionManager.IsPerformingAction
+                .Subscribe(isPerforming =>
                 {
-                    if (isInteracting)
+                    if (isPerforming)
                     {
                         ShowProcessing();
+                    }
+                    else if (currentState == UIState.Processing)
+                    {
+                        // Action ended while processing (cancelled) - hide UI immediately
+                        HidePrompt();
                     }
                 })
                 .AddTo(this);
 
-            // Handle interaction completion
-            interactionManager.OnInteractionCompleted
-                .Subscribe(result =>
+            // CRITICAL: Subscribe directly to HarvestAction.OnActionCompleted
+            harvestAction.OnActionCompleted
+                .Subscribe(actionResult =>
                 {
-                    ShowComplete(result);
+                    // Convert EntityAction result to UI result
+                    if (actionResult.Success && actionResult.Data is BugWars.Entity.Actions.HarvestResult harvestResult)
+                    {
+                        var uiResult = new InteractionResult
+                        {
+                            Success = true,
+                            ResourceType = harvestResult.ResourceType,
+                            ResourceAmount = harvestResult.Amount,
+                            InteractionType = InteractionType.Harvest // Default for now
+                        };
+                        ShowComplete(uiResult);
+                    }
                 })
                 .AddTo(this);
-
-            // Hide prompt initially
-            HidePrompt();
         }
 
         private void ShowPrompt(InteractableObject target)
@@ -202,19 +245,13 @@ namespace BugWars.Interaction
             {
                 progressBarFill.style.width = Length.Percent(0);
 
-                // Animate progress bar with R3
-                var target = interactionManager.CurrentTarget.CurrentValue;
-                float harvestTime = target != null ? target.HarvestTime : 2f;
-                float startTime = Time.time;
-
-                Observable.EveryUpdate()
-                    .TakeUntil(interactionManager.IsInteracting.Where(x => !x))
-                    .Subscribe(_ =>
+                // CRITICAL: Subscribe directly to HarvestAction.Progress (single source of truth)
+                harvestAction.Progress
+                    .TakeWhile(_ => playerActionManager.IsPerformingAction.CurrentValue)
+                    .Subscribe(progress =>
                     {
                         if (progressBarFill != null)
                         {
-                            float elapsed = Time.time - startTime;
-                            float progress = Mathf.Clamp01(elapsed / harvestTime);
                             progressBarFill.style.width = Length.Percent(progress * 100);
                         }
                     })
@@ -282,6 +319,16 @@ namespace BugWars.Interaction
                 if (currentTarget != null)
                 {
                     PositionWorldSpaceUI(currentTarget.transform);
+                }
+                // If processing, follow the action's target
+                else if (currentState == UIState.Processing && playerActionManager != null && playerActionManager.CurrentAction.CurrentValue != null)
+                {
+                    var actionTarget = playerActionManager.CurrentAction.CurrentValue.GetType().GetField("target",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(playerActionManager.CurrentAction.CurrentValue) as GameObject;
+                    if (actionTarget != null)
+                    {
+                        PositionWorldSpaceUI(actionTarget.transform);
+                    }
                 }
             }
         }

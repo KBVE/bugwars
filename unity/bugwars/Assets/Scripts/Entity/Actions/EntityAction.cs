@@ -1,6 +1,8 @@
 using UnityEngine;
 using R3;
 using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 
 namespace BugWars.Entity.Actions
 {
@@ -61,6 +63,14 @@ namespace BugWars.Entity.Actions
         protected float startTime;
         protected float elapsedTime;
 
+        // Cancellation token support
+        private CancellationTokenSource _actionCancellationTokenSource;
+        protected CancellationToken ActionCancellationToken => _actionCancellationTokenSource?.Token ?? CancellationToken.None;
+
+        // CRITICAL: Per-action subscriptions cleanup
+        // Prevents subscription accumulation when Execute() is called multiple times
+        private CompositeDisposable _activeActionSubscriptions = new CompositeDisposable();
+
         /// <summary>
         /// Execute the action on a target
         /// Returns an observable that completes when action finishes
@@ -77,6 +87,28 @@ namespace BugWars.Entity.Actions
             executingEntity = entity;
             target = actionTarget;
 
+            // CRITICAL: Clear any previous action subscriptions to prevent accumulation
+            _activeActionSubscriptions.Clear();
+
+            // Create cancellation token for this action
+            // Links to GameObject destruction for automatic cleanup
+            _actionCancellationTokenSource?.Cancel();
+            _actionCancellationTokenSource?.Dispose();
+            _actionCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+                this.GetCancellationTokenOnDestroy()
+            );
+
+            // Register callback for cancellation
+            _actionCancellationTokenSource.Token.Register(() =>
+            {
+                if (_state.Value == ActionState.InProgress)
+                {
+                    if (showDebugLogs)
+                        Debug.Log($"[EntityAction] {actionName} cancelled via CancellationToken");
+                    Cancel();
+                }
+            });
+
             _state.Value = ActionState.Starting;
             startTime = Time.time;
             elapsedTime = 0f;
@@ -88,6 +120,11 @@ namespace BugWars.Entity.Actions
             if (!OnActionStart())
             {
                 _state.Value = ActionState.Failed;
+                CleanupCancellationToken();
+
+                // CRITICAL: Reset to Idle immediately so action can be restarted
+                _state.Value = ActionState.Idle;
+
                 return Observable.Return(new ActionResult
                 {
                     Success = false,
@@ -97,21 +134,21 @@ namespace BugWars.Entity.Actions
 
             _state.Value = ActionState.InProgress;
 
-            // Observable that updates progress every frame and completes when done
+            // CRITICAL: Subscribe to progress updates - tied to this specific action execution
             Observable.EveryUpdate()
                 .TakeWhile(_ => _state.Value == ActionState.InProgress)
                 .Subscribe(_ => UpdateProgress())
-                .AddTo(this);
+                .AddTo(_activeActionSubscriptions);
 
-            // Listen for Completing state and trigger completion
+            // CRITICAL: Listen for Completing state - tied to this specific action execution
             _state
                 .Where(state => state == ActionState.Completing)
                 .Take(1)
                 .Subscribe(_ =>
                 {
-                    CompleteAction().Subscribe().AddTo(this);
+                    CompleteAction().Subscribe().AddTo(_activeActionSubscriptions);
                 })
-                .AddTo(this);
+                .AddTo(_activeActionSubscriptions);
 
             // Return an observable that fires when action completes
             return _onActionCompleted.Take(1);
@@ -138,8 +175,26 @@ namespace BugWars.Entity.Actions
             OnActionCancel();
             _onActionCancelled.OnNext(Unit.Default);
 
+            // Cleanup cancellation token
+            CleanupCancellationToken();
+
+            // CRITICAL: Clear active subscriptions when cancelled
+            _activeActionSubscriptions.Clear();
+
             if (showDebugLogs)
                 Debug.Log($"[EntityAction] {actionName} cancelled");
+
+            // CRITICAL: Reset to Idle immediately so action can be restarted
+            _state.Value = ActionState.Idle;
+        }
+
+        /// <summary>
+        /// Request cancellation via CancellationToken
+        /// Use this for external cancellation sources (entity death, AI state change, etc.)
+        /// </summary>
+        public void RequestCancellation()
+        {
+            _actionCancellationTokenSource?.Cancel();
         }
 
         /// <summary>
@@ -176,13 +231,18 @@ namespace BugWars.Entity.Actions
 
             _onActionCompleted.OnNext(result);
 
+            // Cleanup cancellation token
+            CleanupCancellationToken();
+
+            // CRITICAL: Clear active subscriptions when completed
+            _activeActionSubscriptions.Clear();
+
             if (showDebugLogs)
                 Debug.Log($"[EntityAction] {actionName} completed: {result.Message}");
 
-            // Reset to idle after a short delay
-            Observable.Timer(TimeSpan.FromSeconds(0.1f))
-                .Subscribe(_ => _state.Value = ActionState.Idle)
-                .AddTo(this);
+            // CRITICAL: Reset to Idle immediately so action can be restarted
+            // Removed 0.1s delay that prevented immediate restart
+            _state.Value = ActionState.Idle;
 
             return Observable.Return(result);
         }
@@ -193,8 +253,31 @@ namespace BugWars.Entity.Actions
         protected abstract ActionResult OnActionComplete();
         protected abstract void OnActionCancel();
 
+        /// <summary>
+        /// Cleanup cancellation token resources
+        /// </summary>
+        private void CleanupCancellationToken()
+        {
+            if (_actionCancellationTokenSource != null)
+            {
+                if (!_actionCancellationTokenSource.IsCancellationRequested)
+                {
+                    _actionCancellationTokenSource.Cancel();
+                }
+                _actionCancellationTokenSource.Dispose();
+                _actionCancellationTokenSource = null;
+            }
+        }
+
         protected virtual void OnDestroy()
         {
+            // Cleanup active action subscriptions
+            _activeActionSubscriptions?.Dispose();
+
+            // Cleanup cancellation token
+            CleanupCancellationToken();
+
+            // Dispose reactive properties
             _state?.Dispose();
             _progress?.Dispose();
             _onActionCompleted?.Dispose();

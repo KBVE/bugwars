@@ -11,8 +11,9 @@ using System.Threading;
 namespace BugWars.Interaction
 {
     /// <summary>
-    /// Manages player interactions using R3 reactive raycast system
-    /// Handles proximity detection, raycasting, and interaction prompts
+    /// Pure input handler for player interactions using R3 reactive raycast system
+    /// Handles proximity detection, raycasting, and input → EntityActionManager
+    /// Does NOT manage action state - that's EntityActionManager's job
     /// </summary>
     public class InteractionManager : MonoBehaviour
     {
@@ -29,15 +30,15 @@ namespace BugWars.Interaction
         [Header("Input Settings")]
         [SerializeField] private Key interactKey = Key.E;
 
-        // R3 Reactive properties
+        // R3 Reactive properties - ONLY for raycast/targeting
+        // Action state is managed by EntityActionManager (single source of truth)
         private readonly ReactiveProperty<InteractableObject> _currentTarget = new(null);
-        private readonly Subject<InteractionResult> _onInteractionCompleted = new();
-        private readonly ReactiveProperty<bool> _isInteracting = new(false);
 
-        // Observables for UI and other systems
+        // Observables for UI - only target, not state
         public ReadOnlyReactiveProperty<InteractableObject> CurrentTarget => _currentTarget;
-        public Observable<InteractionResult> OnInteractionCompleted => _onInteractionCompleted;
-        public ReadOnlyReactiveProperty<bool> IsInteracting => _isInteracting;
+
+        // Public accessor for player's EntityActionManager (UI subscribes to this directly)
+        public BugWars.Entity.Actions.EntityActionManager PlayerEntityActionManager => playerActionManager;
 
         // Dependencies
         private Transform playerTransform;
@@ -89,6 +90,23 @@ namespace BugWars.Interaction
             {
                 Debug.LogWarning("[InteractionManager] Player has no EntityActionManager! Adding component...");
                 playerActionManager = playerObj.AddComponent<BugWars.Entity.Actions.EntityActionManager>();
+            }
+
+            // CRITICAL: Configure HarvestAction range to match raycast distance + buffer
+            // This ensures UI prompts only show when harvesting will succeed
+            // Wait one frame to ensure EntityActionManager.Awake() has created HarvestAction
+            await UniTask.Yield();
+
+            var harvestAction = playerActionManager.GetComponent<BugWars.Entity.Actions.HarvestAction>();
+            if (harvestAction != null)
+            {
+                // Set harvest range slightly larger than raycast to account for object size
+                harvestAction.SetHarvestRange(raycastDistance + 1f);
+                Debug.Log($"[InteractionManager] Configured harvest range to: {raycastDistance + 1f}");
+            }
+            else
+            {
+                Debug.LogWarning("[InteractionManager] HarvestAction not found after EntityActionManager creation!");
             }
 
             Debug.Log($"[InteractionManager] Found player: {playerObj.name}");
@@ -146,7 +164,7 @@ namespace BugWars.Interaction
         private void SetupRaycastStream()
         {
             Observable.EveryUpdate()
-                .Where(_ => playerCamera != null && !_isInteracting.Value)
+                .Where(_ => playerCamera != null && playerActionManager != null && !playerActionManager.IsPerformingAction.CurrentValue)
                 .Select(_ => PerformRaycast())
                 .DistinctUntilChanged() // Only trigger when target changes
                 .Subscribe(hit =>
@@ -177,14 +195,14 @@ namespace BugWars.Interaction
             // E key interaction
             Observable.EveryUpdate()
                 .Where(_ => Keyboard.current != null && Keyboard.current[interactKey].wasPressedThisFrame)
-                .Where(_ => _currentTarget.Value != null && !_isInteracting.Value)
+                .Where(_ => _currentTarget.Value != null && playerActionManager != null && !playerActionManager.IsPerformingAction.CurrentValue)
                 .Subscribe(_ => StartInteraction())
                 .AddTo(this);
 
             // Mouse click interaction
             Observable.EveryUpdate()
                 .Where(_ => Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
-                .Where(_ => _currentTarget.Value != null && !_isInteracting.Value)
+                .Where(_ => _currentTarget.Value != null && playerActionManager != null && !playerActionManager.IsPerformingAction.CurrentValue)
                 .Subscribe(_ => StartInteraction())
                 .AddTo(this);
         }
@@ -192,6 +210,8 @@ namespace BugWars.Interaction
         /// <summary>
         /// Perform raycast from player position (not camera) to detect interactable objects
         /// Uses player's forward direction from chest/center height for better ground object detection
+        /// CRITICAL: Checks very close objects first (OverlapSphere) then distant objects (SphereCast)
+        /// This prevents missing objects when player is standing inside/very close to them
         /// </summary>
         private InteractableObject PerformRaycast()
         {
@@ -203,7 +223,47 @@ namespace BugWars.Interaction
             Vector3 rayDirection = playerCamera.transform.forward;
             Ray ray = new Ray(rayOrigin, rayDirection);
 
-            // Single SphereCast on interactable layer only
+            // CRITICAL: First check for very close objects using OverlapSphere
+            // SphereCast misses objects when the sphere starts inside them
+            Collider[] nearbyColliders = Physics.OverlapSphere(rayOrigin, raycastRadius * 2f, interactableLayer);
+            if (nearbyColliders.Length > 0)
+            {
+                // Find the closest one that's in front of the camera
+                InteractableObject closestInFront = null;
+                float closestDot = 0.5f; // Only consider objects somewhat in front (45 degree cone)
+
+                foreach (var collider in nearbyColliders)
+                {
+                    Vector3 toObject = (collider.transform.position - rayOrigin).normalized;
+                    float dot = Vector3.Dot(rayDirection, toObject);
+
+                    if (dot > closestDot)
+                    {
+                        var interactable = collider.GetComponent<InteractableObject>();
+                        if (interactable != null)
+                        {
+                            closestDot = dot;
+                            closestInFront = interactable;
+                        }
+                    }
+                }
+
+                if (closestInFront != null)
+                {
+                    // Update visualization for close object
+                    if (raycastLine != null)
+                    {
+                        Vector3 targetPos = closestInFront.transform.position;
+                        raycastLine.SetPosition(0, ray.origin);
+                        raycastLine.SetPosition(1, targetPos);
+                        raycastLine.startColor = Color.yellow; // Yellow for close detection
+                        raycastLine.endColor = Color.yellow;
+                    }
+                    return closestInFront;
+                }
+            }
+
+            // No close objects - use SphereCast for distant objects
             if (Physics.SphereCast(ray, raycastRadius, out RaycastHit hit, raycastDistance, interactableLayer))
             {
                 // Update visualization
@@ -278,8 +338,8 @@ namespace BugWars.Interaction
         }
 
         /// <summary>
-        /// Start interaction with current target using EntityActionManager
-        /// Falls back to direct InteractableObject interaction if no action manager
+        /// Pure input handler - triggers EntityActionManager to start harvest
+        /// No state management here - that's EntityActionManager's job
         /// </summary>
         private void StartInteraction()
         {
@@ -301,84 +361,22 @@ namespace BugWars.Interaction
                 return;
             }
 
-            _isInteracting.Value = true;
+            Debug.Log($"[InteractionManager] Triggering harvest action on {target.name}");
 
-            Debug.Log($"[InteractionManager] Starting interaction with {target.name}");
-
-            // Use EntityActionManager if available (preferred method)
-            if (playerActionManager != null)
+            // Simple delegation - let EntityActionManager handle everything
+            if (playerActionManager == null)
             {
-                playerActionManager.StartHarvest(target.gameObject);
-
-                // Monitor action completion via EntityActionManager
-                playerActionManager.IsPerformingAction
-                    .Where(isPerforming => !isPerforming)
-                    .Take(1)
-                    .Subscribe(_ =>
-                    {
-                        // Convert to InteractionResult for UI compatibility
-                        var result = new InteractionResult
-                        {
-                            Success = true,
-                            ResourceType = target.Resource,
-                            ResourceAmount = 5, // Placeholder - real amount from HarvestResult
-                            InteractionType = target.Type == InteractionType.Chop ? InteractionType.Chop :
-                                            target.Type == InteractionType.Mine ? InteractionType.Mine :
-                                            InteractionType.Harvest
-                        };
-                        OnInteractionComplete(result);
-                        OnInteractionFinished();
-                    })
-                    .AddTo(this);
+                Debug.LogError("[InteractionManager] No EntityActionManager found! Cannot start interaction.");
+                return;
             }
-            else
-            {
-                // Fallback to old direct interaction method
-                target.Interact(playerTransform)
-                    .Subscribe(result =>
-                    {
-                        OnInteractionComplete(result);
-                        OnInteractionFinished();
-                    })
-                    .AddTo(this);
-            }
-        }
 
-        /// <summary>
-        /// Called when interaction completes successfully
-        /// </summary>
-        private void OnInteractionComplete(InteractionResult result)
-        {
-            Debug.Log($"[InteractionManager] Interaction complete! Received {result.ResourceAmount}x {result.ResourceType}");
-            _onInteractionCompleted.OnNext(result);
-        }
-
-        /// <summary>
-        /// Called when interaction finishes (success or failure)
-        /// </summary>
-        private void OnInteractionFinished()
-        {
-            _isInteracting.Value = false;
-            _currentTarget.Value = null;
-        }
-
-        /// <summary>
-        /// Cancel current interaction (e.g., player moved away)
-        /// </summary>
-        public void CancelInteraction()
-        {
-            if (_isInteracting.Value && _currentTarget.Value != null)
-            {
-                _currentTarget.Value.CancelInteraction();
-                OnInteractionFinished();
-            }
+            // Just trigger the action - EntityActionManager owns the state
+            playerActionManager.StartHarvest(target.gameObject);
         }
 
         private void OnDestroy()
         {
             _currentTarget?.Dispose();
-            _onInteractionCompleted?.Dispose();
-            _isInteracting?.Dispose();
 
             if (raycastLine != null)
             {

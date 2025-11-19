@@ -33,6 +33,10 @@ namespace BugWars.Entity.Actions
         // Action queue (for future feature)
         private Queue<(EntityAction action, GameObject target)> actionQueue = new Queue<(EntityAction, GameObject)>();
 
+        // CRITICAL: Disposable to cleanup active action subscriptions
+        // This prevents duplicate subscriptions from accumulating
+        private CompositeDisposable _actionSubscriptions = new CompositeDisposable();
+
         private void Awake()
         {
             entity = GetComponent<Entity>();
@@ -64,21 +68,25 @@ namespace BugWars.Entity.Actions
                 return;
             }
 
+            // CRITICAL: Clear any previous action subscriptions to prevent duplicate callbacks
+            _actionSubscriptions.Clear();
+
             // Execute the harvest action
             _currentAction.Value = harvestAction;
             _isPerformingAction.Value = true;
 
+            // Subscribe to action completion - store in CompositeDisposable for cleanup
             harvestAction.Execute(entity, target)
                 .Subscribe(result =>
                 {
                     OnActionCompleted(result);
                 })
-                .AddTo(this);
+                .AddTo(_actionSubscriptions);
 
-            // Listen for cancellation
+            // Listen for cancellation - store in CompositeDisposable for cleanup
             harvestAction.OnActionCancelled
                 .Subscribe(_ => OnActionCancelled())
-                .AddTo(this);
+                .AddTo(_actionSubscriptions);
 
             if (showDebugLogs)
                 Debug.Log($"[EntityActionManager] {entity.name} started harvest on {target.name}");
@@ -136,6 +144,9 @@ namespace BugWars.Entity.Actions
             _isPerformingAction.Value = false;
             _currentAction.Value = null;
 
+            // CRITICAL: Clear subscriptions after action completes
+            _actionSubscriptions.Clear();
+
             // Process result (could notify inventory system, etc.)
             ProcessActionResult(result);
         }
@@ -147,6 +158,9 @@ namespace BugWars.Entity.Actions
 
             _isPerformingAction.Value = false;
             _currentAction.Value = null;
+
+            // CRITICAL: Clear subscriptions after action cancels
+            _actionSubscriptions.Clear();
         }
 
         private void ProcessActionResult(ActionResult result)
@@ -165,6 +179,10 @@ namespace BugWars.Entity.Actions
 
         private void OnDestroy()
         {
+            // Cleanup action subscriptions
+            _actionSubscriptions?.Dispose();
+
+            // Cleanup reactive properties
             _currentAction?.Dispose();
             _isPerformingAction?.Dispose();
         }
