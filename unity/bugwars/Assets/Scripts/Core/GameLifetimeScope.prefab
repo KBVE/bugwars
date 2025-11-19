@@ -624,7 +624,7 @@ MonoBehaviour:
   cameraManager: {fileID: 9078858066107133751}
   entityManager: {fileID: 7079581847023201318}
   interactionManager: {fileID: 6383346758455814039}
-  interactionPromptUIPrefab: {fileID: 5920174987944082881, guid: c8ccb5d8a4a0b4230858ef523a397949, type: 3}
+  interactionPromptUIPrefab: {fileID: 4969149913543290532, guid: 742516da40d2846238c87a57e285e990, type: 3}
 --- !u!1 &9191352141979102719
 GameObject:
   m_ObjectHideFlags: 0

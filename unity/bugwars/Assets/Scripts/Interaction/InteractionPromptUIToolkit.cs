@@ -96,6 +96,12 @@ namespace BugWars.Interaction
 
             QueryUIElements();
 
+            // Apply world-space scale if enabled (Unity 6.2 world-space UI)
+            if (useWorldSpace && worldSpaceScale > 0)
+            {
+                transform.localScale = Vector3.one * worldSpaceScale;
+            }
+
             // CRITICAL: Hide UI immediately before setting up subscriptions to prevent flash
             HidePrompt();
 
