@@ -8,12 +8,8 @@ using System.Collections.Generic;
 namespace BugWars.Editor
 {
     /// <summary>
-    /// Prevents URP shader stripping in WebGL builds
-    /// Ensures critical shaders like Hidden/CoreSRP/CoreCopy are included
-    ///
-    /// WebGL Issue: Unity's shader stripping is too aggressive for WebGL,
-    /// removing essential URP shaders that are needed at runtime.
-    /// This script forces inclusion of critical shaders.
+    /// Aggressively strips unused shader variants for WebGL builds to reduce compile time
+    /// Only keeps essential variants needed for the game
     /// </summary>
     public class WebGLShaderVariantCollector : IPreprocessShaders
     {
@@ -26,32 +22,28 @@ namespace BugWars.Editor
             if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.WebGL)
                 return;
 
-            // List of critical URP shaders that must never be stripped in WebGL
-            string[] criticalShaders = new string[]
+            // Strip all shadow variants for WebGL (massive reduction)
+            if (snippet.passName.Contains("ShadowCaster") || snippet.passName.Contains("DepthOnly"))
             {
-                "Hidden/CoreSRP/CoreCopy",
-                "Hidden/Universal Render Pipeline/StencilDitherMaskSeed",
-                "Hidden/Universal/HDRDebugView",
-                "Hidden/Universal Render Pipeline/Blit",
-                "Hidden/Universal Render Pipeline/CopyDepth",
-                "Hidden/Universal Render Pipeline/Sampling",
-                "Universal Render Pipeline/Lit",
-                "Universal Render Pipeline/Unlit",
-                "Sprites/Default"
-            };
-
-            // Check if this is a critical shader
-            foreach (string criticalShader in criticalShaders)
-            {
-                if (shader.name.Contains(criticalShader))
-                {
-                    // Prevent stripping by not removing any variants
-                    Debug.Log($"[WebGLShaderVariantCollector] Preserving critical shader: {shader.name} ({data.Count} variants)");
-                    return;
-                }
+                data.Clear();
+                return;
             }
 
-            // For non-critical shaders, allow default stripping behavior
+            // Strip most graphics API variants - WebGL only needs WebGL2/WebGPU
+            for (int i = data.Count - 1; i >= 0; --i)
+            {
+                // Keep only essential keyword combinations
+                ShaderCompilerData variantData = data[i];
+
+                // Strip unnecessary keywords
+                if (variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("_MAIN_LIGHT_SHADOWS_CASCADE")) ||
+                    variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("_ADDITIONAL_LIGHT_SHADOWS")) ||
+                    variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("LIGHTMAP_SHADOW_MIXING")) ||
+                    variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("SHADOWS_SHADOWMASK")))
+                {
+                    data.RemoveAt(i);
+                }
+            }
         }
     }
 
