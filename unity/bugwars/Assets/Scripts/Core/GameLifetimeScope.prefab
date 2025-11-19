@@ -104,127 +104,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4ce5b41c96b474a54b10809eed366c43, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BugWars.Core.GameManager
---- !u!1 &2711539288317631185
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 35577888620060391}
-  - component: {fileID: 3006846536998216876}
-  m_Layer: 0
-  m_Name: EnvironmentManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &35577888620060391
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2711539288317631185}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 8462317456789012346}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3006846536998216876
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2711539288317631185}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 37cc6d93c4f9241c68bf5b2437ccae6d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Terrain.EnvironmentManager
-  treeAssets: []
-  bushAssets: []
-  rockAssets: []
-  grassAssets: []
-  treeSettings:
-    objectsPerChunk: 15
-    spawnProbability: 0.7
-    usePoissonDisk: 1
-    minDistanceBetweenObjects: 8
-    maxPlacementAttempts: 40
-    enableClustering: 1
-    clusterNoiseScale: 0.02
-    clusterThreshold: 0.55
-    detailNoiseScale: 0.3
-    clusterDensityMultiplier: 4
-    minHeight: 0.5
-    maxHeight: 8
-    maxSlope: 35
-    useHeightVariation: 1
-    lowlandBonus: 1.3
-    highlandPenalty: 0.5
-  bushSettings:
-    objectsPerChunk: 25
-    spawnProbability: 0.6
-    usePoissonDisk: 1
-    minDistanceBetweenObjects: 3
-    maxPlacementAttempts: 35
-    enableClustering: 1
-    clusterNoiseScale: 0.025
-    clusterThreshold: 0.5
-    detailNoiseScale: 0.35
-    clusterDensityMultiplier: 3.5
-    minHeight: 0.2
-    maxHeight: 6
-    maxSlope: 40
-    useHeightVariation: 1
-    lowlandBonus: 1.4
-    highlandPenalty: 0.7
-  rockSettings:
-    objectsPerChunk: 10
-    spawnProbability: 0.5
-    usePoissonDisk: 1
-    minDistanceBetweenObjects: 5
-    maxPlacementAttempts: 30
-    enableClustering: 1
-    clusterNoiseScale: 0.04
-    clusterThreshold: 0.6
-    detailNoiseScale: 0.25
-    clusterDensityMultiplier: 3
-    minHeight: 0
-    maxHeight: 10
-    maxSlope: 60
-    useHeightVariation: 1
-    lowlandBonus: 0.8
-    highlandPenalty: 1.5
-  grassSettings:
-    objectsPerChunk: 80
-    spawnProbability: 0.9
-    usePoissonDisk: 1
-    minDistanceBetweenObjects: 2
-    maxPlacementAttempts: 20
-    enableClustering: 0
-    clusterNoiseScale: 0.15
-    clusterThreshold: 0.2
-    detailNoiseScale: 0.25
-    clusterDensityMultiplier: 1
-    minHeight: 0
-    maxHeight: 5
-    maxSlope: 50
-    useHeightVariation: 1
-    lowlandBonus: 1.2
-    highlandPenalty: 0.8
-  useObjectPooling: 1
-  maxObjectsPerFrame: 10
-  enableDynamicSpawning: 1
-  showDebugInfo: 1
-  drawGizmos: 0
 --- !u!1 &3615737229741170740
 GameObject:
   m_ObjectHideFlags: 0
@@ -366,6 +245,7 @@ MonoBehaviour:
   interactableLayer:
     serializedVersion: 2
     m_Bits: 256
+  raycastHeightOffset: 1
   proximityCheckRadius: 10
   proximityCheckInterval: 0.5
   interactKey: 19
@@ -591,7 +471,6 @@ Transform:
   - {fileID: 3710305764415122505}
   - {fileID: 393329099463632125}
   - {fileID: 4998318005036485852}
-  - {fileID: 35577888620060391}
   - {fileID: 1735736264222090280}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -620,7 +499,6 @@ MonoBehaviour:
   inputManager: {fileID: 748890625212931961}
   gameManager: {fileID: 5045267444755541697}
   terrainManager: {fileID: 4995667870493464573}
-  environmentManager: {fileID: 3006846536998216876}
   cameraManager: {fileID: 9078858066107133751}
   entityManager: {fileID: 7079581847023201318}
   interactionManager: {fileID: 6383346758455814039}

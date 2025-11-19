@@ -1,6 +1,9 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
+using System.Threading;
 using Cysharp.Threading.Tasks;
+using R3;
 using VContainer;
 using VContainer.Unity;
 
@@ -87,16 +90,17 @@ namespace BugWars.Terrain
     /// - Concurrency protection to prevent collection modification
     /// - UniTask async/await for non-blocking spawning
     /// </summary>
-    public class EnvironmentManager : MonoBehaviour, IStartable
+    public class EnvironmentManager : IAsyncStartable, IDisposable
     {
-        [Header("Asset References")]
-        [SerializeField] private List<EnvironmentAsset> treeAssets = new List<EnvironmentAsset>();
-        [SerializeField] private List<EnvironmentAsset> bushAssets = new List<EnvironmentAsset>();
-        [SerializeField] private List<EnvironmentAsset> rockAssets = new List<EnvironmentAsset>();
-        [SerializeField] private List<EnvironmentAsset> grassAssets = new List<EnvironmentAsset>();
+        private readonly CompositeDisposable _disposables = new CompositeDisposable();
+        private CancellationTokenSource _cts;
+        private List<EnvironmentAsset> treeAssets = new List<EnvironmentAsset>();
+        private List<EnvironmentAsset> bushAssets = new List<EnvironmentAsset>();
+        private List<EnvironmentAsset> rockAssets = new List<EnvironmentAsset>();
+        private List<EnvironmentAsset> grassAssets = new List<EnvironmentAsset>();
 
-        [Header("Spawn Settings")]
-        [SerializeField] private EnvironmentSpawnSettings treeSettings = new EnvironmentSpawnSettings
+        // Spawn Settings
+        private EnvironmentSpawnSettings treeSettings = new EnvironmentSpawnSettings
         {
             // TIGHT CLUSTERING: Creates actual forest "zones" with 3-10 trees per cluster
             objectsPerChunk = 30,
@@ -124,7 +128,7 @@ namespace BugWars.Terrain
             highlandPenalty = 0.5f
         };
 
-        [SerializeField] private EnvironmentSpawnSettings bushSettings = new EnvironmentSpawnSettings
+        private readonly EnvironmentSpawnSettings bushSettings = new()
         {
             // TIGHT CLUSTERING: Creates understory "zones" with 3-8 bushes per cluster around forest areas
             objectsPerChunk = 40,
@@ -151,7 +155,7 @@ namespace BugWars.Terrain
             highlandPenalty = 0.7f
         };
 
-        [SerializeField] private EnvironmentSpawnSettings rockSettings = new EnvironmentSpawnSettings
+        private readonly EnvironmentSpawnSettings rockSettings = new()
         {
             // TIGHT CLUSTERING: Creates distinct rock "outcrops" with 2-6 rocks per formation
             objectsPerChunk = 18,
@@ -179,7 +183,7 @@ namespace BugWars.Terrain
             highlandPenalty = 1.5f  // BONUS on highlands (inverted from trees)
         };
 
-        [SerializeField] private EnvironmentSpawnSettings grassSettings = new EnvironmentSpawnSettings
+        private readonly EnvironmentSpawnSettings grassSettings = new()
         {
             // DENSE GRASS: 80 clumps per chunk - carpet of grass
             objectsPerChunk = 80,
@@ -205,18 +209,18 @@ namespace BugWars.Terrain
             highlandPenalty = 0.8f
         };
 
-        [Header("Performance")]
-        [SerializeField] private bool useObjectPooling = false; // Future enhancement
-        [SerializeField] private int maxObjectsPerFrame = 5; // WebGL: Very conservative - reduced from 50
-        [SerializeField] private bool enableDynamicSpawning = true; // Spawn objects as chunks load
+        // Performance
+        private readonly bool useObjectPooling = false; // Future enhancement
+        private readonly int maxObjectsPerFrame = 5; // WebGL: Very conservative - reduced from 50
+        private readonly bool enableDynamicSpawning = true; // Spawn objects as chunks load
 
-        [Header("WebGL Performance")]
-        [SerializeField] private float maxFrameTimeMs = 8.0f; // WebGL: Target 8ms budget (conservative for 60fps)
-        [SerializeField] private int minFramesBetweenProcessing = 2; // WebGL: Minimum frames between chunk processing calls
+        // WebGL Performance
+        private readonly float maxFrameTimeMs = 8.0f; // WebGL: Target 8ms budget (conservative for 60fps)
+        private readonly int minFramesBetweenProcessing = 2; // WebGL: Minimum frames between chunk processing calls
 
-        [Header("Debug")]
-        [SerializeField] private bool showDebugInfo = true;
-        [SerializeField] private bool drawGizmos = false;
+        // Debug
+        private readonly bool showDebugInfo = true;
+        private readonly bool drawGizmos = false;
 
         // Dependencies
         private TerrainManager terrainManager;
@@ -248,20 +252,84 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// VContainer startup callback
+        /// VContainer async startup callback
         /// </summary>
-        public void Start()
+        public async UniTask StartAsync(CancellationToken cancellationToken)
         {
-            InitializeEnvironmentSystem();
+            _cts = new CancellationTokenSource();
+            var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, cancellationToken).Token;
+
+            try
+            {
+                await InitializeEnvironmentSystemAsync(linkedToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.LogWarning("[EnvironmentManager] Initialization canceled.");
+            }
         }
 
-        private void InitializeEnvironmentSystem()
+        private async UniTask InitializeEnvironmentSystemAsync(CancellationToken cancellationToken)
         {
-            Debug.Log("[EnvironmentManager] Initializing environment system");
+            InitializeEnvironmentContainerAndAssets();
 
-            // Create container for all environment objects
-            environmentContainer = new GameObject("EnvironmentObjects");
-            DontDestroyOnLoad(environmentContainer);
+            // Yield to prevent blocking
+            await UniTask.Yield(cancellationToken);
+
+            isInitialized = true;
+
+            // Start the update loop using UniTask PlayerLoop
+            UpdateLoop(cancellationToken).Forget();
+        }
+
+        /// <summary>
+        /// Update loop using UniTask PlayerLoop instead of MonoBehaviour Update
+        /// </summary>
+        private async UniTaskVoid UpdateLoop(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                // Wait for next frame (equivalent to Update())
+                await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
+
+                if (!isInitialized || !enableDynamicSpawning || terrainManager == null)
+                    continue;
+
+                // WebGL: Throttle processing to prevent every-frame execution
+                int currentFrame = Time.frameCount;
+                if (currentFrame - lastProcessingFrame < minFramesBetweenProcessing)
+                    continue;
+
+                // Check for new chunks that need environment objects (non-blocking)
+                if (!isProcessingChunkLoading)
+                {
+                    lastProcessingFrame = currentFrame;
+                    ProcessChunkEnvironmentLoading().Forget();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Synchronous initialization for recovery scenarios (when container is destroyed)
+        /// </summary>
+        private void InitializeEnvironmentContainerAndAssets()
+        {
+            // Check if we already have a container reference (from previous init)
+            if (environmentContainer == null)
+            {
+                // Check if EnvironmentObjects container already exists (from previous initialization or scene load)
+                var existingContainer = GameObject.Find("EnvironmentObjects");
+                if (existingContainer != null)
+                {
+                    environmentContainer = existingContainer;
+                }
+                else
+                {
+                    // Create new container for all environment objects
+                    // Note: No need for DontDestroyOnLoad - the LifetimeScope handles persistence
+                    environmentContainer = new GameObject("EnvironmentObjects");
+                }
+            }
 
             // Use same seed as terrain for consistency
             if (terrainManager != null)
@@ -269,25 +337,67 @@ namespace BugWars.Terrain
                 spawnSeed = terrainManager.Seed;
             }
 
-            isInitialized = true;
-            Debug.Log("[EnvironmentManager] Environment system initialized");
+            // Load prefabs programmatically if arrays are empty (for dynamic instantiation via VContainer)
+            if (treeAssets.Count == 0)
+            {
+                LoadEnvironmentPrefabs();
+            }
         }
 
-        private void Update()
+        /// <summary>
+        /// Load environment prefabs from Resources folder
+        /// Called automatically when EnvironmentManager is created dynamically
+        /// </summary>
+        private void LoadEnvironmentPrefabs()
         {
-            if (!isInitialized || !enableDynamicSpawning || terrainManager == null)
-                return;
-
-            // WebGL: Throttle processing to prevent every-frame execution
-            int currentFrame = Time.frameCount;
-            if (currentFrame - lastProcessingFrame < minFramesBetweenProcessing)
-                return;
-
-            // Check for new chunks that need environment objects (non-blocking)
-            if (!isProcessingChunkLoading)
+            // Load all tree prefabs
+            GameObject[] treePrefabs = Resources.LoadAll<GameObject>("Prefabs/Forest/Trees");
+            foreach (var prefab in treePrefabs)
             {
-                lastProcessingFrame = currentFrame;
-                ProcessChunkEnvironmentLoading().Forget();
+                treeAssets.Add(new EnvironmentAsset
+                {
+                    assetName = prefab.name,
+                    prefab = prefab,
+                    type = EnvironmentObjectType.Tree,
+                    spawnWeight = 1f,
+                    minScale = 0.8f,
+                    maxScale = 1.2f
+                });
+            }
+
+            // Load all bush prefabs
+            GameObject[] bushPrefabs = Resources.LoadAll<GameObject>("Prefabs/Forest/Bushes");
+            foreach (var prefab in bushPrefabs)
+            {
+                bushAssets.Add(new EnvironmentAsset
+                {
+                    assetName = prefab.name,
+                    prefab = prefab,
+                    type = EnvironmentObjectType.Bush,
+                    spawnWeight = 1f,
+                    minScale = 0.7f,
+                    maxScale = 1.1f
+                });
+            }
+
+            // Load all rock prefabs
+            GameObject[] rockPrefabs = Resources.LoadAll<GameObject>("Prefabs/Forest/Rocks");
+            foreach (var prefab in rockPrefabs)
+            {
+                rockAssets.Add(new EnvironmentAsset
+                {
+                    assetName = prefab.name,
+                    prefab = prefab,
+                    type = EnvironmentObjectType.Rock,
+                    spawnWeight = 1f,
+                    minScale = 0.9f,
+                    maxScale = 1.3f
+                });
+            }
+
+            if (treeAssets.Count == 0 || bushAssets.Count == 0 || rockAssets.Count == 0)
+            {
+                Debug.LogWarning("[EnvironmentManager] Some prefab types failed to load! Make sure prefabs are in Resources/Prefabs/Forest/ folders.");
             }
         }
 
@@ -365,11 +475,6 @@ namespace BugWars.Terrain
             await SpawnObjectsForChunk(chunkCoord, chunkData, EnvironmentObjectType.Rock, rockAssets, rockSettings);
 
             chunkData.isLoaded = true;
-
-            if (showDebugInfo)
-            {
-                Debug.Log($"[EnvironmentManager] Loaded {chunkData.spawnedObjects.Count} objects for chunk {chunkCoord}");
-            }
         }
 
         /// <summary>
@@ -439,20 +544,20 @@ namespace BugWars.Terrain
                     {
                         // In dense cluster - boost spawn probability
                         float clusterBoost = settings.clusterDensityMultiplier;
-                        if (Random.value > settings.spawnProbability * clusterBoost)
+                        if (UnityEngine.Random.value > settings.spawnProbability * clusterBoost)
                             continue;
                     }
                     else
                     {
                         // Normal spawn probability
-                        if (Random.value > settings.spawnProbability)
+                        if (UnityEngine.Random.value > settings.spawnProbability)
                             continue;
                     }
                 }
                 else
                 {
                     // No clustering - just use base probability
-                    if (Random.value > settings.spawnProbability)
+                    if (UnityEngine.Random.value > settings.spawnProbability)
                         continue;
                 }
 
@@ -501,19 +606,31 @@ namespace BugWars.Terrain
         /// </summary>
         private GameObject SpawnEnvironmentObject(EnvironmentAsset asset, Vector3 position, Vector2Int chunkCoord)
         {
+            // Check if container was destroyed (scene transition/domain reload)
+            if (environmentContainer == null)
+            {
+                Debug.LogWarning("[EnvironmentManager] Environment container was destroyed, reinitializing...");
+                InitializeEnvironmentContainerAndAssets();
+                if (environmentContainer == null)
+                {
+                    Debug.LogError("[EnvironmentManager] Failed to reinitialize environment container!");
+                    return null;
+                }
+            }
+
             // Adjust height to terrain surface
             float terrainHeight = GetTerrainHeightAtPosition(position);
             position.y = terrainHeight;
 
             // Instantiate object
-            GameObject obj = Instantiate(asset.prefab, position, Quaternion.identity, environmentContainer.transform);
+            GameObject obj = UnityEngine.Object.Instantiate(asset.prefab, position, Quaternion.identity, environmentContainer.transform);
 
             // Random rotation (Y-axis only for most objects)
-            float randomRotation = Random.Range(0f, 360f);
+            float randomRotation = UnityEngine.Random.Range(0f, 360f);
             obj.transform.rotation = Quaternion.Euler(0, randomRotation, 0);
 
             // Random scale
-            float randomScale = Random.Range(asset.minScale, asset.maxScale);
+            float randomScale = UnityEngine.Random.Range(asset.minScale, asset.maxScale);
             obj.transform.localScale = Vector3.one * randomScale;
 
             // Name for debugging
@@ -576,19 +693,19 @@ namespace BugWars.Terrain
                 case EnvironmentObjectType.Tree:
                     interactionType = BugWars.Interaction.InteractionType.Chop;
                     resourceType = BugWars.Interaction.ResourceType.Wood;
-                    resourceAmount = Random.Range(3, 8);
+                    resourceAmount = UnityEngine.Random.Range(3, 8);
                     harvestTime = 3f;
                     break;
                 case EnvironmentObjectType.Rock:
                     interactionType = BugWars.Interaction.InteractionType.Mine;
                     resourceType = BugWars.Interaction.ResourceType.Stone;
-                    resourceAmount = Random.Range(2, 6);
+                    resourceAmount = UnityEngine.Random.Range(2, 6);
                     harvestTime = 4f;
                     break;
                 case EnvironmentObjectType.Bush:
                     interactionType = BugWars.Interaction.InteractionType.Harvest;
                     resourceType = BugWars.Interaction.ResourceType.Berries;
-                    resourceAmount = Random.Range(1, 4);
+                    resourceAmount = UnityEngine.Random.Range(1, 4);
                     harvestTime = 1.5f;
                     break;
                 case EnvironmentObjectType.Grass:
@@ -619,17 +736,12 @@ namespace BugWars.Terrain
             {
                 if (obj != null)
                 {
-                    Destroy(obj);
+                    UnityEngine.Object.Destroy(obj);
                 }
             }
 
             chunkData.spawnedObjects.Clear();
             chunkEnvironmentData.Remove(chunkCoord);
-
-            if (showDebugInfo)
-            {
-                Debug.Log($"[EnvironmentManager] Unloaded chunk environment {chunkCoord}");
-            }
         }
 
         /// <summary>
@@ -638,8 +750,8 @@ namespace BugWars.Terrain
         private Vector3 GetRandomPositionInChunk(Vector2Int chunkCoord)
         {
             float chunkSize = 500f; // Match TerrainManager chunk size
-            float randomX = Random.Range(0f, chunkSize);
-            float randomZ = Random.Range(0f, chunkSize);
+            float randomX = UnityEngine.Random.Range(0f, chunkSize);
+            float randomZ = UnityEngine.Random.Range(0f, chunkSize);
 
             return new Vector3(
                 chunkCoord.x * chunkSize + randomX,
@@ -730,14 +842,13 @@ namespace BugWars.Terrain
             if (assets.Count == 0)
                 return null;
 
-            // Manual sum to avoid LINQ allocation
             float totalWeight = 0f;
             for (int i = 0; i < assets.Count; i++)
             {
                 totalWeight += assets[i].spawnWeight;
             }
 
-            float randomValue = Random.Range(0f, totalWeight);
+            float randomValue = UnityEngine.Random.Range(0f, totalWeight);
 
             float cumulativeWeight = 0f;
             foreach (var asset in assets)
@@ -757,8 +868,6 @@ namespace BugWars.Terrain
         {
             if (!drawGizmos || !isInitialized)
                 return;
-
-            // Draw spawned object positions
             Gizmos.color = Color.green;
             foreach (var chunkData in chunkEnvironmentData.Values)
             {
@@ -792,7 +901,6 @@ namespace BugWars.Terrain
         [ContextMenu("Reload All Environments")]
         public void ReloadAllEnvironments()
         {
-            // Copy keys to avoid collection modification during iteration
             chunksToUnloadCache.Clear();
             foreach (var coord in chunkEnvironmentData.Keys)
             {
@@ -803,7 +911,29 @@ namespace BugWars.Terrain
             {
                 UnloadChunkEnvironment(chunk);
             }
-            Debug.Log("[EnvironmentManager] All environments unloaded. Will reload as chunks activate.");
+        }
+
+        /// <summary>
+        /// Dispose pattern implementation for proper cleanup
+        /// </summary>
+        public void Dispose()
+        {
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _disposables?.Dispose();
+
+            if (environmentContainer != null)
+            {
+                UnityEngine.Object.Destroy(environmentContainer);
+                environmentContainer = null;
+            }
+
+            chunkEnvironmentData?.Clear();
+            treeAssets?.Clear();
+            bushAssets?.Clear();
+            rockAssets?.Clear();
+
+            isInitialized = false;
         }
     }
 }

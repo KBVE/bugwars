@@ -28,11 +28,9 @@ Shader "BugWars/TerrainVertexColor"
             #pragma vertex   vert
             #pragma fragment frag
 
-            // URP lighting variants
-            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
-            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
+            // WebGL-optimized: No shadow variants (stripped by WebGLShaderVariantCollector)
+            // Only keep essential lighting for basic rendering
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
-            #pragma multi_compile_fragment _ _SHADOWS_SOFT
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -51,7 +49,6 @@ Shader "BugWars/TerrainVertexColor"
                 float3 normalWS   : TEXCOORD0;
                 float3 positionWS : TEXCOORD1;
                 float4 color      : COLOR;
-                float4 shadowCoord: TEXCOORD2;
             };
 
             CBUFFER_START(UnityPerMaterial)
@@ -71,7 +68,6 @@ Shader "BugWars/TerrainVertexColor"
                 output.positionWS  = vertexInput.positionWS;
                 output.normalWS    = normalInput.normalWS;
                 output.color       = input.color * _ColorMultiplier;
-                output.shadowCoord = GetShadowCoord(vertexInput);
 
                 return output;
             }

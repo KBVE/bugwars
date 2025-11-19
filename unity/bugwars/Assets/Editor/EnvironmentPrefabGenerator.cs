@@ -15,8 +15,6 @@ namespace BugWars.Editor
         private string sourceFolderPath = "Assets/BugWars/Prefabs/Forest/Models";
         private string targetPrefabFolder = "Assets/BugWars/Prefabs/Forest/Generated";
         private Material defaultMaterial;
-        private bool autoAssignToEnvironmentManager = true;
-        private BugWars.Terrain.EnvironmentManager environmentManager;
 
         private int prefabsCreated = 0;
         private List<string> processedFiles = new List<string>();
@@ -74,16 +72,10 @@ namespace BugWars.Editor
 
             GUILayout.Space(10);
 
-            // Environment Manager assignment
-            autoAssignToEnvironmentManager = EditorGUILayout.Toggle("Auto-assign to EnvironmentManager", autoAssignToEnvironmentManager);
-            if (autoAssignToEnvironmentManager)
-            {
-                environmentManager = (BugWars.Terrain.EnvironmentManager)EditorGUILayout.ObjectField(
-                    "Environment Manager",
-                    environmentManager,
-                    typeof(BugWars.Terrain.EnvironmentManager),
-                    true);
-            }
+            EditorGUILayout.HelpBox(
+                "Note: EnvironmentManager now loads prefabs automatically from Resources/Prefabs/Forest/ folders.\n" +
+                "Make sure to copy generated prefabs to Resources folder for runtime loading.",
+                MessageType.Info);
 
             GUILayout.Space(20);
 
@@ -422,112 +414,12 @@ namespace BugWars.Editor
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            // Now assign to EnvironmentManager
-            AssignPrefabsToEnvironmentManager(targetPath);
-
             EditorUtility.DisplayDialog("Complete",
-                $"Updated {updated} prefabs with collision boxes!\nAssigned to EnvironmentManager.",
+                $"Updated {updated} prefabs with collision boxes!\n\n" +
+                "Note: EnvironmentManager now loads prefabs automatically from Resources/Prefabs/Forest/ folders.\n" +
+                "Make sure prefabs are in the correct Resources location for runtime loading.",
                 "OK");
-            Debug.Log($"[UpdatePrefabs] Updated {updated} prefabs and assigned to EnvironmentManager");
-        }
-
-        /// <summary>
-        /// Assign all generated prefabs to EnvironmentManager
-        /// </summary>
-        private static void AssignPrefabsToEnvironmentManager(string generatedPath)
-        {
-            // Find EnvironmentManager in the scene
-            BugWars.Terrain.EnvironmentManager envManager = Object.FindFirstObjectByType<BugWars.Terrain.EnvironmentManager>();
-
-            if (envManager == null)
-            {
-                Debug.LogWarning("[UpdatePrefabs] EnvironmentManager not found in scene. Skipping assignment.");
-                return;
-            }
-
-            // Use SerializedObject to modify the EnvironmentManager
-            UnityEditor.SerializedObject serializedManager = new UnityEditor.SerializedObject(envManager);
-
-            int treesAdded = PopulatePrefabListFromFolder(serializedManager, "treeAssets", Path.Combine(generatedPath, "Trees"), BugWars.Terrain.EnvironmentObjectType.Tree);
-            int bushesAdded = PopulatePrefabListFromFolder(serializedManager, "bushAssets", Path.Combine(generatedPath, "Bushes"), BugWars.Terrain.EnvironmentObjectType.Bush);
-            int rocksAdded = PopulatePrefabListFromFolder(serializedManager, "rockAssets", Path.Combine(generatedPath, "Rocks"), BugWars.Terrain.EnvironmentObjectType.Rock);
-            int grassAdded = PopulatePrefabListFromFolder(serializedManager, "grassAssets", Path.Combine(generatedPath, "Grass"), BugWars.Terrain.EnvironmentObjectType.Grass);
-
-            // Apply changes
-            serializedManager.ApplyModifiedProperties();
-            EditorUtility.SetDirty(envManager);
-            AssetDatabase.SaveAssets();
-
-            Debug.Log($"[UpdatePrefabs] Assigned to EnvironmentManager: {treesAdded} trees, {bushesAdded} bushes, {rocksAdded} rocks, {grassAdded} grass");
-        }
-
-        private static int PopulatePrefabListFromFolder(UnityEditor.SerializedObject serializedManager, string propertyName, string folderPath, BugWars.Terrain.EnvironmentObjectType type)
-        {
-            if (!AssetDatabase.IsValidFolder(folderPath))
-                return 0;
-
-            string[] prefabGuids = AssetDatabase.FindAssets("t:Prefab", new[] { folderPath });
-
-            if (prefabGuids.Length == 0)
-                return 0;
-
-            // Get the array property
-            UnityEditor.SerializedProperty arrayProperty = serializedManager.FindProperty(propertyName);
-
-            if (arrayProperty == null)
-            {
-                Debug.LogError($"[UpdatePrefabs] Property '{propertyName}' not found on EnvironmentManager");
-                return 0;
-            }
-
-            // Clear existing array
-            arrayProperty.ClearArray();
-
-            int added = 0;
-
-            foreach (string guid in prefabGuids)
-            {
-                string prefabPath = AssetDatabase.GUIDToAssetPath(guid);
-                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-
-                if (prefab == null)
-                    continue;
-
-                // Add new element to array
-                arrayProperty.InsertArrayElementAtIndex(arrayProperty.arraySize);
-                UnityEditor.SerializedProperty element = arrayProperty.GetArrayElementAtIndex(arrayProperty.arraySize - 1);
-
-                // Set properties on EnvironmentAsset
-                element.FindPropertyRelative("assetName").stringValue = prefab.name;
-                element.FindPropertyRelative("prefab").objectReferenceValue = prefab;
-                element.FindPropertyRelative("type").enumValueIndex = (int)type;
-                element.FindPropertyRelative("spawnWeight").floatValue = 1f;
-
-                // Set scale variation based on type
-                switch (type)
-                {
-                    case BugWars.Terrain.EnvironmentObjectType.Tree:
-                        element.FindPropertyRelative("minScale").floatValue = 0.9f;
-                        element.FindPropertyRelative("maxScale").floatValue = 1.3f;
-                        break;
-                    case BugWars.Terrain.EnvironmentObjectType.Bush:
-                        element.FindPropertyRelative("minScale").floatValue = 0.8f;
-                        element.FindPropertyRelative("maxScale").floatValue = 1.2f;
-                        break;
-                    case BugWars.Terrain.EnvironmentObjectType.Rock:
-                        element.FindPropertyRelative("minScale").floatValue = 0.7f;
-                        element.FindPropertyRelative("maxScale").floatValue = 1.4f;
-                        break;
-                    case BugWars.Terrain.EnvironmentObjectType.Grass:
-                        element.FindPropertyRelative("minScale").floatValue = 0.9f;
-                        element.FindPropertyRelative("maxScale").floatValue = 1.1f;
-                        break;
-                }
-
-                added++;
-            }
-
-            return added;
+            Debug.Log($"[UpdatePrefabs] Updated {updated} prefabs. Ensure they are in Resources/Prefabs/Forest/ for auto-loading.");
         }
 
         private static BugWars.Terrain.EnvironmentObjectType GetTypeFromSubfolder(string subfolder)

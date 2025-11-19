@@ -110,13 +110,23 @@ namespace BugWars.Terrain
         /// <summary>
         /// Generate the terrain mesh asynchronously using UniTask
         /// Only generates High LOD initially - other LODs generated on-demand
+        /// WebGL-compatible: Uses main thread instead of thread pool
         /// </summary>
         public async UniTask GenerateMeshAsync()
         {
             if (IsGenerated) return;
 
             // Only generate High LOD mesh immediately - this is critical for collision
-            var meshData = await UniTask.RunOnThreadPool(() => GenerateMeshData(TerrainLOD.High));
+            // CRITICAL: WebGL doesn't support multithreading, so generate on main thread
+            MeshData meshData;
+            #if UNITY_WEBGL && !UNITY_EDITOR
+                // WebGL: Generate on main thread (no thread pool support)
+                meshData = GenerateMeshData(TerrainLOD.High);
+                await UniTask.Yield(); // Yield to prevent frame blocking
+            #else
+                // Other platforms: Use thread pool for better performance
+                meshData = await UniTask.RunOnThreadPool(() => GenerateMeshData(TerrainLOD.High));
+            #endif
 
             // Create and cache the high LOD mesh
             Mesh highMesh = CreateMeshFromData(meshData, TerrainLOD.High);
@@ -328,8 +338,17 @@ namespace BugWars.Terrain
             // Generate the LOD mesh if it doesn't exist yet (on-demand generation)
             if (!lodMeshes.ContainsKey(newLOD))
             {
-                // Generate mesh data async on thread pool (WebGL performance)
-                var meshData = await UniTask.RunOnThreadPool(() => GenerateMeshData(newLOD));
+                // CRITICAL: WebGL doesn't support multithreading
+                MeshData meshData;
+                #if UNITY_WEBGL && !UNITY_EDITOR
+                    // WebGL: Generate on main thread (no thread pool support)
+                    meshData = GenerateMeshData(newLOD);
+                    await UniTask.Yield(); // Yield to prevent frame blocking
+                #else
+                    // Other platforms: Use thread pool for better performance
+                    meshData = await UniTask.RunOnThreadPool(() => GenerateMeshData(newLOD));
+                #endif
+
                 Mesh newMesh = CreateMeshFromData(meshData, newLOD);
                 lodMeshes[newLOD] = newMesh;
             }

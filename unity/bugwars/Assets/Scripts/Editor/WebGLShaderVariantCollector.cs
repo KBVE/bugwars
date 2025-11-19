@@ -23,23 +23,35 @@ namespace BugWars.Editor
                 return;
 
             // Strip all shadow variants for WebGL (massive reduction)
+            // WebGL doesn't need shadows for performance reasons
             if (snippet.passName.Contains("ShadowCaster") || snippet.passName.Contains("DepthOnly"))
             {
                 data.Clear();
                 return;
             }
 
-            // Strip most graphics API variants - WebGL only needs WebGL2/WebGPU
+            // Strip shadow-related keywords from ALL shaders
             for (int i = data.Count - 1; i >= 0; --i)
             {
-                // Keep only essential keyword combinations
                 ShaderCompilerData variantData = data[i];
 
-                // Strip unnecessary keywords
+                // Strip ALL shadow-related keywords
                 if (variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("_MAIN_LIGHT_SHADOWS_CASCADE")) ||
                     variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("_ADDITIONAL_LIGHT_SHADOWS")) ||
                     variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("LIGHTMAP_SHADOW_MIXING")) ||
-                    variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("SHADOWS_SHADOWMASK")))
+                    variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("SHADOWS_SHADOWMASK")) ||
+                    variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("_SHADOWS_SOFT")) ||
+                    variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("_LIGHT_LAYERS")))
+                {
+                    data.RemoveAt(i);
+                    continue;
+                }
+
+                // Strip additional quality/features we don't need for WebGL
+                if (variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("_REFLECTION_PROBE_BLENDING")) ||
+                    variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("_REFLECTION_PROBE_BOX_PROJECTION")) ||
+                    variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("LIGHTMAP_ON")) ||
+                    variantData.shaderKeywordSet.IsEnabled(new ShaderKeyword("DYNAMICLIGHTMAP_ON")))
                 {
                     data.RemoveAt(i);
                 }
@@ -47,71 +59,7 @@ namespace BugWars.Editor
         }
     }
 
-    /// <summary>
-    /// Custom shader preprocessor for WebGL builds
-    /// Adds always-included shaders to GraphicsSettings before build
-    /// </summary>
-    public class WebGLShaderInclusionBuildProcessor : UnityEditor.Build.IPreprocessBuildWithReport
-    {
-        public int callbackOrder => 0;
-
-        public void OnPreprocessBuild(UnityEditor.Build.Reporting.BuildReport report)
-        {
-            if (report.summary.platform != BuildTarget.WebGL)
-                return;
-
-            Debug.Log("[WebGLShaderInclusionBuildProcessor] Adding critical shaders to always-included list for WebGL build");
-
-            // Get current GraphicsSettings
-            SerializedObject graphicsSettings = new SerializedObject(UnityEditor.AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset")[0]);
-            SerializedProperty alwaysIncludedShaders = graphicsSettings.FindProperty("m_AlwaysIncludedShaders");
-
-            // List of shader names/GUIDs to force-include
-            string[] requiredShaderNames = new string[]
-            {
-                "Hidden/CoreSRP/CoreCopy",
-                "Hidden/Universal Render Pipeline/StencilDitherMaskSeed",
-                "Hidden/Universal/HDRDebugView",
-                "Universal Render Pipeline/Lit",
-                "Sprites/Default"
-            };
-
-            int addedCount = 0;
-            foreach (string shaderName in requiredShaderNames)
-            {
-                Shader shader = Shader.Find(shaderName);
-                if (shader != null)
-                {
-                    // Check if already in list
-                    bool alreadyIncluded = false;
-                    for (int i = 0; i < alwaysIncludedShaders.arraySize; i++)
-                    {
-                        if (alwaysIncludedShaders.GetArrayElementAtIndex(i).objectReferenceValue == shader)
-                        {
-                            alreadyIncluded = true;
-                            break;
-                        }
-                    }
-
-                    if (!alreadyIncluded)
-                    {
-                        alwaysIncludedShaders.InsertArrayElementAtIndex(alwaysIncludedShaders.arraySize);
-                        alwaysIncludedShaders.GetArrayElementAtIndex(alwaysIncludedShaders.arraySize - 1).objectReferenceValue = shader;
-                        addedCount++;
-                        Debug.Log($"[WebGLShaderInclusionBuildProcessor] Added shader to always-included: {shaderName}");
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning($"[WebGLShaderInclusionBuildProcessor] Could not find shader: {shaderName}");
-                }
-            }
-
-            if (addedCount > 0)
-            {
-                graphicsSettings.ApplyModifiedProperties();
-                Debug.Log($"[WebGLShaderInclusionBuildProcessor] Added {addedCount} critical shaders to GraphicsSettings");
-            }
-        }
-    }
+    // NOTE: Shader inclusion is now handled by placing objects with the required materials
+    // in the Credits scene (or any scene that's always included in build settings).
+    // This is simpler and more reliable than programmatically adding shaders to GraphicsSettings.
 }

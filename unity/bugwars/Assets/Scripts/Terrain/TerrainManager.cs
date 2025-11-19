@@ -84,8 +84,13 @@ namespace BugWars.Terrain
             Debug.Log("[TerrainManager] StartAsync called - initializing terrain system");
             InitializeTerrainSystem();
 
-            // Wait for player to spawn using UniTask.WaitUntil
-            Debug.Log("[TerrainManager] Waiting for player (Camera3D) to spawn...");
+            Debug.Log("[TerrainManager] Generating initial terrain chunks (player-independent)");
+            // Generate initial terrain chunks FIRST - don't wait for player
+            await GenerateInitialChunks();
+            Debug.Log($"[TerrainManager] Initial terrain generation complete. Active chunks: {activeChunks.Count}");
+
+            // AFTER terrain is ready, wait for player to spawn for dynamic chunk streaming
+            Debug.Log("[TerrainManager] Waiting for player (Camera3D) to spawn for dynamic chunk streaming...");
             GameObject playerObj = null;
             await UniTask.WaitUntil(() =>
             {
@@ -94,12 +99,7 @@ namespace BugWars.Terrain
             }, cancellationToken: cancellation);
 
             _playerTransform = playerObj.transform;
-            Debug.Log($"[TerrainManager] Found player (Camera3D): {playerObj.name} at position {_playerTransform.position}");
-
-            Debug.Log("[TerrainManager] Generating initial terrain chunks");
-            // Generate initial terrain chunks
-            await GenerateInitialChunks();
-            Debug.Log($"[TerrainManager] Initial terrain generation complete. Active chunks: {activeChunks.Count}");
+            Debug.Log($"[TerrainManager] Found player (Camera3D): {playerObj.name} at position {_playerTransform.position}. Dynamic chunk streaming enabled.");
         }
 
         private void Update()
@@ -609,21 +609,35 @@ namespace BugWars.Terrain
         /// <summary>
         /// Create a default grassland material if none is assigned
         /// Uses custom vertex color shader for terrain variation (dirt patches, rocky peaks)
+        /// Loads from Addressables for flexibility and guaranteed shader inclusion
         /// </summary>
         private Material CreateDefaultGrasslandMaterial()
         {
-            // FIRST: Try to load the pre-made material from Resources
-            // This is the most reliable way to ensure shader is included in WebGL builds
+            // FIRST: Try to load from Resources (simpler and works in all builds)
             Material resourceMaterial = Resources.Load<Material>("TerrainVertexColorMaterial");
             if (resourceMaterial != null)
             {
-                Debug.Log("[TerrainManager] Successfully loaded TerrainVertexColorMaterial from Resources");
                 return resourceMaterial;
             }
-            else
+
+            // SECOND: Try Addressables if Resources failed (future enhancement)
+            // Note: Addressables loading is disabled for now to avoid console spam
+            // When Addressables are properly configured, uncomment this section
+            /*
+            try
             {
-                Debug.LogWarning("[TerrainManager] Could not load TerrainVertexColorMaterial from Resources. Attempting to create material at runtime...");
+                var handle = UnityEngine.AddressableAssets.Addressables.LoadAssetAsync<Material>("TerrainVertexColorMaterial");
+                Material addressableMaterial = handle.WaitForCompletion();
+                if (addressableMaterial != null)
+                {
+                    return addressableMaterial;
+                }
             }
+            catch (System.Exception)
+            {
+                // Fall through to shader-based creation
+            }
+            */
 
             // SECOND: Try to use custom terrain shader (may fail in WebGL due to shader stripping)
             Shader terrainShader = Shader.Find("BugWars/TerrainVertexColor");

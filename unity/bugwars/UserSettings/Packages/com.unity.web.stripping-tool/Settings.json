@@ -1,5 +1,11 @@
 {
     "m_Dictionary": {
-        "m_DictionaryValues": []
+        "m_DictionaryValues": [
+            {
+                "type": "System.Collections.Generic.List`1[[Unity.Web.Stripping.Editor.WebBuildReport, Unity.Web.Stripping.Editor, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089",
+                "key": "WebBuildReportList.Builds",
+                "value": "{\"m_Value\":[{\"m_BuildGuid\":{},\"Name\":\"HTML2\",\"OutputPath\":\"/Users/alappatel/Documents/GitHub/bugwars/unity/bugwars/HTML2\",\"LastModifiedAtUniversal\":\"11/19/2025 8:48:21 AM\",\"OriginalWasmSize\":93076961,\"StrippedWasmSize\":0,\"WasmFilePath\":\"/Users/alappatel/Documents/GitHub/bugwars/unity/bugwars/HTML2/Build/HTML2.wasm\",\"WasmBackupFilePath\":\"\",\"SymbolFilePath\":\"\",\"StrippingInfoFilePath\":\"\",\"PlayerSettingsFilePath\":\"\",\"MethodMapFilePath\":\"\",\"FrameworkFilePath\":\"/Users/alappatel/Documents/GitHub/bugwars/unity/bugwars/HTML2/Build/HTML2.framework.js\",\"FrameworkBackupFilePath\":\"\",\"AdditionalFiles\":[],\"HasSubmoduleProfiling\":false,\"OriginalPlayerSettingsFilePath\":\"\"},{\"m_BuildGuid\":{},\"Name\":\"HTML2\",\"OutputPath\":\"/Users/alappatel/Desktop/HTML2\",\"LastModifiedAtUniversal\":\"11/19/2025 1:01:14 PM\",\"OriginalWasmSize\":93499459,\"StrippedWasmSize\":0,\"WasmFilePath\":\"/Users/alappatel/Desktop/HTML2/Build/HTML2.wasm\",\"WasmBackupFilePath\":\"\",\"SymbolFilePath\":\"\",\"StrippingInfoFilePath\":\"\",\"PlayerSettingsFilePath\":\"/Users/alappatel/Documents/GitHub/bugwars/unity/bugwars/Library/com.unity.web.stripping-tool/HTML2-682441baace54c398f213355e8407918/player_settings.json\",\"MethodMapFilePath\":\"/Users/alappatel/Documents/GitHub/bugwars/unity/bugwars/Library/com.unity.web.stripping-tool/HTML2-682441baace54c398f213355e8407918/MethodMap.tsv\",\"FrameworkFilePath\":\"/Users/alappatel/Desktop/HTML2/Build/HTML2.framework.js\",\"FrameworkBackupFilePath\":\"\",\"AdditionalFiles\":[],\"HasSubmoduleProfiling\":false,\"OriginalPlayerSettingsFilePath\":\"\"}]}"
+            }
+        ]
     }
 }
