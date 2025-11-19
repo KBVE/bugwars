@@ -79,6 +79,13 @@ namespace BugWars.Terrain
     /// Manages environmental objects (trees, bushes, rocks, grass) across terrain chunks
     /// Handles procedural placement, spawning, and despawning based on chunk visibility
     /// Integrates with TerrainManager for chunk-based culling
+    ///
+    /// WebGL Optimizations:
+    /// - Frame-time budgeting (8ms default) to prevent lag spikes
+    /// - Throttled processing (minimum 2 frames between chunk updates)
+    /// - Conservative object spawning (5 objects per yield, down from 50)
+    /// - Concurrency protection to prevent collection modification
+    /// - UniTask async/await for non-blocking spawning
     /// </summary>
     public class EnvironmentManager : MonoBehaviour, IStartable
     {
@@ -200,8 +207,12 @@ namespace BugWars.Terrain
 
         [Header("Performance")]
         [SerializeField] private bool useObjectPooling = false; // Future enhancement
-        [SerializeField] private int maxObjectsPerFrame = 50; // Limit spawns per frame to prevent lag (increased from 10)
+        [SerializeField] private int maxObjectsPerFrame = 5; // WebGL: Very conservative - reduced from 50
         [SerializeField] private bool enableDynamicSpawning = true; // Spawn objects as chunks load
+
+        [Header("WebGL Performance")]
+        [SerializeField] private float maxFrameTimeMs = 8.0f; // WebGL: Target 8ms budget (conservative for 60fps)
+        [SerializeField] private int minFramesBetweenProcessing = 2; // WebGL: Minimum frames between chunk processing calls
 
         [Header("Debug")]
         [SerializeField] private bool showDebugInfo = true;
@@ -217,10 +228,15 @@ namespace BugWars.Terrain
         // Spawn state
         private int spawnSeed = 0;
         private bool isInitialized = false;
+        private bool isProcessingChunkLoading = false;
+        private int lastProcessingFrame = -1;
 
         // Reusable collections to avoid LINQ allocations
         private List<Vector2Int> activeChunkCoordsCache = new List<Vector2Int>();
         private List<Vector2Int> chunksToUnloadCache = new List<Vector2Int>();
+
+        // Frame-time tracking for WebGL optimization
+        private System.Diagnostics.Stopwatch frameTimer = new System.Diagnostics.Stopwatch();
 
         /// <summary>
         /// VContainer dependency injection
@@ -262,8 +278,17 @@ namespace BugWars.Terrain
             if (!isInitialized || !enableDynamicSpawning || terrainManager == null)
                 return;
 
-            // Check for new chunks that need environment objects
-            ProcessChunkEnvironmentLoading().Forget();
+            // WebGL: Throttle processing to prevent every-frame execution
+            int currentFrame = Time.frameCount;
+            if (currentFrame - lastProcessingFrame < minFramesBetweenProcessing)
+                return;
+
+            // Check for new chunks that need environment objects (non-blocking)
+            if (!isProcessingChunkLoading)
+            {
+                lastProcessingFrame = currentFrame;
+                ProcessChunkEnvironmentLoading().Forget();
+            }
         }
 
         /// <summary>
@@ -271,39 +296,47 @@ namespace BugWars.Terrain
         /// </summary>
         private async UniTask ProcessChunkEnvironmentLoading()
         {
-            if (terrainManager == null)
+            if (terrainManager == null || isProcessingChunkLoading)
                 return;
 
-            // Get active terrain chunks and populate cache (OPTIMIZED: Zero-allocation)
-            activeChunkCoordsCache.Clear();
-            var activeChunks = terrainManager.GetActiveChunkCoords();
-            foreach (var coord in activeChunks)
+            isProcessingChunkLoading = true;
+            try
             {
-                activeChunkCoordsCache.Add(coord);
-            }
-
-            // Load environment for new chunks
-            foreach (var chunkCoord in activeChunkCoordsCache)
-            {
-                if (!chunkEnvironmentData.ContainsKey(chunkCoord))
+                // Get active terrain chunks and populate cache (OPTIMIZED: Zero-allocation)
+                activeChunkCoordsCache.Clear();
+                var activeChunks = terrainManager.GetActiveChunkCoords();
+                foreach (var coord in activeChunks)
                 {
-                    await LoadChunkEnvironment(chunkCoord);
+                    activeChunkCoordsCache.Add(coord);
+                }
+
+                // Load environment for new chunks
+                foreach (var chunkCoord in activeChunkCoordsCache)
+                {
+                    if (!chunkEnvironmentData.ContainsKey(chunkCoord))
+                    {
+                        await LoadChunkEnvironment(chunkCoord);
+                    }
+                }
+
+                // Unload environment for chunks that are no longer active (OPTIMIZED: Manual loop instead of LINQ)
+                chunksToUnloadCache.Clear();
+                foreach (var coord in chunkEnvironmentData.Keys)
+                {
+                    if (!activeChunkCoordsCache.Contains(coord))
+                    {
+                        chunksToUnloadCache.Add(coord);
+                    }
+                }
+
+                foreach (var chunkCoord in chunksToUnloadCache)
+                {
+                    UnloadChunkEnvironment(chunkCoord);
                 }
             }
-
-            // Unload environment for chunks that are no longer active (OPTIMIZED: Manual loop instead of LINQ)
-            chunksToUnloadCache.Clear();
-            foreach (var coord in chunkEnvironmentData.Keys)
+            finally
             {
-                if (!activeChunkCoordsCache.Contains(coord))
-                {
-                    chunksToUnloadCache.Add(coord);
-                }
-            }
-
-            foreach (var chunkCoord in chunksToUnloadCache)
-            {
-                UnloadChunkEnvironment(chunkCoord);
+                isProcessingChunkLoading = false;
             }
         }
 
@@ -351,6 +384,9 @@ namespace BugWars.Terrain
         {
             if (assets.Count == 0)
                 return;
+
+            // WebGL: Start frame timer for this spawn batch
+            frameTimer.Restart();
 
             // Calculate adjusted object count based on height variation
             float densityMultiplier = 1.0f;
@@ -444,10 +480,17 @@ namespace BugWars.Terrain
                     spawnedPositions.Add(position);
                     objectsSpawned++;
 
-                    // Yield every N objects to prevent frame drops (reduced overhead from yielding per object)
+                    // WebGL: Yield based on BOTH object count AND frame time budget
                     if (objectsSpawned % maxObjectsPerFrame == 0)
                     {
                         await UniTask.Yield();
+                        frameTimer.Restart(); // Reset timer after yielding
+                    }
+                    else if (frameTimer.Elapsed.TotalMilliseconds > maxFrameTimeMs)
+                    {
+                        // Exceeded frame time budget - yield to prevent lag
+                        await UniTask.Yield();
+                        frameTimer.Restart();
                     }
                 }
             }
