@@ -76,10 +76,13 @@ namespace BugWars.Entity.Actions
             // Check range
             if (!IsInRange())
             {
-                if (showDebugLogs)
-                    Debug.LogWarning($"[HarvestAction] Target {target.name} is out of range!");
+                float distance = Vector3.Distance(executingEntity.transform.position, target.transform.position);
+                Debug.LogWarning($"[HarvestAction] Target {target.name} is out of range! (distance: {distance:F2}, harvestRange: {harvestRange:F2})");
                 return false;
             }
+
+            // Log the configured range at start (always, for debugging)
+            Debug.Log($"[HarvestAction] Starting harvest with range: {harvestRange:F2}");
 
             // CRITICAL: Use BeginInteraction() to properly set the _isBeingInteracted state
             // This prevents race conditions where multiple entities try to harvest the same object
@@ -115,10 +118,11 @@ namespace BugWars.Entity.Actions
             }
 
             // CRITICAL: Cancel if player moved out of range
-            if (!IsInRange())
+            bool inRange = IsInRange();
+            if (!inRange)
             {
-                if (showDebugLogs)
-                    Debug.LogWarning($"[HarvestAction] Player moved out of range - cancelling harvest");
+                float distance = Vector3.Distance(executingEntity.transform.position, target.transform.position);
+                Debug.LogWarning($"[HarvestAction] Player moved out of range - cancelling harvest (distance: {distance:F2}, harvestRange: {harvestRange:F2})");
                 Cancel();
                 return;
             }
@@ -232,7 +236,15 @@ namespace BugWars.Entity.Actions
                 return false;
 
             float distance = Vector3.Distance(executingEntity.transform.position, target.transform.position);
-            return distance <= harvestRange;
+            bool inRange = distance <= harvestRange;
+
+            // Debug logging to diagnose range checking
+            if (showDebugLogs && !inRange)
+            {
+                Debug.Log($"[HarvestAction] Range check: distance={distance:F2}, harvestRange={harvestRange:F2}, inRange={inRange}");
+            }
+
+            return inRange;
         }
 
         /// <summary>

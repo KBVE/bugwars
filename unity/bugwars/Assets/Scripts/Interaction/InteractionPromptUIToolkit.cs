@@ -23,7 +23,9 @@ namespace BugWars.Interaction
         [Header("Message Settings")]
         [SerializeField] private string processingMessage = "Processing...";
         [SerializeField] private string completeMessage = "Complete!";
+        [SerializeField] private string cancelledMessage = "Cancelled";
         [SerializeField] private float completeMessageDuration = 1.5f;
+        [SerializeField] private float cancelledMessageDuration = 1.5f;
 
         // UI Elements (queried from UXML)
         private VisualElement promptContainer;
@@ -33,7 +35,7 @@ namespace BugWars.Interaction
         private VisualElement progressBarFill;
 
         // UI State
-        private enum UIState { Hidden, Prompt, Processing, Complete }
+        private enum UIState { Hidden, Prompt, Processing, Complete, Cancelled }
         private UIState currentState = UIState.Hidden;
 
         // Dependencies (injected via VContainer)
@@ -154,11 +156,6 @@ namespace BugWars.Interaction
                     {
                         ShowProcessing();
                     }
-                    else if (currentState == UIState.Processing)
-                    {
-                        // Action ended while processing (cancelled) - hide UI immediately
-                        HidePrompt();
-                    }
                 })
                 .AddTo(this);
 
@@ -178,6 +175,14 @@ namespace BugWars.Interaction
                         };
                         ShowComplete(uiResult);
                     }
+                })
+                .AddTo(this);
+
+            // CRITICAL: Subscribe to HarvestAction.OnActionCancelled to show cancellation message
+            harvestAction.OnActionCancelled
+                .Subscribe(_ =>
+                {
+                    ShowCancelled();
                 })
                 .AddTo(this);
         }
@@ -276,6 +281,27 @@ namespace BugWars.Interaction
 
             // Auto-hide after duration
             Observable.Timer(TimeSpan.FromSeconds(completeMessageDuration))
+                .Subscribe(_ => HidePrompt())
+                .AddTo(this);
+        }
+
+        private void ShowCancelled()
+        {
+            currentState = UIState.Cancelled;
+
+            if (promptText != null)
+            {
+                promptText.text = cancelledMessage;
+            }
+
+            // Hide progress bar
+            if (progressBarBackground != null)
+            {
+                progressBarBackground.style.display = DisplayStyle.None;
+            }
+
+            // Auto-hide after duration
+            Observable.Timer(TimeSpan.FromSeconds(cancelledMessageDuration))
                 .Subscribe(_ => HidePrompt())
                 .AddTo(this);
         }

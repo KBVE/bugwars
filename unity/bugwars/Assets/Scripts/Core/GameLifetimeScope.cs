@@ -192,7 +192,7 @@ namespace BugWars.Core
 
                 // Configure after registration
                 LayerMask interactableMask = 1 << 8; // Layer 8 (Interactable)
-                interactionManager.Configure(100f, interactableMask);
+                interactionManager.Configure(5f, interactableMask);
             }
             else
             {
@@ -206,7 +206,7 @@ namespace BugWars.Core
                     LayerMask interactableMask = 1 << 8; // Layer 8 (Interactable)
 
                     // Configure will set values and call Initialize()
-                    manager.Configure(100f, interactableMask);
+                    manager.Configure(5f, interactableMask);
                 });
             }
 

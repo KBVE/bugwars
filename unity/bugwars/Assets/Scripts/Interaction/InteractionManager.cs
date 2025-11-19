@@ -95,14 +95,16 @@ namespace BugWars.Interaction
             // CRITICAL: Configure HarvestAction range to match raycast distance + buffer
             // This ensures UI prompts only show when harvesting will succeed
             // Wait one frame to ensure EntityActionManager.Awake() has created HarvestAction
-            await UniTask.Yield();
+            await UniTask.Yield(cancellationToken);
 
             var harvestAction = playerActionManager.GetComponent<BugWars.Entity.Actions.HarvestAction>();
             if (harvestAction != null)
             {
                 // Set harvest range slightly larger than raycast to account for object size
-                harvestAction.SetHarvestRange(raycastDistance + 1f);
-                Debug.Log($"[InteractionManager] Configured harvest range to: {raycastDistance + 1f}");
+                float newRange = raycastDistance + 1f;
+                Debug.Log($"[InteractionManager] BEFORE SetHarvestRange - raycastDistance: {raycastDistance}, newRange: {newRange}");
+                harvestAction.SetHarvestRange(newRange);
+                Debug.Log($"[InteractionManager] AFTER SetHarvestRange - configured harvest range to: {newRange}");
             }
             else
             {
