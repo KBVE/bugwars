@@ -18,7 +18,7 @@ namespace BugWars.Interaction
         [Header("World-Space Settings")]
         [SerializeField] private bool useWorldSpace = true;
         [SerializeField] private Vector3 worldOffset = new Vector3(0, 2.5f, 0);
-        [SerializeField] private float worldSpaceScale = 0.01f; // Scale for world-space UI
+        [SerializeField] private float worldSpaceScale = 1f; // Scale for world-space UI (1920x1080 panel at 1:1 scale)
 
         [Header("Message Settings")]
         [SerializeField] private string processingMessage = "Processing...";
