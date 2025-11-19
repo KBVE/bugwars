@@ -519,7 +519,91 @@ namespace BugWars.Terrain
             // Name for debugging
             obj.name = $"{asset.assetName}_Chunk{chunkCoord.x}_{chunkCoord.y}";
 
+            // Add interactable component if not already present
+            SetupInteractable(obj, asset);
+
             return obj;
+        }
+
+        /// <summary>
+        /// Setup InteractableObject component on spawned environment objects
+        /// </summary>
+        private void SetupInteractable(GameObject obj, EnvironmentAsset asset)
+        {
+            // CRITICAL: Set object to Interactable layer (layer 8) for raycast detection
+            obj.layer = LayerMask.NameToLayer("Interactable");
+            if (obj.layer == -1)
+            {
+                Debug.LogWarning($"[EnvironmentManager] 'Interactable' layer not found! Object {obj.name} may not be detectable by InteractionManager.");
+                obj.layer = 8; // Fallback to layer 8
+            }
+
+            // Ensure object has a collider for raycasting
+            if (obj.GetComponent<Collider>() == null)
+            {
+                var collider = obj.AddComponent<BoxCollider>();
+                // Auto-size the collider based on renderers
+                var renderers = obj.GetComponentsInChildren<Renderer>();
+                if (renderers.Length > 0)
+                {
+                    Bounds bounds = renderers[0].bounds;
+                    foreach (var renderer in renderers)
+                    {
+                        bounds.Encapsulate(renderer.bounds);
+                    }
+                    collider.center = bounds.center - obj.transform.position;
+                    collider.size = bounds.size;
+                }
+            }
+
+            // Check if prefab already has InteractableObject component
+            var interactable = obj.GetComponent<BugWars.Interaction.InteractableObject>();
+            if (interactable != null)
+                return; // Already configured on prefab
+
+            // Add InteractableObject component dynamically
+            interactable = obj.AddComponent<BugWars.Interaction.InteractableObject>();
+
+            // Configure based on asset type
+            BugWars.Interaction.InteractionType interactionType;
+            BugWars.Interaction.ResourceType resourceType;
+            int resourceAmount = 5;
+            float harvestTime = 2f;
+            string prompt = "Press E or Click";
+
+            switch (asset.type)
+            {
+                case EnvironmentObjectType.Tree:
+                    interactionType = BugWars.Interaction.InteractionType.Chop;
+                    resourceType = BugWars.Interaction.ResourceType.Wood;
+                    resourceAmount = Random.Range(3, 8);
+                    harvestTime = 3f;
+                    break;
+                case EnvironmentObjectType.Rock:
+                    interactionType = BugWars.Interaction.InteractionType.Mine;
+                    resourceType = BugWars.Interaction.ResourceType.Stone;
+                    resourceAmount = Random.Range(2, 6);
+                    harvestTime = 4f;
+                    break;
+                case EnvironmentObjectType.Bush:
+                    interactionType = BugWars.Interaction.InteractionType.Harvest;
+                    resourceType = BugWars.Interaction.ResourceType.Berries;
+                    resourceAmount = Random.Range(1, 4);
+                    harvestTime = 1.5f;
+                    break;
+                case EnvironmentObjectType.Grass:
+                    interactionType = BugWars.Interaction.InteractionType.Harvest;
+                    resourceType = BugWars.Interaction.ResourceType.Herbs;
+                    resourceAmount = 1;
+                    harvestTime = 0.5f;
+                    break;
+                default:
+                    interactionType = BugWars.Interaction.InteractionType.Pickup;
+                    resourceType = BugWars.Interaction.ResourceType.None;
+                    break;
+            }
+
+            interactable.Configure(interactionType, resourceType, resourceAmount, harvestTime, prompt);
         }
 
         /// <summary>

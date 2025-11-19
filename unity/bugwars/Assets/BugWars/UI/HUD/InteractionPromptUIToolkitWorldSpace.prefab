@@ -70,3 +70,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BugWars.Interaction.InteractionPromptUIToolkit
   useWorldSpace: 1
   worldOffset: {x: 0, y: 2.5, z: 0}
+  worldSpaceScale: 0.01
+  processingMessage: Processing...
+  completeMessage: Complete!
+  completeMessageDuration: 1.5

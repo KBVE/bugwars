@@ -39,6 +39,19 @@ namespace BugWars.Interaction
         public float InteractionDistance => interactionDistance;
         public InteractionType Type => interactionType;
         public ResourceType Resource => resourceType;
+        public float HarvestTime => harvestTime;
+
+        /// <summary>
+        /// Configure interactable object at runtime (for dynamically spawned objects)
+        /// </summary>
+        public void Configure(InteractionType type, ResourceType resource, int amount, float harvestDuration = 2f, string prompt = "Press E")
+        {
+            interactionType = type;
+            resourceType = resource;
+            resourceAmount = amount;
+            harvestTime = harvestDuration;
+            interactionPrompt = prompt;
+        }
 
         private void Start()
         {
