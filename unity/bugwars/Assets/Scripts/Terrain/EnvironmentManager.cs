@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
 using Cysharp.Threading.Tasks;
 using VContainer;
 using VContainer.Unity;
@@ -219,6 +218,10 @@ namespace BugWars.Terrain
         private int spawnSeed = 0;
         private bool isInitialized = false;
 
+        // Reusable collections to avoid LINQ allocations
+        private List<Vector2Int> activeChunkCoordsCache = new List<Vector2Int>();
+        private List<Vector2Int> chunksToUnloadCache = new List<Vector2Int>();
+
         /// <summary>
         /// VContainer dependency injection
         /// </summary>
@@ -271,11 +274,16 @@ namespace BugWars.Terrain
             if (terrainManager == null)
                 return;
 
-            // Get active terrain chunks and create a snapshot to avoid collection modification errors
-            var activeChunkCoords = terrainManager.GetActiveChunkCoords().ToList();
+            // Get active terrain chunks and populate cache (OPTIMIZED: Zero-allocation)
+            activeChunkCoordsCache.Clear();
+            var activeChunks = terrainManager.GetActiveChunkCoords();
+            foreach (var coord in activeChunks)
+            {
+                activeChunkCoordsCache.Add(coord);
+            }
 
             // Load environment for new chunks
-            foreach (var chunkCoord in activeChunkCoords)
+            foreach (var chunkCoord in activeChunkCoordsCache)
             {
                 if (!chunkEnvironmentData.ContainsKey(chunkCoord))
                 {
@@ -283,13 +291,17 @@ namespace BugWars.Terrain
                 }
             }
 
-            // Unload environment for chunks that are no longer active
-            // Create snapshot of keys to avoid "Collection was modified" error
-            var chunksToUnload = chunkEnvironmentData.Keys
-                .Where(coord => !activeChunkCoords.Contains(coord))
-                .ToList();
+            // Unload environment for chunks that are no longer active (OPTIMIZED: Manual loop instead of LINQ)
+            chunksToUnloadCache.Clear();
+            foreach (var coord in chunkEnvironmentData.Keys)
+            {
+                if (!activeChunkCoordsCache.Contains(coord))
+                {
+                    chunksToUnloadCache.Add(coord);
+                }
+            }
 
-            foreach (var chunkCoord in chunksToUnload)
+            foreach (var chunkCoord in chunksToUnloadCache)
             {
                 UnloadChunkEnvironment(chunkCoord);
             }
@@ -551,17 +563,13 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Get terrain height at world position
+        /// Get terrain height at world position (OPTIMIZED: Use noise-based calculation to avoid raycasts)
         /// </summary>
         private float GetTerrainHeightAtPosition(Vector3 position)
         {
-            // Raycast down to find terrain
-            if (Physics.Raycast(position + Vector3.up * 100f, Vector3.down, out RaycastHit hit, 200f))
-            {
-                return hit.point.y;
-            }
-
-            // Fallback: use noise-based height (same as terrain generation)
+            // OPTIMIZED: Use noise-based height calculation instead of raycast
+            // This matches the terrain generation and avoids expensive Physics.Raycast calls during spawning
+            // TerrainManager uses the same noise algorithm, so this is accurate
             float noiseScale = 0.05f; // Match TerrainManager
             float heightMultiplier = 3f;
             return Mathf.PerlinNoise(
@@ -588,14 +596,20 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Select random asset based on spawn weights
+        /// Select random asset based on spawn weights (OPTIMIZED: Manual sum instead of LINQ)
         /// </summary>
         private EnvironmentAsset SelectRandomAsset(List<EnvironmentAsset> assets)
         {
             if (assets.Count == 0)
                 return null;
 
-            float totalWeight = assets.Sum(a => a.spawnWeight);
+            // Manual sum to avoid LINQ allocation
+            float totalWeight = 0f;
+            for (int i = 0; i < assets.Count; i++)
+            {
+                totalWeight += assets[i].spawnWeight;
+            }
+
             float randomValue = Random.Range(0f, totalWeight);
 
             float cumulativeWeight = 0f;
@@ -633,21 +647,32 @@ namespace BugWars.Terrain
         #endif
 
         /// <summary>
-        /// Get total count of spawned objects
+        /// Get total count of spawned objects (OPTIMIZED: Manual count instead of LINQ)
         /// </summary>
         public int GetTotalObjectCount()
         {
-            return chunkEnvironmentData.Values.Sum(data => data.spawnedObjects.Count);
+            int total = 0;
+            foreach (var chunkData in chunkEnvironmentData.Values)
+            {
+                total += chunkData.spawnedObjects.Count;
+            }
+            return total;
         }
 
         /// <summary>
-        /// Force reload all chunk environments (for testing)
+        /// Force reload all chunk environments (for testing) (OPTIMIZED: Manual copy instead of LINQ)
         /// </summary>
         [ContextMenu("Reload All Environments")]
         public void ReloadAllEnvironments()
         {
-            var chunks = chunkEnvironmentData.Keys.ToList();
-            foreach (var chunk in chunks)
+            // Copy keys to avoid collection modification during iteration
+            chunksToUnloadCache.Clear();
+            foreach (var coord in chunkEnvironmentData.Keys)
+            {
+                chunksToUnloadCache.Add(coord);
+            }
+
+            foreach (var chunk in chunksToUnloadCache)
             {
                 UnloadChunkEnvironment(chunk);
             }

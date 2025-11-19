@@ -34,6 +34,10 @@ namespace BugWars.Entity.Player
         private RaycastHit groundHit;
         private Vector3 groundNormal = Vector3.up;
 
+        // OPTIMIZED: Reduce ground check frequency
+        private int groundCheckFrameCounter = 0;
+        private const int groundCheckInterval = 3; // Check every 3 FixedUpdates (reduces from 50Hz to ~16Hz)
+
         protected override void Awake()
         {
             base.Awake();
@@ -71,7 +75,14 @@ namespace BugWars.Entity.Player
 
         private void FixedUpdate()
         {
-            CheckGrounded();
+            // OPTIMIZED: Check ground every N frames instead of every frame
+            groundCheckFrameCounter++;
+            if (groundCheckFrameCounter >= groundCheckInterval)
+            {
+                CheckGrounded();
+                groundCheckFrameCounter = 0;
+            }
+
             MovePlayer();
         }
 

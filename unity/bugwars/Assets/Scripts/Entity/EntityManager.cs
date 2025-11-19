@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using BugWars.Core;
 using VContainer;
@@ -48,6 +47,9 @@ namespace BugWars.Entity
 
         // Player Runtime Reference (Auto-Set - Not Serialized)
         private Entity playerEntity;
+
+        // Reusable collections to avoid LINQ allocations
+        private List<Entity> reusableEntityList = new List<Entity>();
         public Entity Player => playerEntity;
 
         [Header("Player Data")]
@@ -308,27 +310,50 @@ namespace BugWars.Entity
         }
 
         /// <summary>
-        /// Get all alive entities
+        /// Get all alive entities (OPTIMIZED: Manual loop instead of LINQ)
         /// </summary>
         public List<Entity> GetAliveEntities()
         {
-            return allEntities.Where(e => e != null && e.IsAlive()).ToList();
+            reusableEntityList.Clear();
+            for (int i = 0; i < allEntities.Count; i++)
+            {
+                if (allEntities[i] != null && allEntities[i].IsAlive())
+                {
+                    reusableEntityList.Add(allEntities[i]);
+                }
+            }
+            return reusableEntityList;
         }
 
         /// <summary>
-        /// Get all dead entities
+        /// Get all dead entities (OPTIMIZED: Manual loop instead of LINQ)
         /// </summary>
         public List<Entity> GetDeadEntities()
         {
-            return allEntities.Where(e => e != null && !e.IsAlive()).ToList();
+            reusableEntityList.Clear();
+            for (int i = 0; i < allEntities.Count; i++)
+            {
+                if (allEntities[i] != null && !allEntities[i].IsAlive())
+                {
+                    reusableEntityList.Add(allEntities[i]);
+                }
+            }
+            return reusableEntityList;
         }
 
         /// <summary>
-        /// Get entity by name
+        /// Get entity by name (OPTIMIZED: Manual loop instead of LINQ)
         /// </summary>
         public Entity GetEntityByName(string name)
         {
-            return allEntities.FirstOrDefault(e => e != null && e.GetEntityName() == name);
+            for (int i = 0; i < allEntities.Count; i++)
+            {
+                if (allEntities[i] != null && allEntities[i].GetEntityName() == name)
+                {
+                    return allEntities[i];
+                }
+            }
+            return null;
         }
 
         /// <summary>
@@ -378,11 +403,19 @@ namespace BugWars.Entity
         }
 
         /// <summary>
-        /// Get entities of a specific type
+        /// Get entities of a specific type (OPTIMIZED: Manual loop instead of LINQ)
         /// </summary>
         public List<T> GetEntitiesOfType<T>() where T : Entity
         {
-            return allEntities.OfType<T>().ToList();
+            List<T> result = new List<T>();
+            for (int i = 0; i < allEntities.Count; i++)
+            {
+                if (allEntities[i] is T typedEntity)
+                {
+                    result.Add(typedEntity);
+                }
+            }
+            return result;
         }
 
         /// <summary>
@@ -398,15 +431,18 @@ namespace BugWars.Entity
         }
 
         /// <summary>
-        /// Get count of entities
+        /// Get count of entities (OPTIMIZED: Manual loop instead of LINQ)
         /// </summary>
         public int GetEntityCount(bool onlyAlive = false)
         {
-            if (onlyAlive)
+            int count = 0;
+            for (int i = 0; i < allEntities.Count; i++)
             {
-                return allEntities.Count(e => e != null && e.IsAlive());
+                if (allEntities[i] == null) continue;
+                if (onlyAlive && !allEntities[i].IsAlive()) continue;
+                count++;
             }
-            return allEntities.Count(e => e != null);
+            return count;
         }
 
         #region Camera Integration

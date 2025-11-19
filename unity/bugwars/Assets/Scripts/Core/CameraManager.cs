@@ -177,6 +177,7 @@ namespace BugWars.Core
         // Active camera tracking
         private CinemachineCamera _currentActiveCamera;
         private CinemachinePanTilt _activePanTilt;
+        private CinemachinePositionComposer _activePositionComposer; // OPTIMIZED: Cache to avoid GetComponent in LateUpdate
         private int _defaultPriority = 10;
         private int _activePriority = 100;
 
@@ -267,6 +268,12 @@ namespace BugWars.Core
         private float _targetZoomDistance = 8.5f; // Target zoom for smooth interpolation
         private bool _isResettingZoom = false; // Flag for smooth zoom reset
         private Vector3 _zoomDirection = Vector3.back; // Direction from player to camera (normalized)
+
+        // OPTIMIZED: Frustum plane caching to avoid recalculation every frame
+        private Plane[] _cachedFrustumPlanes;
+        private Vector3 _lastCameraPosition;
+        private Quaternion _lastCameraRotation;
+        private float _frustumCacheThreshold = 0.01f; // Minimum movement/rotation to invalidate cache
 
         /// <summary>
         /// Gets the main Unity Camera component
@@ -738,8 +745,8 @@ namespace BugWars.Core
                 // Handle zoom and dynamic height adjustments
                 if (cameraMode == CameraMode.ThirdPerson)
                 {
-                    var positionComposer = _currentActiveCamera.GetComponent<CinemachinePositionComposer>();
-                    if (positionComposer != null)
+                    // OPTIMIZED: Use cached component instead of GetComponent
+                    if (_activePositionComposer != null)
                     {
                         // Start with base offset but use current zoom distance (WoW-style)
                         // Use Inspector values for real-time adjustment in Play Mode
@@ -749,38 +756,38 @@ namespace BugWars.Core
                         float heightRatio = baseHeight / baseDistance;
                         float zoomHeight = _currentZoomDistance * heightRatio;
                         Vector3 expectedOffset = new Vector3(0f, zoomHeight, -_currentZoomDistance);
-                        
+
                         if (enableDynamicHeight)
                         {
                             // Calculate dynamic height adjustment with smoothing to prevent bouncing on slopes
                             Vector3 velocity = (_activeFollowConfig.target.position - _previousPlayerPosition) / Time.deltaTime;
                             float verticalSpeed = velocity.y;
-                            
+
                             // Smooth the vertical speed calculation to reduce jitter on slopes
                             // Use a smaller multiplier and tighter clamping for smoother transitions
                             float heightOffset = Mathf.Clamp(verticalSpeed * dynamicHeightAmount * 0.5f, -0.3f, 0.3f);
-                            
+
                             // Smooth interpolation to target offset to prevent sudden jumps
                             // Preserve current zoom distance (Z value) when adjusting height
                             Vector3 targetOffset = expectedOffset + new Vector3(0f, heightOffset, 0f);
-                            expectedOffset = Vector3.Lerp(positionComposer.TargetOffset, targetOffset, Time.deltaTime * 5f);
+                            expectedOffset = Vector3.Lerp(_activePositionComposer.TargetOffset, targetOffset, Time.deltaTime * 5f);
                         }
-                        
+
                         // Only update if significantly different (prevents micro-adjustments)
                         // Reduced threshold for smoother updates
-                        if (Vector3.Distance(positionComposer.TargetOffset, expectedOffset) > 0.05f)
+                        if (Vector3.Distance(_activePositionComposer.TargetOffset, expectedOffset) > 0.05f)
                         {
-                            positionComposer.TargetOffset = expectedOffset;
+                            _activePositionComposer.TargetOffset = expectedOffset;
                         }
                         else
                         {
                             // Even if not updating, ensure zoom is preserved
-                            Vector3 currentOffset = positionComposer.TargetOffset;
+                            Vector3 currentOffset = _activePositionComposer.TargetOffset;
                             float expectedZ = -_currentZoomDistance;
                             if (Mathf.Abs(currentOffset.z - expectedZ) > 0.01f)
                             {
                                 currentOffset.z = expectedZ;
-                                positionComposer.TargetOffset = currentOffset;
+                                _activePositionComposer.TargetOffset = currentOffset;
                             }
                         }
                     }
@@ -1200,17 +1207,17 @@ namespace BugWars.Core
             if (!isSimpleThirdPerson)
                 return;
 
-            var panTilt = _currentActiveCamera.GetComponent<CinemachinePanTilt>();
-            if (panTilt == null)
+            // OPTIMIZED: Use cached component instead of GetComponent
+            if (_activePanTilt == null)
                 return;
 
             // Update tilt angle from Inspector in real-time (Play Mode adjustment)
             // Always update every frame to ensure Inspector changes are applied immediately
-            var tiltAxis = panTilt.TiltAxis;
+            var tiltAxis = _activePanTilt.TiltAxis;
             tiltAxis.Range = new Vector2(defaultTiltAngle, defaultTiltAngle);
             tiltAxis.Center = defaultTiltAngle;
             tiltAxis.Value = defaultTiltAngle;
-            panTilt.TiltAxis = tiltAxis;
+            _activePanTilt.TiltAxis = tiltAxis;
 
             Transform player = config.target;
 
@@ -1253,12 +1260,12 @@ namespace BugWars.Core
                 // Movement direction (W/S) should never affect camera rotation
 
                 // Apply rotation to match player's facing direction
-                var panAxis = panTilt.PanAxis;
+                var panAxis = _activePanTilt.PanAxis;
                 float currentPan = panAxis.Value;
                 float newPan = Mathf.MoveTowardsAngle(currentPan, targetYaw, rotateSpeed * Time.deltaTime);
                 panAxis.Value = panAxis.ClampValue(newPan);
                 panAxis.Center = panAxis.Value;
-                panTilt.PanAxis = panAxis;
+                _activePanTilt.PanAxis = panAxis;
             }
 
             // === DYNAMIC HEIGHT ADJUSTMENT ===
@@ -1364,6 +1371,7 @@ namespace BugWars.Core
             _allVirtualCameras.Clear();
             _currentActiveCamera = null;
             _activePanTilt = null;
+            _activePositionComposer = null; // OPTIMIZED: Clear cached component
             _panTiltCache.Clear();
 
             if (debugMode)
@@ -1487,6 +1495,9 @@ namespace BugWars.Core
                     _panTiltCache[camera.name] = _activePanTilt;
                 }
             }
+
+            // OPTIMIZED: Cache PositionComposer to avoid GetComponent in LateUpdate
+            _activePositionComposer = camera.GetComponent<CinemachinePositionComposer>();
 
             if (debugMode)
             {
@@ -1751,40 +1762,65 @@ namespace BugWars.Core
 
         #region Frustum Culling Helpers
         /// <summary>
-        /// Checks if a point is within the camera's view frustum
+        /// Gets cached frustum planes, recalculating only when camera moves significantly (OPTIMIZED)
+        /// </summary>
+        private Plane[] GetCachedFrustumPlanes()
+        {
+            if (MainCamera == null) return null;
+
+            // Check if cache needs to be invalidated
+            bool needsRecalculation = _cachedFrustumPlanes == null ||
+                Vector3.Distance(MainCamera.transform.position, _lastCameraPosition) > _frustumCacheThreshold ||
+                Quaternion.Angle(MainCamera.transform.rotation, _lastCameraRotation) > _frustumCacheThreshold;
+
+            if (needsRecalculation)
+            {
+                if (_cachedFrustumPlanes == null)
+                {
+                    _cachedFrustumPlanes = new Plane[6];
+                }
+                GeometryUtility.CalculateFrustumPlanes(MainCamera, _cachedFrustumPlanes);
+                _lastCameraPosition = MainCamera.transform.position;
+                _lastCameraRotation = MainCamera.transform.rotation;
+            }
+
+            return _cachedFrustumPlanes;
+        }
+
+        /// <summary>
+        /// Checks if a point is within the camera's view frustum (OPTIMIZED: uses cached planes)
         /// </summary>
         /// <param name="point">World space point to check</param>
         /// <returns>True if the point is visible to the camera</returns>
         public bool IsPointInFrustum(Vector3 point)
         {
-            if (MainCamera == null) return false;
+            Plane[] frustumPlanes = GetCachedFrustumPlanes();
+            if (frustumPlanes == null) return false;
 
-            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(MainCamera);
             return GeometryUtility.TestPlanesAABB(frustumPlanes, new Bounds(point, Vector3.one));
         }
 
         /// <summary>
-        /// Checks if bounds are within the camera's view frustum
+        /// Checks if bounds are within the camera's view frustum (OPTIMIZED: uses cached planes)
         /// </summary>
         /// <param name="bounds">Bounds to check</param>
         /// <returns>True if any part of the bounds is visible to the camera</returns>
         public bool IsBoundsInFrustum(Bounds bounds)
         {
-            if (MainCamera == null) return false;
+            Plane[] frustumPlanes = GetCachedFrustumPlanes();
+            if (frustumPlanes == null) return false;
 
-            Plane[] frustumPlanes = GeometryUtility.CalculateFrustumPlanes(MainCamera);
             return GeometryUtility.TestPlanesAABB(frustumPlanes, bounds);
         }
 
         /// <summary>
-        /// Gets the cached frustum planes for the current camera
+        /// Gets the cached frustum planes for the current camera (OPTIMIZED: reuses cache)
         /// Useful for batch culling operations
         /// </summary>
         /// <returns>Array of frustum planes</returns>
         public Plane[] GetFrustumPlanes()
         {
-            if (MainCamera == null) return null;
-            return GeometryUtility.CalculateFrustumPlanes(MainCamera);
+            return GetCachedFrustumPlanes();
         }
 
         /// <summary>
