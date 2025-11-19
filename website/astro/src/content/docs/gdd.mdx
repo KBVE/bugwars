@@ -364,13 +364,13 @@ Views eliminate the need for manually maintaining multiple synchronized lists - 
 **Comprehensive Collection Types:**
 ObservableCollections provides seven fundamental data structures, each with observable change notifications:
 
-- **ObservableList<T>**: Observable version of `List<T>`, dynamic array with index access
-- **ObservableDictionary`<TKey, TValue>`**: Observable key-value store with fast lookups
-- **ObservableHashSet<T>**: Observable set with guaranteed uniqueness
-- **ObservableQueue<T>**: Observable FIFO queue for sequential processing
-- **ObservableStack<T>**: Observable LIFO stack for hierarchical operations
-- **ObservableRingBuffer<T>**: Observable circular buffer, perfect for fixed-size history tracking
-- **ObservableFixedSizeRingBuffer<T>**: Variant with strict size enforcement, ideal for rolling averages and frame buffers
+- **ObservableList\<T\>**: Observable version of `List<T>`, dynamic array with index access
+- **ObservableDictionary\<TKey, TValue\>**: Observable key-value store with fast lookups
+- **ObservableHashSet\<T\>**: Observable set with guaranteed uniqueness
+- **ObservableQueue\<T\>**: Observable FIFO queue for sequential processing
+- **ObservableStack\<T\>**: Observable LIFO stack for hierarchical operations
+- **ObservableRingBuffer\<T\>**: Observable circular buffer, perfect for fixed-size history tracking
+- **ObservableFixedSizeRingBuffer\<T\>**: Variant with strict size enforcement, ideal for rolling averages and frame buffers
 
 Each collection type provides the same interface as its standard .NET equivalent, making migration straightforward - simply replace `List<T>` with `ObservableList<T>` and add subscriptions.
 
