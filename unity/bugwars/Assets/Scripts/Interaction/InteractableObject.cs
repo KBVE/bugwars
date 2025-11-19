@@ -130,6 +130,46 @@ namespace BugWars.Interaction
             }
         }
 
+        /// <summary>
+        /// Manually begin interaction (for EntityAction system)
+        /// Sets the interaction state without starting the built-in timer
+        /// </summary>
+        public bool BeginInteraction(Transform interactor)
+        {
+            if (_isBeingInteracted.Value)
+            {
+                Debug.LogWarning($"[InteractableObject] Cannot begin interaction - {gameObject.name} is already being interacted with!");
+                return false;
+            }
+
+            _isBeingInteracted.Value = true;
+
+            var interactionEvent = new InteractionEvent
+            {
+                Interactor = interactor.gameObject,
+                Target = gameObject,
+                InteractionType = interactionType,
+                StartTime = Time.time
+            };
+
+            _onInteractionStarted.OnNext(interactionEvent);
+            Debug.Log($"[InteractableObject] Interaction started: {gameObject.name}");
+            return true;
+        }
+
+        /// <summary>
+        /// Manually end interaction (for EntityAction system)
+        /// Resets the interaction state without destroying the object
+        /// </summary>
+        public void EndInteraction()
+        {
+            if (_isBeingInteracted.Value)
+            {
+                _isBeingInteracted.Value = false;
+                Debug.Log($"[InteractableObject] Interaction ended: {gameObject.name}");
+            }
+        }
+
         private void OnPlayerEnterRange()
         {
             Debug.Log($"[InteractableObject] Player nearby: {gameObject.name}");

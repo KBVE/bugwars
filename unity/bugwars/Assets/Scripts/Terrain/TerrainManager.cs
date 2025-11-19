@@ -84,6 +84,18 @@ namespace BugWars.Terrain
             Debug.Log("[TerrainManager] StartAsync called - initializing terrain system");
             InitializeTerrainSystem();
 
+            // Wait for player to spawn using UniTask.WaitUntil
+            Debug.Log("[TerrainManager] Waiting for player (Camera3D) to spawn...");
+            GameObject playerObj = null;
+            await UniTask.WaitUntil(() =>
+            {
+                playerObj = GameObject.FindGameObjectWithTag("Camera3D");
+                return playerObj != null;
+            }, cancellationToken: cancellation);
+
+            _playerTransform = playerObj.transform;
+            Debug.Log($"[TerrainManager] Found player (Camera3D): {playerObj.name} at position {_playerTransform.position}");
+
             Debug.Log("[TerrainManager] Generating initial terrain chunks");
             // Generate initial terrain chunks
             await GenerateInitialChunks();
@@ -92,19 +104,8 @@ namespace BugWars.Terrain
 
         private void Update()
         {
-            if (!isInitialized)
+            if (!isInitialized || _playerTransform == null)
                 return;
-
-            // Find player if not yet cached
-            if (_playerTransform == null)
-            {
-                GameObject player = GameObject.FindGameObjectWithTag("Player");
-                if (player != null)
-                {
-                    _playerTransform = player.transform;
-                    Debug.Log("[TerrainManager] Found player for chunk streaming");
-                }
-            }
 
             // Process queued LOD updates (throttled for WebGL performance)
             ProcessLODUpdateQueue();

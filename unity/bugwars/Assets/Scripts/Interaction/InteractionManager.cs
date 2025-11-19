@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using VContainer;
 using VContainer.Unity;
+using Cysharp.Threading.Tasks;
+using System.Threading;
 
 namespace BugWars.Interaction
 {
@@ -18,6 +20,7 @@ namespace BugWars.Interaction
         [SerializeField] private float raycastDistance = 5f;
         [SerializeField] private float raycastRadius = 0.5f;
         [SerializeField] private LayerMask interactableLayer;
+        [SerializeField] private float raycastHeightOffset = 1.0f; // Height above player feet to start raycast
 
         [Header("Proximity Settings")]
         [SerializeField] private float proximityCheckRadius = 10f;
@@ -39,6 +42,7 @@ namespace BugWars.Interaction
         // Dependencies
         private Transform playerTransform;
         private Camera playerCamera;
+        private BugWars.Entity.Actions.EntityActionManager playerActionManager;
 
         // Tracked interactables
         private HashSet<InteractableObject> nearbyInteractables = new();
@@ -57,22 +61,48 @@ namespace BugWars.Interaction
             raycastDistance = distance;
             interactableLayer = layer;
             Debug.Log($"[InteractionManager] Configured with distance: {distance}, layer: {layer.value}");
-
-            // Initialize immediately after configuration
-            Initialize();
         }
 
-        private void Initialize()
+        private async void Start()
         {
-            // Find player (TODO: Inject via VContainer when player system is ready)
-            playerTransform = GameObject.FindGameObjectWithTag("Player")?.transform;
-            if (playerTransform == null)
+            // Initialize in Start() with UniTask to wait for player to spawn
+            await InitializeAsync(this.GetCancellationTokenOnDestroy());
+        }
+
+        private async UniTask InitializeAsync(CancellationToken cancellationToken)
+        {
+            // Cache player reference
+            GameObject playerObj = null;
+
+            // Wait for player to spawn using UniTask.WaitUntil
+            await UniTask.WaitUntil(() =>
             {
-                playerCamera = Camera.main;
+                playerObj = GameObject.FindGameObjectWithTag("Camera3D");
+                return playerObj != null;
+            }, cancellationToken: cancellationToken);
+
+            // Player found!
+            playerTransform = playerObj.transform;
+            playerActionManager = playerObj.GetComponent<BugWars.Entity.Actions.EntityActionManager>();
+
+            if (playerActionManager == null)
+            {
+                Debug.LogWarning("[InteractionManager] Player has no EntityActionManager! Adding component...");
+                playerActionManager = playerObj.AddComponent<BugWars.Entity.Actions.EntityActionManager>();
+            }
+
+            Debug.Log($"[InteractionManager] Found player: {playerObj.name}");
+
+            // Get camera
+            playerCamera = Camera.main;
+
+            if (playerCamera == null)
+            {
+                Debug.LogError("[InteractionManager] No main camera found!");
             }
             else
             {
-                playerCamera = Camera.main;
+                Debug.Log($"[InteractionManager] Found camera: {playerCamera.name}");
             }
 
             // Create LineRenderer for runtime raycast visualization
@@ -160,15 +190,18 @@ namespace BugWars.Interaction
         }
 
         /// <summary>
-        /// Perform raycast from camera to detect interactable objects
-        /// Optimized: Single raycast, visualization only when needed
+        /// Perform raycast from player position (not camera) to detect interactable objects
+        /// Uses player's forward direction from chest/center height for better ground object detection
         /// </summary>
         private InteractableObject PerformRaycast()
         {
-            if (playerCamera == null)
+            if (playerTransform == null || playerCamera == null)
                 return null;
 
-            Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
+            // Raycast from player position at chest height, in camera forward direction
+            Vector3 rayOrigin = playerTransform.position + Vector3.up * raycastHeightOffset;
+            Vector3 rayDirection = playerCamera.transform.forward;
+            Ray ray = new Ray(rayOrigin, rayDirection);
 
             // Single SphereCast on interactable layer only
             if (Physics.SphereCast(ray, raycastRadius, out RaycastHit hit, raycastDistance, interactableLayer))
@@ -245,7 +278,8 @@ namespace BugWars.Interaction
         }
 
         /// <summary>
-        /// Start interaction with current target using R3 observable
+        /// Start interaction with current target using EntityActionManager
+        /// Falls back to direct InteractableObject interaction if no action manager
         /// </summary>
         private void StartInteraction()
         {
@@ -253,18 +287,61 @@ namespace BugWars.Interaction
             if (target == null || playerTransform == null)
                 return;
 
+            // Check if target is already being interacted with (race condition guard)
+            if (target.IsBeingInteracted.CurrentValue)
+            {
+                Debug.LogWarning($"[InteractionManager] {target.name} is already being interacted with!");
+                return;
+            }
+
+            // Check if player is already performing an action (race condition guard)
+            if (playerActionManager != null && playerActionManager.IsPerformingAction.CurrentValue)
+            {
+                Debug.LogWarning($"[InteractionManager] Player is already performing an action!");
+                return;
+            }
+
             _isInteracting.Value = true;
 
             Debug.Log($"[InteractionManager] Starting interaction with {target.name}");
 
-            // Subscribe to interaction observable
-            target.Interact(playerTransform)
-                .Subscribe(result =>
-                {
-                    OnInteractionComplete(result);
-                    OnInteractionFinished();
-                })
-                .AddTo(this);
+            // Use EntityActionManager if available (preferred method)
+            if (playerActionManager != null)
+            {
+                playerActionManager.StartHarvest(target.gameObject);
+
+                // Monitor action completion via EntityActionManager
+                playerActionManager.IsPerformingAction
+                    .Where(isPerforming => !isPerforming)
+                    .Take(1)
+                    .Subscribe(_ =>
+                    {
+                        // Convert to InteractionResult for UI compatibility
+                        var result = new InteractionResult
+                        {
+                            Success = true,
+                            ResourceType = target.Resource,
+                            ResourceAmount = 5, // Placeholder - real amount from HarvestResult
+                            InteractionType = target.Type == InteractionType.Chop ? InteractionType.Chop :
+                                            target.Type == InteractionType.Mine ? InteractionType.Mine :
+                                            InteractionType.Harvest
+                        };
+                        OnInteractionComplete(result);
+                        OnInteractionFinished();
+                    })
+                    .AddTo(this);
+            }
+            else
+            {
+                // Fallback to old direct interaction method
+                target.Interact(playerTransform)
+                    .Subscribe(result =>
+                    {
+                        OnInteractionComplete(result);
+                        OnInteractionFinished();
+                    })
+                    .AddTo(this);
+            }
         }
 
         /// <summary>
@@ -320,9 +397,12 @@ namespace BugWars.Interaction
                 Gizmos.DrawWireSphere(playerTransform.position, proximityCheckRadius);
             }
 
-            if (playerCamera != null)
+            if (playerTransform != null && playerCamera != null)
             {
-                Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2, 0));
+                // Use same raycast logic as PerformRaycast()
+                Vector3 rayOrigin = playerTransform.position + Vector3.up * raycastHeightOffset;
+                Vector3 rayDirection = playerCamera.transform.forward;
+                Ray ray = new Ray(rayOrigin, rayDirection);
 
                 // Single raycast check (optimized)
                 bool hitInteractable = Physics.SphereCast(ray, raycastRadius, out RaycastHit hit, raycastDistance, interactableLayer);
