@@ -181,6 +181,9 @@ namespace BugWars.Core
         private int _defaultPriority = 10;
         private int _activePriority = 100;
 
+        // Camera rotation smoothing state
+        private float _rotationVelocity = 0f;
+
         [Header("Camera Input Settings")]
         [SerializeField] [Tooltip("Default field of view for perspective cameras (adjustable in Play Mode)")]
         private float perspectiveFov = 60f;
@@ -216,6 +219,9 @@ namespace BugWars.Core
         [Header("Third-Person Enhancements")]
         [SerializeField] [Tooltip("Camera will automatically rotate to follow player's movement direction")]
         private bool autoRotateToMovement = true;
+        [SerializeField] [Tooltip("Smoothing factor for camera rotation (0 = instant, 1 = very smooth)")]
+        [Range(0f, 1f)]
+        private float rotationSmoothing = 0.15f;
         [SerializeField] [Tooltip("How fast camera rotates to follow movement (degrees/second)")]
         private float autoRotateSpeed = 120f;
         [SerializeField] [Tooltip("Minimum movement speed required to trigger auto-rotation")]
@@ -1259,10 +1265,18 @@ namespace BugWars.Core
                 // With standard WASD, player rotates with A/D, so camera should only follow facing direction
                 // Movement direction (W/S) should never affect camera rotation
 
-                // Apply rotation to match player's facing direction
+                // Apply rotation to match player's facing direction with smooth damping
                 var panAxis = _activePanTilt.PanAxis;
                 float currentPan = panAxis.Value;
-                float newPan = Mathf.MoveTowardsAngle(currentPan, targetYaw, rotateSpeed * Time.deltaTime);
+
+                // Use SmoothDampAngle for physics-based smoothing (eliminates overshoot and lag)
+                // This provides smooth, responsive rotation without the "character in corner" feel
+                // smoothTime: lower = more responsive, higher = smoother
+                float smoothTime = rotationSmoothing * 0.5f; // Convert 0-1 range to reasonable smooth time (0-0.5 seconds)
+                float maxSpeed = rotateSpeed; // Maximum rotation speed in degrees/second
+
+                float newPan = Mathf.SmoothDampAngle(currentPan, targetYaw, ref _rotationVelocity, smoothTime, maxSpeed, Time.deltaTime);
+
                 panAxis.Value = panAxis.ClampValue(newPan);
                 panAxis.Center = panAxis.Value;
                 _activePanTilt.PanAxis = panAxis;
