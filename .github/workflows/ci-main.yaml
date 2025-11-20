@@ -314,15 +314,25 @@ jobs:
             - name: Update deployment manifest
               run: |
                   VERSION=${{ needs.extract-version.outputs.version }}
+                  TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
                   MANIFEST_FILE="apps/kube/bugwars/manifest/bugwars-deployment.yaml"
 
-                  echo "Updating image tag to: ghcr.io/kbve/bugwars:${VERSION}"
+                  echo "Updating deployment to version: ${VERSION}"
+                  echo "Deployment timestamp: ${TIMESTAMP}"
 
-                  # Update the image tag in the deployment manifest
+                  # Update the image tag
                   sed -i "s|image: ghcr.io/kbve/bugwars:.*|image: ghcr.io/kbve/bugwars:${VERSION}|g" "$MANIFEST_FILE"
 
+                  # Update the version label
+                  sed -i "s|version: \".*\"|version: \"${VERSION}\"|g" "$MANIFEST_FILE"
+
+                  # Update the rollout-restart annotation with timestamp
+                  sed -i "s|rollout-restart: \".*\"|rollout-restart: \"${TIMESTAMP}\"|g" "$MANIFEST_FILE"
+
                   echo "Updated manifest:"
-                  grep "image: ghcr.io/kbve/bugwars" "$MANIFEST_FILE"
+                  grep -A 2 "image: ghcr.io/kbve/bugwars" "$MANIFEST_FILE"
+                  grep "version:" "$MANIFEST_FILE"
+                  grep "rollout-restart:" "$MANIFEST_FILE"
 
             - name: Create Pull Request
               id: create-pr
@@ -340,7 +350,9 @@ jobs:
 
                       **Changes:**
                       - Updated `apps/kube/bugwars/manifest/bugwars-deployment.yaml`
-                      - New image tag: `ghcr.io/kbve/bugwars:${{ needs.extract-version.outputs.version }}`
+                      - Image tag: `ghcr.io/kbve/bugwars:${{ needs.extract-version.outputs.version }}`
+                      - Version label: `${{ needs.extract-version.outputs.version }}`
+                      - Rollout timestamp: Force new pod rollout with current timestamp
 
                       **Tracking Issue:** #${{ needs.check-version.outputs.issue_number }}
 
