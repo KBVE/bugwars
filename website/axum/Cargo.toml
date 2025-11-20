@@ -1,12 +1,13 @@
 [package]
 name = "kbve-bugwars"
 authors = ["kbve", "h0lybyte", "richie911", "fudster"]
-version = "1.0.23"
+version = "1.0.24"
 edition = "2021"
 publish = false
 
 
 [dependencies]
+jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 bytes = "1.10.1"
 http = "1.0"
 anyhow = "1.0.99"

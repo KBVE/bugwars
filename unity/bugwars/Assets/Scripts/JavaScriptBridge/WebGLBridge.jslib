@@ -239,6 +239,56 @@ mergeInto(LibraryManager.library, {
     } catch (e) {
       console.error('[Unity -> Web] Error sending Float64Array:', e);
     }
+  },
+
+  /**
+   * Get the current window location hostname.
+   * Returns the hostname (e.g., "localhost" or "bugwars.kbve.com")
+   *
+   * @returns {string} The current hostname
+   */
+  GetHostname: function() {
+    var hostname = window.location.hostname;
+    var bufferSize = lengthBytesUTF8(hostname) + 1;
+    var buffer = _malloc(bufferSize);
+    stringToUTF8(hostname, buffer, bufferSize);
+    return buffer;
+  },
+
+  /**
+   * Get the WebSocket URL for the current environment.
+   * Automatically determines if running on localhost or production.
+   *
+   * @returns {string} The WebSocket URL (e.g., "ws://localhost:4321/ws" or "wss://bugwars.kbve.com/ws")
+   */
+  GetWebSocketUrl: function() {
+    var hostname = window.location.hostname;
+    var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var port = '';
+
+    // For localhost, use port 4321 (Axum development server)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      port = ':4321';
+    }
+
+    var wsUrl = protocol + '//' + hostname + port + '/ws';
+
+    console.log('[WebGLBridge] WebSocket URL:', wsUrl);
+
+    var bufferSize = lengthBytesUTF8(wsUrl) + 1;
+    var buffer = _malloc(bufferSize);
+    stringToUTF8(wsUrl, buffer, bufferSize);
+    return buffer;
+  },
+
+  /**
+   * Check if running in development mode (localhost).
+   *
+   * @returns {number} 1 if localhost, 0 otherwise
+   */
+  IsLocalhost: function() {
+    var hostname = window.location.hostname;
+    return (hostname === 'localhost' || hostname === '127.0.0.1') ? 1 : 0;
   }
 });
 

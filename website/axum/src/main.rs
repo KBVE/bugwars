@@ -1,5 +1,6 @@
 mod core;
 mod astro;
+mod auth;
 
 mod transports {
     pub mod https;

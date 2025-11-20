@@ -2,10 +2,9 @@
 /**
  * AstroUnityGameContainer
  * Main Astro component for Unity WebGL integration
- * This component wraps the React Unity component with necessary providers
+ * ReactUnity connects directly to the SharedWorker (no provider wrapper needed)
  */
 
-import { SupaProvider } from '@/components/providers/SupaProvider';
 import { ReactUnity } from './ReactUnity';
 import type { UnityConfig } from './typeUnity';
 
@@ -61,16 +60,15 @@ const {
   class={`astro-unity-game-container ${className}`}
   style={`width: ${width}; height: ${height}; position: relative;`}
 >
-  <SupaProvider client:only="react">
-    <ReactUnity
-      client:only="react"
-      config={config}
-      canvasId={canvasId}
-      showFullscreenButton={showFullscreenButton}
-      startFullscreen={startFullscreen}
-      className="astro-unity-react"
-    />
-  </SupaProvider>
+  <!-- ReactUnity connects directly to SharedWorker (same as ReactNav) -->
+  <ReactUnity
+    client:only="react"
+    config={config}
+    canvasId={canvasId}
+    showFullscreenButton={showFullscreenButton}
+    startFullscreen={startFullscreen}
+    className="astro-unity-react"
+  />
 </div>
 
 <style>

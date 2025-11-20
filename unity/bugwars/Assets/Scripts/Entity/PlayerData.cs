@@ -1,10 +1,12 @@
 using UnityEngine;
+using R3;
 
 namespace BugWars.Entity
 {
     /// <summary>
     /// Holds persistent player data tracked by EntityManager
     /// Can be extended to include stats, inventory, preferences, etc.
+    /// Uses R3 ReactiveProperties for reactive observation of changes
     /// </summary>
     [System.Serializable]
     public class PlayerData
@@ -12,6 +14,10 @@ namespace BugWars.Entity
         [Header("Identity")]
         [SerializeField] private string playerName = "Player";
         [SerializeField] private string playerId = "";
+        [SerializeField] private string displayName = "Player";
+        [SerializeField] private string username = "";
+        [SerializeField] private string email = "";
+        [SerializeField] private string avatarUrl = "";
 
         [Header("Stats")]
         [SerializeField] private int level = 1;
@@ -21,6 +27,26 @@ namespace BugWars.Entity
         [Header("Session Info")]
         [SerializeField] private float playTime = 0f;
         [SerializeField] private Vector3 lastKnownPosition = Vector3.zero;
+        [SerializeField] private bool isAuthenticated = false;
+
+        [Header("Authentication Tokens")]
+        [SerializeField] private string accessToken = "";
+        [SerializeField] private string refreshToken = "";
+        [SerializeField] private long expiresAt = 0;
+
+        // Reactive properties for observing authentication state changes
+        private readonly ReactiveProperty<bool> _isAuthenticatedReactive = new(false);
+        private readonly ReactiveProperty<string> _displayNameReactive = new("Player");
+        private readonly ReactiveProperty<int> _levelReactive = new(1);
+        private readonly ReactiveProperty<int> _experienceReactive = new(0);
+        private readonly ReactiveProperty<int> _scoreReactive = new(0);
+
+        // Read-only reactive observables for external subscribers
+        public ReadOnlyReactiveProperty<bool> IsAuthenticatedObservable => _isAuthenticatedReactive;
+        public ReadOnlyReactiveProperty<string> DisplayNameObservable => _displayNameReactive;
+        public ReadOnlyReactiveProperty<int> LevelObservable => _levelReactive;
+        public ReadOnlyReactiveProperty<int> ExperienceObservable => _experienceReactive;
+        public ReadOnlyReactiveProperty<int> ScoreObservable => _scoreReactive;
 
         // Properties for easy access
         public string PlayerName
@@ -38,19 +64,31 @@ namespace BugWars.Entity
         public int Level
         {
             get => level;
-            set => level = Mathf.Max(1, value);
+            set
+            {
+                level = Mathf.Max(1, value);
+                _levelReactive.Value = level;
+            }
         }
 
         public int Experience
         {
             get => experience;
-            set => experience = Mathf.Max(0, value);
+            set
+            {
+                experience = Mathf.Max(0, value);
+                _experienceReactive.Value = experience;
+            }
         }
 
         public int Score
         {
             get => score;
-            set => score = Mathf.Max(0, value);
+            set
+            {
+                score = Mathf.Max(0, value);
+                _scoreReactive.Value = score;
+            }
         }
 
         public float PlayTime
@@ -63,6 +101,62 @@ namespace BugWars.Entity
         {
             get => lastKnownPosition;
             set => lastKnownPosition = value;
+        }
+
+        public string DisplayName
+        {
+            get => displayName;
+            set
+            {
+                displayName = value;
+                _displayNameReactive.Value = GetBestDisplayName();
+            }
+        }
+
+        public string Username
+        {
+            get => username;
+            set => username = value;
+        }
+
+        public string Email
+        {
+            get => email;
+            set => email = value;
+        }
+
+        public string AvatarUrl
+        {
+            get => avatarUrl;
+            set => avatarUrl = value;
+        }
+
+        public bool IsAuthenticated
+        {
+            get => isAuthenticated;
+            set
+            {
+                isAuthenticated = value;
+                _isAuthenticatedReactive.Value = value;
+            }
+        }
+
+        public string AccessToken
+        {
+            get => accessToken;
+            set => accessToken = value;
+        }
+
+        public string RefreshToken
+        {
+            get => refreshToken;
+            set => refreshToken = value;
+        }
+
+        public long ExpiresAt
+        {
+            get => expiresAt;
+            set => expiresAt = value;
         }
 
         /// <summary>
@@ -125,13 +219,16 @@ namespace BugWars.Entity
             if (amount <= 0) return false;
 
             experience += amount;
+            _experienceReactive.Value = experience;
 
             // Simple level up calculation (100 XP per level)
             int xpForNextLevel = level * 100;
             if (experience >= xpForNextLevel)
             {
                 level++;
+                _levelReactive.Value = level;
                 experience -= xpForNextLevel;
+                _experienceReactive.Value = experience;
                 return true; // Leveled up
             }
 
@@ -145,6 +242,76 @@ namespace BugWars.Entity
         {
             score += points;
             score = Mathf.Max(0, score);
+            _scoreReactive.Value = score;
+        }
+
+        /// <summary>
+        /// Update player data from authenticated session
+        /// </summary>
+        public void UpdateFromSession(string userId, string userDisplayName, string userUsername, string userEmail, string userAvatarUrl, string userAccessToken, string userRefreshToken, long tokenExpiresAt)
+        {
+            playerId = userId;
+            displayName = userDisplayName;
+            username = userUsername;
+            email = userEmail;
+            avatarUrl = userAvatarUrl;
+            accessToken = userAccessToken;
+            refreshToken = userRefreshToken;
+            expiresAt = tokenExpiresAt;
+            isAuthenticated = !string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(accessToken);
+
+            // Update playerName to displayName for consistency
+            if (!string.IsNullOrEmpty(displayName))
+            {
+                playerName = displayName;
+            }
+            else if (!string.IsNullOrEmpty(username))
+            {
+                playerName = username;
+            }
+
+            // Trigger reactive property updates
+            _isAuthenticatedReactive.Value = isAuthenticated;
+            _displayNameReactive.Value = GetBestDisplayName();
+        }
+
+        /// <summary>
+        /// Get the best display name available
+        /// Priority: displayName > username > playerName > "Player"
+        /// </summary>
+        public string GetBestDisplayName()
+        {
+            if (!string.IsNullOrEmpty(displayName))
+                return displayName;
+            if (!string.IsNullOrEmpty(username))
+                return username;
+            if (!string.IsNullOrEmpty(playerName))
+                return playerName;
+            return "Player";
+        }
+
+        /// <summary>
+        /// Check if the access token is expired or about to expire.
+        /// </summary>
+        public bool IsTokenExpired()
+        {
+            if (string.IsNullOrEmpty(accessToken))
+                return true;
+
+            // Convert Unix timestamp to DateTime
+            var expiresAtTime = System.DateTimeOffset.FromUnixTimeSeconds(expiresAt).UtcDateTime;
+            var now = System.DateTime.UtcNow;
+
+            // Consider token expired if it expires in less than 5 minutes
+            return (expiresAtTime - now).TotalMinutes < 5;
+        }
+
+        /// <summary>
+        /// Get a valid access token. Returns null if token is expired.
+        /// </summary>
+        public string GetValidAccessToken()
+        {
+            return IsTokenExpired() ? null : accessToken;
         }
 
         /// <summary>
@@ -155,6 +322,14 @@ namespace BugWars.Entity
             PlayerData clone = new PlayerData();
             clone.playerName = this.playerName;
             clone.playerId = this.playerId;
+            clone.displayName = this.displayName;
+            clone.username = this.username;
+            clone.email = this.email;
+            clone.avatarUrl = this.avatarUrl;
+            clone.isAuthenticated = this.isAuthenticated;
+            clone.accessToken = this.accessToken;
+            clone.refreshToken = this.refreshToken;
+            clone.expiresAt = this.expiresAt;
             clone.level = this.level;
             clone.experience = this.experience;
             clone.score = this.score;
@@ -165,7 +340,8 @@ namespace BugWars.Entity
 
         public override string ToString()
         {
-            return $"PlayerData: {playerName} (ID: {playerId}) | Level {level} | XP: {experience} | Score: {score} | Time: {GetFormattedPlayTime()}";
+            string authStatus = isAuthenticated ? $"✓ {email}" : "Guest";
+            return $"PlayerData: {GetBestDisplayName()} ({authStatus}) | Level {level} | XP: {experience} | Score: {score} | Time: {GetFormattedPlayTime()}";
         }
     }
 }

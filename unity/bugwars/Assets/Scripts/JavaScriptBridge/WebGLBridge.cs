@@ -37,12 +37,10 @@ namespace BugWars.JavaScriptBridge
 
         private bool _isReady = false;
 
-        // Authentication state
-        private SessionData _sessionData;
-        public SessionData CurrentSession => _sessionData;
-        public string AccessToken => _sessionData?.accessToken;
-        public string RefreshToken => _sessionData?.refreshToken;
-        public bool IsAuthenticated => !string.IsNullOrEmpty(_sessionData?.accessToken);
+        // Authentication state - fully delegated to EntityManager.PlayerData
+        public string AccessToken => BugWars.Entity.EntityManager.Instance?.PlayerData?.AccessToken;
+        public string RefreshToken => BugWars.Entity.EntityManager.Instance?.PlayerData?.RefreshToken;
+        public bool IsAuthenticated => BugWars.Entity.EntityManager.Instance?.PlayerData?.IsAuthenticated ?? false;
 
         // External JavaScript functions (from react-unity-webgl)
         [DllImport("__Internal")]
@@ -50,6 +48,16 @@ namespace BugWars.JavaScriptBridge
 
         [DllImport("__Internal")]
         private static extern void SendErrorToWeb(string errorMessage);
+
+        // Environment detection functions (from WebGLBridge.jslib)
+        [DllImport("__Internal")]
+        private static extern string GetHostname();
+
+        [DllImport("__Internal")]
+        private static extern string GetWebSocketUrl();
+
+        [DllImport("__Internal")]
+        private static extern int IsLocalhost();
 
         private void Awake()
         {
@@ -109,27 +117,26 @@ namespace BugWars.JavaScriptBridge
                 Debug.Log($"[WebGLBridge] Received session update (JWT tokens included)");
                 var sessionData = JsonUtility.FromJson<SessionData>(sessionJson);
 
-                // Store session data with JWT tokens
-                _sessionData = sessionData;
-
                 // Log token info (without exposing the actual tokens)
                 Debug.Log($"[WebGLBridge] User ID: {sessionData.userId}");
                 Debug.Log($"[WebGLBridge] Access Token: {(!string.IsNullOrEmpty(sessionData.accessToken) ? "✓ Present" : "✗ Missing")}");
                 Debug.Log($"[WebGLBridge] Refresh Token: {(!string.IsNullOrEmpty(sessionData.refreshToken) ? "✓ Present" : "✗ Missing")}");
                 Debug.Log($"[WebGLBridge] Token Expires At: {sessionData.expiresAt}");
 
-                // Update player name in EntityManager if available
-                if (!string.IsNullOrEmpty(sessionData.displayName) || !string.IsNullOrEmpty(sessionData.username))
+                // Store session data in centralized PlayerData via EntityManager
+                if (BugWars.Entity.EntityManager.Instance != null)
                 {
-                    string playerName = !string.IsNullOrEmpty(sessionData.displayName)
-                        ? sessionData.displayName
-                        : sessionData.username;
-
-                    if (BugWars.Entity.EntityManager.Instance != null)
-                    {
-                        BugWars.Entity.EntityManager.Instance.SetPlayerName(playerName);
-                        Debug.Log($"[WebGLBridge] Set player name to: {playerName}");
-                    }
+                    BugWars.Entity.EntityManager.Instance.UpdatePlayerSession(
+                        sessionData.userId,
+                        sessionData.displayName,
+                        sessionData.username,
+                        sessionData.email,
+                        sessionData.avatarUrl,
+                        sessionData.accessToken,
+                        sessionData.refreshToken,
+                        sessionData.expiresAt
+                    );
+                    Debug.Log($"[WebGLBridge] Updated player session in EntityManager (including tokens)");
                 }
 
                 // Broadcast event through the game's event system
@@ -163,19 +170,24 @@ namespace BugWars.JavaScriptBridge
 
                 if (BugWars.Entity.EntityManager.Instance != null)
                 {
-                    // Set player name (prefer displayName, fallback to username)
-                    string playerName = !string.IsNullOrEmpty(profileData.displayName)
-                        ? profileData.displayName
-                        : profileData.username;
+                    // Get existing player data to preserve auth tokens
+                    var playerData = BugWars.Entity.EntityManager.Instance.PlayerData;
 
-                    if (!string.IsNullOrEmpty(playerName))
-                    {
-                        BugWars.Entity.EntityManager.Instance.SetPlayerName(playerName);
-                        Debug.Log($"[WebGLBridge] Updated player name to: {playerName}");
-                    }
+                    // Update player session from profile data
+                    // Note: OnPlayerProfile doesn't include auth tokens, use existing values from PlayerData
+                    BugWars.Entity.EntityManager.Instance.UpdatePlayerSession(
+                        playerData?.PlayerId ?? "", // Keep existing userId
+                        profileData.displayName,
+                        profileData.username,
+                        playerData?.Email ?? "", // Keep existing email
+                        profileData.avatarUrl,
+                        playerData?.AccessToken ?? "", // Keep existing access token
+                        playerData?.RefreshToken ?? "", // Keep existing refresh token
+                        playerData?.ExpiresAt ?? 0 // Keep existing expiration
+                    );
+                    Debug.Log($"[WebGLBridge] Updated player profile in EntityManager");
 
-                    // Update player data if provided
-                    var playerData = BugWars.Entity.EntityManager.Instance.GetPlayerData();
+                    // Update player stats if provided
                     if (playerData != null)
                     {
                         if (profileData.level > 0)
@@ -450,46 +462,100 @@ namespace BugWars.JavaScriptBridge
         /// <summary>
         /// Request a token refresh from JavaScript/Supabase.
         /// This should be called when the access token is about to expire.
+        /// Delegates to PlayerData for centralized token management.
         /// </summary>
         public void RequestTokenRefresh()
         {
             Debug.Log("[WebGLBridge] Requesting token refresh from JavaScript");
+
+            var playerData = BugWars.Entity.EntityManager.Instance?.PlayerData;
+            if (playerData == null)
+            {
+                Debug.LogError("[WebGLBridge] Cannot refresh token - PlayerData not available");
+                return;
+            }
+
             SendToWeb("TokenRefreshRequest", new TokenRefreshRequestData
             {
-                userId = _sessionData?.userId,
-                refreshToken = _sessionData?.refreshToken,
+                userId = playerData.PlayerId,
+                refreshToken = playerData.RefreshToken,
                 timestamp = DateTime.UtcNow.ToString("o")
             });
         }
 
         /// <summary>
         /// Check if the current access token is expired or about to expire.
+        /// Delegates to PlayerData for centralized token management.
         /// </summary>
         public bool IsTokenExpired()
         {
-            if (_sessionData == null || string.IsNullOrEmpty(_sessionData.accessToken))
-                return true;
-
-            // Convert Unix timestamp to DateTime
-            var expiresAt = DateTimeOffset.FromUnixTimeSeconds(_sessionData.expiresAt).UtcDateTime;
-            var now = DateTime.UtcNow;
-
-            // Consider token expired if it expires in less than 5 minutes
-            return (expiresAt - now).TotalMinutes < 5;
+            var playerData = BugWars.Entity.EntityManager.Instance?.PlayerData;
+            return playerData?.IsTokenExpired() ?? true;
         }
 
         /// <summary>
         /// Get the current access token, requesting a refresh if needed.
+        /// Delegates to PlayerData for centralized token management.
         /// </summary>
         public string GetValidAccessToken()
         {
-            if (IsTokenExpired())
+            var playerData = BugWars.Entity.EntityManager.Instance?.PlayerData;
+            if (playerData == null)
             {
-                RequestTokenRefresh();
-                return null; // Will be updated via OnSessionUpdate when refresh completes
+                Debug.LogWarning("[WebGLBridge] Cannot get access token - PlayerData not available");
+                return null;
             }
 
-            return _sessionData?.accessToken;
+            string token = playerData.GetValidAccessToken();
+            if (token == null && !string.IsNullOrEmpty(playerData.RefreshToken))
+            {
+                RequestTokenRefresh();
+            }
+            return token;
+        }
+
+        #endregion
+
+        #region Environment Detection
+
+        /// <summary>
+        /// Get the current hostname from the browser.
+        /// Returns "localhost", "bugwars.kbve.com", etc.
+        /// </summary>
+        public string GetCurrentHostname()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return GetHostname();
+#else
+            return "localhost"; // Fallback for editor testing
+#endif
+        }
+
+        /// <summary>
+        /// Get the appropriate WebSocket URL for the current environment.
+        /// Automatically detects localhost vs production and uses correct protocol/port.
+        /// </summary>
+        /// <returns>WebSocket URL (e.g., "ws://localhost:4321/ws" or "wss://bugwars.kbve.com/ws")</returns>
+        public string GetWebSocketEndpoint()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return GetWebSocketUrl();
+#else
+            return "ws://localhost:4321/ws"; // Fallback for editor testing
+#endif
+        }
+
+        /// <summary>
+        /// Check if running on localhost (development environment).
+        /// </summary>
+        /// <returns>True if localhost, false if production</returns>
+        public bool IsRunningOnLocalhost()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return IsLocalhost() == 1;
+#else
+            return true; // Fallback for editor testing
+#endif
         }
 
         #endregion

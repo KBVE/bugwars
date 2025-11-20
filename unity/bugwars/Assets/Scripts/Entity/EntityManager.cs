@@ -693,6 +693,33 @@ namespace BugWars.Entity
         }
 
         /// <summary>
+        /// Update player data from authenticated session (called by WebGLBridge)
+        /// </summary>
+        public void UpdatePlayerSession(string userId, string displayName, string username, string email, string avatarUrl, string accessToken, string refreshToken, long expiresAt)
+        {
+            if (playerData == null)
+            {
+                playerData = new PlayerData();
+            }
+
+            playerData.UpdateFromSession(userId, displayName, username, email, avatarUrl, accessToken, refreshToken, expiresAt);
+
+            Debug.Log($"[EntityManager] Updated player session: {playerData.GetBestDisplayName()} ({(playerData.IsAuthenticated ? "Authenticated" : "Guest")})");
+            Debug.Log($"[EntityManager] Token status: {(!string.IsNullOrEmpty(accessToken) ? "✓ Valid" : "✗ Missing")} | Expires: {System.DateTimeOffset.FromUnixTimeSeconds(expiresAt).ToString("yyyy-MM-dd HH:mm:ss")}");
+
+            // Sync entity name if player entity exists
+            if (playerEntity != null)
+            {
+                string bestName = playerData.GetBestDisplayName();
+                playerEntity.GetType().GetField("entityName",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    ?.SetValue(playerEntity, bestName);
+            }
+
+            // No event triggering needed - HUD observes PlayerData reactively via R3
+        }
+
+        /// <summary>
         /// Add experience to player
         /// </summary>
         /// <returns>True if player leveled up</returns>

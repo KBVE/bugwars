@@ -8,12 +8,14 @@ import { useEffect, useState, useCallback } from 'react';
 import type { FC } from 'react';
 import { Unity, useUnityContext } from 'react-unity-webgl';
 import { unityService } from './unityService';
-import { useSession } from '@/components/providers/SupaProvider';
+import { initSupa, getSupa } from '@/lib/supa';
 import type {
   UnityConfig,
   UnityEvent
 } from './typeUnity';
 import { UnityEventType } from './typeUnity';
+
+type Session = any;
 
 /**
  * ReactUnity Component Props
@@ -109,7 +111,8 @@ export const ReactUnity: FC<ReactUnityProps> = ({
   devicePixelRatio,
   tabIndex = 1
 }) => {
-  const { session, ready: sessionReady } = useSession();
+  const [session, setSession] = useState<Session | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bridgeReady, setBridgeReady] = useState(false);
 
@@ -124,6 +127,38 @@ export const ReactUnity: FC<ReactUnityProps> = ({
     addEventListener,
     removeEventListener
   } = useUnityContext(config);
+
+  /**
+   * Initialize Supabase connection and listen for session changes
+   * Uses the SharedWorker directly (same pattern as ReactNav)
+   */
+  useEffect(() => {
+    let off: (() => void) | null = null;
+    (async () => {
+      try {
+        await initSupa();
+        const supa = getSupa();
+
+        // Get initial session
+        const s = await supa.getSession().catch(() => null);
+        console.log('[ReactUnity] Initial session from SharedWorker:', s?.session ? 'logged in' : 'not logged in');
+        setSession(s?.session ?? null);
+
+        // Listen for session changes (login/logout)
+        off = supa.on('auth', (msg: any) => {
+          console.log('[ReactUnity] Session changed:', msg.session ? 'logged in' : 'logged out');
+          setSession(msg.session ?? null);
+        });
+
+        setSessionReady(true);
+      } catch (e: any) {
+        console.error('[ReactUnity] Error initializing Supabase:', e);
+        setSessionReady(true); // Still mark as ready to prevent blocking
+      }
+    })();
+
+    return () => off?.();
+  }, []);
 
   /**
    * Register Unity instance with singleton service
@@ -151,50 +186,62 @@ export const ReactUnity: FC<ReactUnityProps> = ({
   /**
    * Listen for Unity bridge ready signal
    * Unity sends "BridgeReady" after VContainer initialization completes
+   * NOTE: We listen to window CustomEvent (from jslib) not react-unity-webgl's addEventListener
    */
   useEffect(() => {
-    const handleBridgeReady = (data: string) => {
+    const handleUnityMessage = ((event: CustomEvent) => {
       try {
-        const readyData = JSON.parse(data);
-        console.log('[ReactUnity] ✓ Unity bridge is ready:', readyData);
-        setBridgeReady(true);
+        const { type, data } = event.detail;
 
-        // Immediately send a test message to verify Web → Unity communication
-        console.log('[ReactUnity] → Sending test handshake message to Unity...');
+        // Only handle BridgeReady events
+        if (type === 'BridgeReady') {
+          console.log('[ReactUnity] ✓ Unity bridge is ready:', data);
+          setBridgeReady(true);
+
+          // Debug session state
+          console.log('[ReactUnity] → Checking session state for handshake:');
+          console.log('  - isLoaded:', isLoaded);
+          console.log('  - bridgeReady: true (just set)');
+          console.log('  - sessionReady:', sessionReady);
+          console.log('  - session:', session ? '✓ Present' : '✗ Missing (user not logged in)');
+        }
       } catch (error) {
-        console.error('[ReactUnity] Error parsing BridgeReady data:', error);
-        // Still mark as ready even if parsing fails
-        setBridgeReady(true);
+        console.error('[ReactUnity] Error handling Unity message:', error);
       }
-    };
+    }) as EventListener;
 
-    addEventListener('BridgeReady', handleBridgeReady);
+    // Listen to the window CustomEvent dispatched by our jslib
+    window.addEventListener('UnityMessage', handleUnityMessage);
 
     return () => {
-      removeEventListener('BridgeReady', handleBridgeReady);
+      window.removeEventListener('UnityMessage', handleUnityMessage);
     };
-  }, [addEventListener, removeEventListener]);
+  }, [isLoaded, sessionReady, session]);
 
   /**
    * Listen for SessionReceived acknowledgment from Unity
    */
   useEffect(() => {
-    const handleSessionReceived = (data: string) => {
+    const handleUnityMessage = ((event: CustomEvent) => {
       try {
-        const ackData = JSON.parse(data);
-        console.log('[ReactUnity] ✓ Unity acknowledged session data:', ackData);
-        console.log('[ReactUnity] ✓✓✓ HANDSHAKE COMPLETE - Bidirectional communication established!');
-      } catch (error) {
-        console.error('[ReactUnity] Error parsing SessionReceived data:', error);
-      }
-    };
+        const { type, data } = event.detail;
 
-    addEventListener('SessionReceived', handleSessionReceived);
+        // Only handle SessionReceived events
+        if (type === 'SessionReceived') {
+          console.log('[ReactUnity] ✓ Unity acknowledged session data:', data);
+          console.log('[ReactUnity] ✓✓✓ HANDSHAKE COMPLETE - Bidirectional communication established!');
+        }
+      } catch (error) {
+        console.error('[ReactUnity] Error handling SessionReceived:', error);
+      }
+    }) as EventListener;
+
+    window.addEventListener('UnityMessage', handleUnityMessage);
 
     return () => {
-      removeEventListener('SessionReceived', handleSessionReceived);
+      window.removeEventListener('UnityMessage', handleUnityMessage);
     };
-  }, [addEventListener, removeEventListener]);
+  }, []);
 
   /**
    * Send session info to Unity when bridge is ready and session is available
@@ -202,6 +249,13 @@ export const ReactUnity: FC<ReactUnityProps> = ({
    * VContainer hasn't finished instantiating the WebGLBridge GameObject yet
    */
   useEffect(() => {
+    console.log('[ReactUnity] Session effect triggered - checking conditions:', {
+      isLoaded,
+      bridgeReady,
+      sessionReady,
+      hasSession: !!session
+    });
+
     if (isLoaded && bridgeReady && sessionReady && session) {
       const user = session.user;
       // Extract username - check all OAuth provider fields
@@ -250,50 +304,55 @@ export const ReactUnity: FC<ReactUnityProps> = ({
    * Listen for TokenRefreshRequest from Unity
    */
   useEffect(() => {
-    const handleTokenRefreshRequest = () => {
+    const handleUnityMessage = ((event: CustomEvent) => {
       try {
-        console.log('[ReactUnity] Unity requested token refresh');
+        const { type } = event.detail;
 
-        // Send the current session back to Unity
-        // The SupaProvider automatically handles token refresh
-        if (session && sessionReady) {
-          const user = session.user;
-          const username = user?.user_metadata?.user_name ||
-                          user?.user_metadata?.preferred_username ||
-                          user?.user_metadata?.username ||
-                          user?.user_metadata?.global_name ||
-                          user?.user_metadata?.name ||
-                          user?.email?.split('@')[0] ||
-                          'Player';
-          const displayName = user?.user_metadata?.full_name || username;
-          const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+        // Only handle TokenRefreshRequest events
+        if (type === 'TokenRefreshRequest') {
+          console.log('[ReactUnity] Unity requested token refresh');
 
-          sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({
-            userId: user?.id,
-            email: user?.email,
-            displayName,
-            username,
-            avatarUrl,
-            accessToken: session.access_token || '',
-            refreshToken: session.refresh_token || '',
-            expiresAt: session.expires_at || 0
-          }));
+          // Send the current session back to Unity
+          // The SharedWorker automatically handles token refresh
+          if (session && sessionReady) {
+            const user = session.user;
+            const username = user?.user_metadata?.user_name ||
+                            user?.user_metadata?.preferred_username ||
+                            user?.user_metadata?.username ||
+                            user?.user_metadata?.global_name ||
+                            user?.user_metadata?.name ||
+                            user?.email?.split('@')[0] ||
+                            'Player';
+            const displayName = user?.user_metadata?.full_name || username;
+            const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
 
-          console.log('[ReactUnity] ✓ Sent refreshed tokens to Unity');
-        } else {
-          console.warn('[ReactUnity] Cannot refresh tokens - no session available');
+            sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({
+              userId: user?.id,
+              email: user?.email,
+              displayName,
+              username,
+              avatarUrl,
+              accessToken: session.access_token || '',
+              refreshToken: session.refresh_token || '',
+              expiresAt: session.expires_at || 0
+            }));
+
+            console.log('[ReactUnity] ✓ Sent refreshed tokens to Unity');
+          } else {
+            console.warn('[ReactUnity] Cannot refresh tokens - no session available');
+          }
         }
       } catch (error) {
-        console.error('[ReactUnity] Error refreshing token:', error);
+        console.error('[ReactUnity] Error handling TokenRefreshRequest:', error);
       }
-    };
+    }) as EventListener;
 
-    addEventListener('TokenRefreshRequest', handleTokenRefreshRequest);
+    window.addEventListener('UnityMessage', handleUnityMessage);
 
     return () => {
-      removeEventListener('TokenRefreshRequest', handleTokenRefreshRequest);
+      window.removeEventListener('UnityMessage', handleUnityMessage);
     };
-  }, [addEventListener, removeEventListener, sendMessage, session, sessionReady]);
+  }, [sendMessage, session, sessionReady]);
 
   /**
    * Listen for custom Unity events

@@ -1,20 +1,33 @@
 using UnityEngine;
 using UnityEngine.UIElements;
-using VContainer;
-using BugWars.Core;
+using VContainer.Unity;
+using R3;
+using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 
 namespace BugWars.UI
 {
     /// <summary>
     /// HUD Manager - Manages the Heads-Up Display
     /// Always visible during gameplay, displays health, stats, and game information
-    /// Managed by VContainer
+    /// Directly observes EntityManager.PlayerData via R3 reactive properties
+    /// Uses IAsyncStartable + UniTask for efficient async initialization without frame blocking
+    /// No event subscriptions needed - pure reactive architecture
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
-    public class HUDManager : MonoBehaviour
+    public class HUDManager : MonoBehaviour, IAsyncStartable
     {
         #region Fields
-        [Inject] private EventManager _eventManager;
+        // Cancellation token for async operations
+        private CancellationTokenSource _cts;
+
+        // R3 reactive subscriptions (auto-disposed on destroy)
+        private IDisposable _displayNameSubscription;
+        private IDisposable _levelSubscription;
+        private IDisposable _experienceSubscription;
+        private IDisposable _scoreSubscription;
+        private IDisposable _authStatusSubscription;
 
         private UIDocument _uiDocument;
         private VisualElement _root;
@@ -62,30 +75,37 @@ namespace BugWars.UI
         #region Unity Lifecycle
         private void Awake()
         {
-            // Component initialized
+            // Create cancellation token source
+            _cts = new CancellationTokenSource();
         }
 
-        private void Start()
+        /// <summary>
+        /// IAsyncStartable - VContainer calls this for async initialization
+        /// Waits for PlayerData without blocking frames
+        /// </summary>
+        public async UniTask StartAsync(CancellationToken cancellationToken)
         {
             InitializeUI();
 
             // Start with HUD visible
             ShowHUD();
 
-            // Subscribe to session updates
-            if (_eventManager != null)
-            {
-                _eventManager.AddListener<object>("SessionUpdated", OnSessionUpdated);
-            }
+            // Wait for EntityManager.PlayerData to be available (async, no frame blocking)
+            await SetupReactiveSubscriptionsAsync(cancellationToken);
         }
 
         private void OnDestroy()
         {
-            // Unsubscribe from session updates
-            if (_eventManager != null)
-            {
-                _eventManager.RemoveListener<object>("SessionUpdated", OnSessionUpdated);
-            }
+            // Cancel any ongoing async operations
+            _cts?.Cancel();
+            _cts?.Dispose();
+
+            // Dispose all R3 subscriptions
+            _displayNameSubscription?.Dispose();
+            _levelSubscription?.Dispose();
+            _experienceSubscription?.Dispose();
+            _scoreSubscription?.Dispose();
+            _authStatusSubscription?.Dispose();
         }
         #endregion
 
@@ -376,41 +396,56 @@ namespace BugWars.UI
         }
 
         /// <summary>
-        /// Handles session update events from WebGLBridge
+        /// Setup reactive subscriptions to EntityManager.PlayerData for automatic UI updates
+        /// Pure reactive architecture - no events needed
+        /// Uses UniTask for efficient async waiting without frame blocking
         /// </summary>
-        /// <param name="sessionData">Session data containing user information</param>
-        private void OnSessionUpdated(object sessionData)
+        private async UniTask SetupReactiveSubscriptionsAsync(CancellationToken cancellationToken)
         {
-            try
+            // Wait for EntityManager.PlayerData to be available (async, no frame blocking)
+            BugWars.Entity.PlayerData playerData = null;
+            while (playerData == null && !cancellationToken.IsCancellationRequested)
             {
-                // SessionData is defined in WebGLBridge.cs
-                // We need to extract the displayName using reflection or dynamic
-                var sessionType = sessionData.GetType();
-                var displayNameField = sessionType.GetField("displayName");
-                var usernameField = sessionType.GetField("username");
-
-                string playerName = null;
-
-                if (displayNameField != null)
+                playerData = BugWars.Entity.EntityManager.Instance?.PlayerData;
+                if (playerData == null)
                 {
-                    playerName = displayNameField.GetValue(sessionData) as string;
-                }
-
-                if (string.IsNullOrEmpty(playerName) && usernameField != null)
-                {
-                    playerName = usernameField.GetValue(sessionData) as string;
-                }
-
-                if (!string.IsNullOrEmpty(playerName))
-                {
-                    UpdatePlayerName(playerName);
-                    Debug.Log($"[HUDManager] Player name updated to: {playerName}");
+                    // Wait one frame before checking again (non-blocking)
+                    await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
                 }
             }
-            catch (System.Exception e)
+
+            if (cancellationToken.IsCancellationRequested)
             {
-                Debug.LogError($"[HUDManager] Error processing session update: {e.Message}");
+                Debug.LogWarning("[HUDManager] Setup cancelled before PlayerData was available");
+                return;
             }
+
+            Debug.Log("[HUDManager] PlayerData available, setting up reactive subscriptions");
+
+            // Subscribe to display name changes
+            _displayNameSubscription = playerData.DisplayNameObservable
+                .Subscribe(displayName => UpdatePlayerName(displayName));
+
+            // Subscribe to level changes
+            _levelSubscription = playerData.LevelObservable
+                .Subscribe(level => UpdateLevel(level));
+
+            // Subscribe to experience changes (capture playerData for level access)
+            _experienceSubscription = playerData.ExperienceObservable
+                .Subscribe(xp => UpdateExperience(xp, playerData.Level));
+
+            // Subscribe to score changes
+            _scoreSubscription = playerData.ScoreObservable
+                .Subscribe(score => UpdateScore(score));
+
+            // Subscribe to authentication status changes
+            _authStatusSubscription = playerData.IsAuthenticatedObservable
+                .Subscribe(isAuth =>
+                {
+                    Debug.Log($"[HUDManager] Auth: {(isAuth ? "✓" : "Guest")} | Player: {playerData.GetBestDisplayName()}");
+                });
+
+            Debug.Log($"[HUDManager] Reactive subscriptions established for {playerData.GetBestDisplayName()}");
         }
         #endregion
     }

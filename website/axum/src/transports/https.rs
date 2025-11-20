@@ -6,6 +6,7 @@ use axum::{
         State,
         ws::{Message, WebSocket, WebSocketUpgrade},
     },
+    http::{Request, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -23,6 +24,7 @@ use tower_http::{
 use tracing::{error, info, Level};
 
 use crate::core::{AppBus, AppCmd};
+use crate::auth::{extract_auth_user_from_parts, AuthUser};
 
 /* ------------------------------- serve() -------------------------------- */
 
@@ -156,49 +158,84 @@ async fn echo(State(bus): State<AppBus>, Json(input): Json<EchoIn>) -> impl Into
 
 /* ---------------------------- WebSocket path ---------------------------- */
 
-async fn ws_upgrade(ws: WebSocketUpgrade, State(bus): State<AppBus>) -> impl IntoResponse {
+async fn ws_upgrade(
+    ws: WebSocketUpgrade,
+    State(bus): State<AppBus>,
+    req: Request<axum::body::Body>,
+) -> impl IntoResponse {
+    // Extract and validate JWT token from request
+    let (parts, _) = req.into_parts();
+
+    let auth_user = match extract_auth_user_from_parts(&parts) {
+        Ok(user) => {
+            // Check if token is expired
+            if user.is_expired() {
+                info!("WebSocket connection rejected: expired token for user {}", user.user_id());
+                return (StatusCode::UNAUTHORIZED, "Token expired").into_response();
+            }
+            info!("WebSocket connection authenticated: user_id={}, role={}", user.user_id(), user.role());
+            user
+        }
+        Err(e) => {
+            info!("WebSocket connection rejected: {}", e);
+            return (StatusCode::UNAUTHORIZED, format!("Authentication failed: {}", e)).into_response();
+        }
+    };
+
     // Set sizes to defend allocations; tune to your needs
     ws.max_message_size(1 << 20) // 1 MiB per message
         .max_frame_size(1 << 20)
-        .on_upgrade(move |socket| ws_loop(socket, bus))
+        .on_upgrade(move |socket| ws_loop(socket, bus, auth_user))
 }
 
-async fn ws_loop(mut socket: WebSocket, bus: AppBus) {
+async fn ws_loop(mut socket: WebSocket, bus: AppBus, auth_user: AuthUser) {
     use tokio::sync::oneshot;
 
-    // Initial small write (avoid large strings)
-    let _ = socket.send(Message::Text("welcome".into())).await;
+    // Send welcome message with user info
+    let welcome_msg = format!(
+        "{{\"type\":\"connected\",\"user_id\":\"{}\",\"role\":\"{}\"}}",
+        auth_user.user_id(),
+        auth_user.role()
+    );
+    let _ = socket.send(Message::Text(welcome_msg.into())).await;
+
+    info!("WebSocket session started for user: {}", auth_user.user_id());
 
     while let Some(Ok(msg)) = socket.next().await {
         match msg {
-            Message::Text(name) => {
-                let (tx, rx) = oneshot::channel();
-                // Convert Utf8Bytes to String
-                let name_str = name.to_string();
-                if bus.tx.send(AppCmd::Hello { name: name_str, reply: tx }).await.is_err() {
-                    let _ = socket.send(Message::Text("busy".into())).await;
-                    continue;
-                }
-                match rx.await {
-                    Ok(reply) => {
-                        // Convert String to Utf8Bytes
-                        let _ = socket.send(Message::Text(reply.into())).await;
-                    }
-                    Err(e) => {
-                        error!(err=?e, "ws oneshot recv failed");
-                        let _ = socket.send(Message::Text("error".into())).await;
-                    }
-                }
+            Message::Text(text) => {
+                // Parse incoming JSON messages
+                // Expected format: {"type": "command", "data": "..."}
+                let text_str = text.to_string();
+
+                // For now, echo back with user context
+                let response = format!(
+                    "{{\"type\":\"echo\",\"user_id\":\"{}\",\"message\":{}}}",
+                    auth_user.user_id(),
+                    serde_json::to_string(&text_str).unwrap_or_else(|_| "\"invalid\"".to_string())
+                );
+                let _ = socket.send(Message::Text(response.into())).await;
+
+                // Optional: Send to AppBus for processing
+                // let (tx, rx) = oneshot::channel();
+                // if bus.tx.send(AppCmd::Chat { room: auth_user.user_id().to_string(), text: text_str }).await.is_err() {
+                //     let _ = socket.send(Message::Text("{\"type\":\"error\",\"message\":\"busy\"}".into())).await;
+                // }
             }
             Message::Binary(bytes) => {
-                // Zero-copy echo for now
+                // Zero-copy echo for binary data
                 let _ = socket.send(Message::Binary(bytes)).await;
             }
             Message::Ping(p) => { let _ = socket.send(Message::Pong(p)).await; }
-            Message::Close(_) => break,
+            Message::Close(_) => {
+                info!("WebSocket connection closed for user: {}", auth_user.user_id());
+                break;
+            }
             _ => {}
         }
     }
+
+    info!("WebSocket session ended for user: {}", auth_user.user_id());
 }
 
 /* ----------------------------- Socket tuning ---------------------------- */
