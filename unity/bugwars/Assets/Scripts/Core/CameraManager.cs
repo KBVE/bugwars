@@ -735,6 +735,13 @@ namespace BugWars.Core
             }
         }
 
+        private void FixedUpdate()
+        {
+            // Handle camera rotation in FixedUpdate for consistent, smooth updates
+            // FixedUpdate runs at consistent intervals (independent of frame rate)
+            UpdateSimpleThirdPersonRotation();
+        }
+
         private void LateUpdate()
         {
             // CRITICAL: Ensure Follow target is always set (prevents drift from target being cleared)
@@ -746,7 +753,7 @@ namespace BugWars.Core
                     if (debugMode)
                         Debug.LogWarning($"[CameraManager] Restored camera Follow target (was null or wrong)");
                 }
-                
+
                 // CRITICAL FIX: Ensure PositionComposer TargetOffset is maintained correctly
                 // Handle zoom and dynamic height adjustments
                 if (cameraMode == CameraMode.ThirdPerson)
@@ -799,9 +806,6 @@ namespace BugWars.Core
                     }
                 }
             }
-            
-            // Handle auto-rotation for simple third-person cameras
-            UpdateSimpleThirdPersonRotation();
         }
 
         private void OnDestroy()

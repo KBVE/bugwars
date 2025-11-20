@@ -71,13 +71,15 @@ namespace BugWars.Terrain
     }
 
     /// <summary>
-    /// Tracks spawned objects per chunk for efficient cleanup
+    /// Tracks environment object spawn points per chunk
+    /// Objects are stored as data until player gets close, then spawned from pool
     /// </summary>
     public class ChunkEnvironmentData
     {
         public Vector2Int chunkCoord;
-        public List<GameObject> spawnedObjects = new List<GameObject>();
+        public List<EnvironmentSpawnData> spawnPoints = new List<EnvironmentSpawnData>(); // All potential spawn points (data)
         public bool isLoaded = false;
+        public bool spawnDataGenerated = false; // Whether spawn positions have been calculated
     }
 
     /// <summary>
@@ -209,8 +211,13 @@ namespace BugWars.Terrain
             highlandPenalty = 0.8f
         };
 
-        // Performance
-        private readonly bool useObjectPooling = false; // Future enhancement
+        // Performance - Object Pooling
+        private readonly bool useObjectPooling = true; // ENABLED: Reuse objects for WebGL performance
+        private readonly int poolPrewarmSize = 50; // Pre-create this many objects per type
+        private readonly int poolMaxSize = 500; // Maximum pool size per type
+        private readonly float objectSpawnDistance = 200f; // Distance at which objects spawn from pool (increased for better visibility)
+        private readonly float objectDespawnDistance = 250f; // Distance at which objects return to pool (with 50m buffer)
+
         private readonly int maxObjectsPerFrame = 5; // WebGL: Very conservative - reduced from 50
         private readonly bool enableDynamicSpawning = true; // Spawn objects as chunks load
 
@@ -218,8 +225,14 @@ namespace BugWars.Terrain
         private readonly float maxFrameTimeMs = 8.0f; // WebGL: Target 8ms budget (conservative for 60fps)
         private readonly int minFramesBetweenProcessing = 2; // WebGL: Minimum frames between chunk processing calls
 
+        // LOD (Level of Detail) Performance Settings
+        private readonly bool enableLOD = true; // Enable LOD system for environment objects
+        private readonly float lodColliderCullingDistance = 80f; // Distance beyond which colliders are disabled (increased)
+        private readonly float lodRendererCullingDistance = 200f; // Distance beyond which renderers are disabled (matches spawn distance)
+        private readonly float lodUpdateInterval = 0.2f; // How often LOD state updates (seconds)
+
         // Debug
-        private readonly bool showDebugInfo = true;
+        private readonly bool showDebugInfo = false; // Reduced debug spam now that shaders are working
         private readonly bool drawGizmos = false;
 
         // Dependencies
@@ -228,6 +241,10 @@ namespace BugWars.Terrain
         // Chunk tracking
         private Dictionary<Vector2Int, ChunkEnvironmentData> chunkEnvironmentData = new Dictionary<Vector2Int, ChunkEnvironmentData>();
         private GameObject environmentContainer;
+
+        // Object pooling
+        private EnvironmentObjectPool objectPool;
+        private Transform playerTransform; // Cached player position for distance checks
 
         // Spawn state
         private int spawnSeed = 0;
@@ -289,26 +306,156 @@ namespace BugWars.Terrain
         /// </summary>
         private async UniTaskVoid UpdateLoop(CancellationToken cancellationToken)
         {
+            // WebGL Optimization: Use larger delay between updates instead of every frame
+            const float updateInterval = 0.1f; // Update 10 times per second instead of 60+
+
             while (!cancellationToken.IsCancellationRequested)
             {
-                // Wait for next frame (equivalent to Update())
-                await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
+                // Wait for interval instead of every frame
+                await UniTask.Delay(System.TimeSpan.FromSeconds(updateInterval), cancellationToken: cancellationToken);
 
                 if (!isInitialized || !enableDynamicSpawning || terrainManager == null)
-                    continue;
-
-                // WebGL: Throttle processing to prevent every-frame execution
-                int currentFrame = Time.frameCount;
-                if (currentFrame - lastProcessingFrame < minFramesBetweenProcessing)
                     continue;
 
                 // Check for new chunks that need environment objects (non-blocking)
                 if (!isProcessingChunkLoading)
                 {
-                    lastProcessingFrame = currentFrame;
                     ProcessChunkEnvironmentLoading().Forget();
                 }
+
+                // POOLING: Update object spawning based on player distance
+                // Run less frequently to reduce overhead
+                if (useObjectPooling && playerTransform != null)
+                {
+                    UpdatePooledObjectSpawning();
+                }
             }
+        }
+
+        /// <summary>
+        /// Update pooled object spawning based on player distance
+        /// Objects spawn from pool when player gets close, return to pool when player moves away
+        /// </summary>
+        private void UpdatePooledObjectSpawning()
+        {
+            if (playerTransform == null || objectPool == null)
+                return;
+
+            Vector3 playerPos = playerTransform.position;
+            int objectsProcessedThisUpdate = 0;
+            const int maxUpdatesPerCall = 50; // Process up to 50 objects per update (10 times per second)
+
+            // WebGL Optimization: Only check chunks near player using chunk-based culling
+            // Calculate which chunks could possibly contain objects within spawn range
+            int chunkSize = 500; // Assuming 500x500 chunk size
+            float maxCheckDistance = objectDespawnDistance + chunkSize; // Add chunk size as buffer
+
+            // Iterate through all loaded chunks
+            foreach (var kvp in chunkEnvironmentData)
+            {
+                var chunkData = kvp.Value;
+                if (!chunkData.spawnDataGenerated)
+                    continue;
+
+                // OPTIMIZATION: Skip entire chunk if it's too far from player
+                Vector3 chunkCenter = new Vector3(
+                    chunkData.chunkCoord.x * chunkSize + chunkSize * 0.5f,
+                    0,
+                    chunkData.chunkCoord.y * chunkSize + chunkSize * 0.5f
+                );
+
+                float chunkDistance = Vector3.Distance(new Vector3(playerPos.x, 0, playerPos.z), chunkCenter);
+                if (chunkDistance > maxCheckDistance)
+                    continue; // Chunk is too far, skip all objects in it
+
+                // Check each spawn point in the chunk
+                foreach (var spawnData in chunkData.spawnPoints)
+                {
+                    if (objectsProcessedThisUpdate >= maxUpdatesPerCall)
+                        return; // Spread work across multiple update calls
+
+                    // Skip harvested objects - they should never respawn
+                    if (spawnData.isHarvested)
+                        continue;
+
+                    // OPTIMIZATION: Use squared distance to avoid sqrt
+                    float sqrDistance = (playerPos - spawnData.position).sqrMagnitude;
+                    float sqrSpawnDistance = objectSpawnDistance * objectSpawnDistance;
+                    float sqrDespawnDistance = objectDespawnDistance * objectDespawnDistance;
+
+                    // Spawn object if player is close enough and object isn't already active
+                    if (sqrDistance <= sqrSpawnDistance && !spawnData.isActive)
+                    {
+                        SpawnObjectFromPool(spawnData);
+                        objectsProcessedThisUpdate++;
+                    }
+                    // Despawn object if player moved too far away and object is active
+                    else if (sqrDistance > sqrDespawnDistance && spawnData.isActive)
+                    {
+                        DespawnObjectToPool(spawnData);
+                        objectsProcessedThisUpdate++;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Spawn an object from the pool for a specific spawn point
+        /// </summary>
+        private void SpawnObjectFromPool(EnvironmentSpawnData spawnData)
+        {
+            if (spawnData.isActive || spawnData.asset == null)
+                return;
+
+            GameObject obj = objectPool.Spawn(spawnData.asset, spawnData.position, spawnData.rotation, spawnData.scale);
+            if (obj != null)
+            {
+                spawnData.activeInstance = obj;
+
+                // Apply WebGL material fix
+                FixWebGLMaterials(obj);
+
+                // Add LOD component
+                if (enableLOD)
+                {
+                    var lodComponent = obj.GetComponent<EnvironmentObjectLOD>();
+                    if (lodComponent == null)
+                    {
+                        lodComponent = obj.AddComponent<EnvironmentObjectLOD>();
+                        lodComponent.colliderCullingDistance = lodColliderCullingDistance;
+                        lodComponent.rendererCullingDistance = lodRendererCullingDistance;
+                        lodComponent.updateInterval = lodUpdateInterval;
+                        lodComponent.showDebugLogs = showDebugInfo;
+                    }
+                    lodComponent.ForceUpdate();
+                }
+
+                // Add tracker component to handle destruction/harvesting
+                var tracker = obj.GetComponent<EnvironmentObjectTracker>();
+                if (tracker == null)
+                {
+                    tracker = obj.AddComponent<EnvironmentObjectTracker>();
+                }
+                tracker.Initialize(spawnData);
+
+                // Setup interactable component
+                SetupInteractable(obj, spawnData.asset);
+
+                // Set name for debugging
+                obj.name = $"{spawnData.asset.assetName}_Chunk{spawnData.chunkCoord.x}_{spawnData.chunkCoord.y}_Pooled";
+            }
+        }
+
+        /// <summary>
+        /// Return an object to the pool
+        /// </summary>
+        private void DespawnObjectToPool(EnvironmentSpawnData spawnData)
+        {
+            if (!spawnData.isActive || spawnData.activeInstance == null)
+                return;
+
+            objectPool.Return(spawnData.activeInstance, spawnData.asset.assetName);
+            spawnData.activeInstance = null;
         }
 
         /// <summary>
@@ -330,6 +477,38 @@ namespace BugWars.Terrain
                     // Create new container for all environment objects
                     // Note: No need for DontDestroyOnLoad - the LifetimeScope handles persistence
                     environmentContainer = new GameObject("EnvironmentObjects");
+                }
+            }
+
+            // Initialize object pool
+            if (useObjectPooling && objectPool == null)
+            {
+                objectPool = new EnvironmentObjectPool(environmentContainer.transform, poolPrewarmSize, poolMaxSize);
+                Debug.Log($"[EnvironmentManager] Object pooling ENABLED (prewarm: {poolPrewarmSize}, max: {poolMaxSize})");
+            }
+
+            // Cache player transform for distance checks
+            if (playerTransform == null)
+            {
+                // Try multiple tags - Player, Camera3D, MainCamera
+                GameObject player = GameObject.FindGameObjectWithTag("Player");
+                if (player == null)
+                {
+                    player = GameObject.FindGameObjectWithTag("Camera3D");
+                }
+                if (player == null)
+                {
+                    player = GameObject.FindGameObjectWithTag("MainCamera");
+                }
+
+                if (player != null)
+                {
+                    playerTransform = player.transform;
+                    Debug.Log($"[EnvironmentManager] Player transform cached for distance-based spawning (tag: {player.tag})");
+                }
+                else
+                {
+                    Debug.LogWarning("[EnvironmentManager] Could not find player with tags: Player, Camera3D, or MainCamera");
                 }
             }
 
@@ -567,12 +746,90 @@ namespace BugWars.Terrain
                 return;
             }
 
-            // Spawn environment objects by type
+            // Generate spawn data for all environment object types
             await SpawnObjectsForChunk(chunkCoord, chunkData, EnvironmentObjectType.Tree, treeAssets, treeSettings);
             await SpawnObjectsForChunk(chunkCoord, chunkData, EnvironmentObjectType.Bush, bushAssets, bushSettings);
             await SpawnObjectsForChunk(chunkCoord, chunkData, EnvironmentObjectType.Rock, rockAssets, rockSettings);
 
+            chunkData.spawnDataGenerated = true;
             chunkData.isLoaded = true;
+
+            Debug.Log($"[EnvironmentManager] Generated {chunkData.spawnPoints.Count} spawn points for chunk {chunkCoord}");
+
+            // POOLING: Immediately spawn objects within range of player
+            if (useObjectPooling)
+            {
+                if (playerTransform != null)
+                {
+                    Vector3 playerPos = playerTransform.position;
+                    int immediateSpawns = 0;
+
+                    foreach (var spawnData in chunkData.spawnPoints)
+                    {
+                        // Skip harvested objects
+                        if (spawnData.isHarvested)
+                            continue;
+
+                        float distance = Vector3.Distance(playerPos, spawnData.position);
+                        if (distance <= objectSpawnDistance)
+                        {
+                            SpawnObjectFromPool(spawnData);
+                            immediateSpawns++;
+                        }
+                    }
+
+                    if (immediateSpawns > 0)
+                    {
+                        Debug.Log($"[EnvironmentManager] Immediately spawned {immediateSpawns} objects near player in chunk {chunkCoord}");
+                    }
+                }
+                else
+                {
+                    // Player not found yet - try to find it now with multiple tags
+                    GameObject player = GameObject.FindGameObjectWithTag("Player");
+                    if (player == null)
+                    {
+                        player = GameObject.FindGameObjectWithTag("Camera3D");
+                    }
+                    if (player == null)
+                    {
+                        player = GameObject.FindGameObjectWithTag("MainCamera");
+                    }
+
+                    if (player != null)
+                    {
+                        playerTransform = player.transform;
+                        Debug.Log($"[EnvironmentManager] Player transform found during chunk load (tag: {player.tag})");
+
+                        // Recursive call now that we have player reference
+                        Vector3 playerPos = playerTransform.position;
+                        int immediateSpawns = 0;
+
+                        foreach (var spawnData in chunkData.spawnPoints)
+                        {
+                            // Skip harvested objects
+                            if (spawnData.isHarvested)
+                                continue;
+
+                            float distance = Vector3.Distance(playerPos, spawnData.position);
+                            if (distance <= objectSpawnDistance)
+                            {
+                                SpawnObjectFromPool(spawnData);
+                                immediateSpawns++;
+                            }
+                        }
+
+                        if (immediateSpawns > 0)
+                        {
+                            Debug.Log($"[EnvironmentManager] Immediately spawned {immediateSpawns} objects near player in chunk {chunkCoord}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[EnvironmentManager] Player not found - objects in chunk {chunkCoord} will spawn when player gets close");
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -675,26 +932,47 @@ namespace BugWars.Terrain
                 if (asset == null || asset.prefab == null)
                     continue;
 
-                // Spawn object (synchronous - batching happens below)
-                GameObject spawnedObject = SpawnEnvironmentObject(asset, position, chunkCoord);
-                if (spawnedObject != null)
-                {
-                    chunkData.spawnedObjects.Add(spawnedObject);
-                    spawnedPositions.Add(position);
-                    objectsSpawned++;
+                // Create spawn data
+                Quaternion rotation = Quaternion.Euler(0, UnityEngine.Random.Range(0f, 360f), 0);
+                Vector3 scale = Vector3.one * UnityEngine.Random.Range(asset.minScale, asset.maxScale);
 
-                    // WebGL: Yield based on BOTH object count AND frame time budget
-                    if (objectsSpawned % maxObjectsPerFrame == 0)
+                var spawnData = new EnvironmentSpawnData
+                {
+                    position = position,
+                    rotation = rotation,
+                    scale = scale,
+                    asset = asset,
+                    chunkCoord = chunkCoord,
+                    activeInstance = null
+                };
+
+                // If pooling disabled, spawn immediately (old behavior)
+                if (!useObjectPooling)
+                {
+                    GameObject obj = SpawnEnvironmentObject(asset, position, chunkCoord);
+                    if (obj != null)
                     {
-                        await UniTask.Yield();
-                        frameTimer.Restart(); // Reset timer after yielding
+                        obj.transform.rotation = rotation;
+                        obj.transform.localScale = scale;
+                        spawnData.activeInstance = obj;
                     }
-                    else if (frameTimer.Elapsed.TotalMilliseconds > maxFrameTimeMs)
-                    {
-                        // Exceeded frame time budget - yield to prevent lag
-                        await UniTask.Yield();
-                        frameTimer.Restart();
-                    }
+                }
+
+                chunkData.spawnPoints.Add(spawnData);
+                spawnedPositions.Add(position);
+                objectsSpawned++;
+
+                // WebGL: Yield based on BOTH object count AND frame time budget
+                if (objectsSpawned % maxObjectsPerFrame == 0)
+                {
+                    await UniTask.Yield();
+                    frameTimer.Restart(); // Reset timer after yielding
+                }
+                else if (frameTimer.Elapsed.TotalMilliseconds > maxFrameTimeMs)
+                {
+                    // Exceeded frame time budget - yield to prevent lag
+                    await UniTask.Yield();
+                    frameTimer.Restart();
                 }
             }
         }
@@ -720,72 +998,29 @@ namespace BugWars.Terrain
             float terrainHeight = GetTerrainHeightAtPosition(position);
             position.y = terrainHeight;
 
-            // DEBUG: Log terrain height
-            Debug.Log($"[EnvironmentManager] Terrain height at {position.x}, {position.z}: {terrainHeight}");
-
             // Instantiate object
             GameObject obj = UnityEngine.Object.Instantiate(asset.prefab, position, Quaternion.identity, environmentContainer.transform);
-
-            // CRITICAL FIX: Force objects to Default layer (0) so camera renders them
-            // The prefabs are on layer 8 (Interactable) which the camera might not be rendering
-            // Must set layer recursively to affect all child objects with renderers
-            SetLayerRecursively(obj, 0);
-            Debug.Log($"[EnvironmentManager] ⚠️ FORCED object and all children to layer 0 (Default) for visibility");
 
             // CRITICAL FIX FOR WEBGL: Replace URP/Lit shader with WebGL-compatible shader
             // URP/Lit has known compatibility issues in WebGL builds - materials can become invisible
             FixWebGLMaterials(obj);
 
-            // DEBUG: Comprehensive logging to diagnose rendering issues
-            var renderer = obj.GetComponent<Renderer>();
-            var meshFilter = obj.GetComponent<MeshFilter>();
-
-            Debug.Log($"[EnvironmentManager] ========== SPAWNED OBJECT DEBUG ==========");
-            Debug.Log($"[EnvironmentManager] Name: {asset.assetName}");
-            Debug.Log($"[EnvironmentManager] Position: {obj.transform.position}");
-            Debug.Log($"[EnvironmentManager] Layer: {obj.layer} ({LayerMask.LayerToName(obj.layer)})");
-            Debug.Log($"[EnvironmentManager] Active: {obj.activeSelf}");
-            Debug.Log($"[EnvironmentManager] Scale: {obj.transform.localScale}");
-
-            if (meshFilter != null)
+            // Add LOD component for performance optimization (WebGL)
+            // This will disable colliders/renderers based on distance from player
+            if (enableLOD)
             {
-                Debug.Log($"[EnvironmentManager] Mesh: {meshFilter.sharedMesh?.name ?? "NULL"}, Vertices: {meshFilter.sharedMesh?.vertexCount ?? 0}");
-            }
-            else
-            {
-                Debug.LogWarning($"[EnvironmentManager] NO MESH FILTER!");
-            }
+                var lodComponent = obj.AddComponent<EnvironmentObjectLOD>();
+                lodComponent.colliderCullingDistance = lodColliderCullingDistance;
+                lodComponent.rendererCullingDistance = lodRendererCullingDistance;
+                lodComponent.updateInterval = lodUpdateInterval;
+                lodComponent.showDebugLogs = showDebugInfo;
+                lodComponent.ForceUpdate(); // Initial update to set correct state
 
-            if (renderer != null)
-            {
-                Debug.Log($"[EnvironmentManager] Renderer: Type={renderer.GetType().Name}, Enabled={renderer.enabled}");
-                Debug.Log($"[EnvironmentManager] Bounds: {renderer.bounds}");
-
-                if (renderer.sharedMaterials != null && renderer.sharedMaterials.Length > 0)
+                if (showDebugInfo)
                 {
-                    Debug.Log($"[EnvironmentManager] Materials: {renderer.sharedMaterials.Length}");
-                    foreach (var mat in renderer.sharedMaterials)
-                    {
-                        if (mat != null)
-                        {
-                            Debug.Log($"[EnvironmentManager]   → {mat.name}: Shader={mat.shader?.name ?? "NULL"}");
-                        }
-                        else
-                        {
-                            Debug.LogWarning($"[EnvironmentManager]   → Material is NULL!");
-                        }
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning($"[EnvironmentManager] NO MATERIALS!");
+                    Debug.Log($"[EnvironmentManager] Added LOD component to {asset.assetName} (Collider: {lodColliderCullingDistance}m, Renderer: {lodRendererCullingDistance}m)");
                 }
             }
-            else
-            {
-                Debug.LogWarning($"[EnvironmentManager] NO RENDERER!");
-            }
-            Debug.Log($"[EnvironmentManager] ==========================================");
 
             // Random rotation (Y-axis only for most objects)
             float randomRotation = UnityEngine.Random.Range(0f, 360f);
@@ -893,17 +1128,35 @@ namespace BugWars.Terrain
             if (!chunkEnvironmentData.TryGetValue(chunkCoord, out var chunkData))
                 return;
 
-            // Destroy all spawned objects
-            foreach (var obj in chunkData.spawnedObjects)
+            if (useObjectPooling)
             {
-                if (obj != null)
+                // Return all active objects to pool
+                foreach (var spawnData in chunkData.spawnPoints)
                 {
-                    UnityEngine.Object.Destroy(obj);
+                    if (spawnData.isActive)
+                    {
+                        DespawnObjectToPool(spawnData);
+                    }
                 }
-            }
 
-            chunkData.spawnedObjects.Clear();
-            chunkEnvironmentData.Remove(chunkCoord);
+                // Keep spawn data for re-use when chunk loads again
+                // Only remove from dictionary
+                chunkEnvironmentData.Remove(chunkCoord);
+            }
+            else
+            {
+                // Old behavior: Destroy all spawned objects
+                foreach (var spawnData in chunkData.spawnPoints)
+                {
+                    if (spawnData.activeInstance != null)
+                    {
+                        UnityEngine.Object.Destroy(spawnData.activeInstance);
+                    }
+                }
+
+                chunkData.spawnPoints.Clear();
+                chunkEnvironmentData.Remove(chunkCoord);
+            }
         }
 
         /// <summary>
@@ -1110,11 +1363,19 @@ namespace BugWars.Terrain
             Gizmos.color = Color.green;
             foreach (var chunkData in chunkEnvironmentData.Values)
             {
-                foreach (var obj in chunkData.spawnedObjects)
+                foreach (var spawnData in chunkData.spawnPoints)
                 {
-                    if (obj != null)
+                    // Draw active objects in green
+                    if (spawnData.isActive && spawnData.activeInstance != null)
                     {
-                        Gizmos.DrawWireSphere(obj.transform.position, 1f);
+                        Gizmos.DrawWireSphere(spawnData.activeInstance.transform.position, 1f);
+                    }
+                    // Draw inactive spawn points in yellow
+                    else
+                    {
+                        Gizmos.color = Color.yellow;
+                        Gizmos.DrawWireSphere(spawnData.position, 0.5f);
+                        Gizmos.color = Color.green;
                     }
                 }
             }
@@ -1122,14 +1383,33 @@ namespace BugWars.Terrain
         #endif
 
         /// <summary>
-        /// Get total count of spawned objects (OPTIMIZED: Manual count instead of LINQ)
+        /// Get total count of active spawned objects (OPTIMIZED: Manual count instead of LINQ)
         /// </summary>
         public int GetTotalObjectCount()
         {
             int total = 0;
             foreach (var chunkData in chunkEnvironmentData.Values)
             {
-                total += chunkData.spawnedObjects.Count;
+                foreach (var spawnData in chunkData.spawnPoints)
+                {
+                    if (spawnData.isActive)
+                    {
+                        total++;
+                    }
+                }
+            }
+            return total;
+        }
+
+        /// <summary>
+        /// Get total count of spawn points (both active and inactive)
+        /// </summary>
+        public int GetTotalSpawnPointCount()
+        {
+            int total = 0;
+            foreach (var chunkData in chunkEnvironmentData.Values)
+            {
+                total += chunkData.spawnPoints.Count;
             }
             return total;
         }
@@ -1160,6 +1440,13 @@ namespace BugWars.Terrain
             _cts?.Cancel();
             _cts?.Dispose();
             _disposables?.Dispose();
+
+            // Clean up object pool
+            if (objectPool != null)
+            {
+                objectPool.Clear();
+                objectPool = null;
+            }
 
             if (environmentContainer != null)
             {
