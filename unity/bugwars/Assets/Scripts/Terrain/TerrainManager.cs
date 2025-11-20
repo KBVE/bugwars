@@ -28,10 +28,10 @@ namespace BugWars.Terrain
         [SerializeField] private int chunkResolution = 30; // 30x30 = 900 vertices per chunk - good detail with fewer chunks
 
         [Header("Chunk Loading/Unloading")]
-        [SerializeField] private int hotChunkRadius = 2; // "Hot" chunks - 5x5 = 25 chunks covering 2500x2500 units (500 unit chunks)
-        [SerializeField] private int warmChunkRadius = 4; // "Warm" chunks - 9x9 = 81 chunks covering 4500x4500 units
-        [SerializeField] private int coldChunkRadius = 6; // "Cold" chunks - preload area covering 6500x6500 units
-        [SerializeField] private int chunkUnloadDistance = 10; // Unload chunks beyond this distance (much smaller radius needed with 500 unit chunks)
+        [SerializeField] private int hotChunkRadius = 0; // "Hot" chunks - SINGLE chunk only (1x1 = 1 chunk) for WebGL
+        [SerializeField] private int warmChunkRadius = 1; // "Warm" chunks - Immediate neighbors (3x3 = 9 chunks total)
+        [SerializeField] private int coldChunkRadius = 1; // "Cold" chunks - Same as warm for minimal loading
+        [SerializeField] private int chunkUnloadDistance = 2; // Unload immediately when leaving range
         [SerializeField] private bool enableDynamicLoading = true; // Enable async chunk streaming
         [SerializeField] private bool enableFrustumCulling = false; // TEMPORARILY DISABLED - Enable camera frustum culling
         [SerializeField] private float cullingUpdateInterval = 0.5f; // How often to update culling (seconds)

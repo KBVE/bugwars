@@ -6,6 +6,8 @@ using Cysharp.Threading.Tasks;
 using R3;
 using VContainer;
 using VContainer.Unity;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace BugWars.Terrain
 {
@@ -102,85 +104,83 @@ namespace BugWars.Terrain
         // Spawn Settings
         private EnvironmentSpawnSettings treeSettings = new EnvironmentSpawnSettings
         {
-            // TIGHT CLUSTERING: Creates actual forest "zones" with 3-10 trees per cluster
-            objectsPerChunk = 30,
-            spawnProbability = 0.95f,  // High probability INSIDE clusters
+            // Production: Normal density
+            objectsPerChunk = 350,             // Trees per chunk (500x500 area)
+            spawnProbability = 0.7f,           // 70% chance to spawn
 
-            // Tight spacing within forest zones (trees close together like real forests)
+            // Natural spacing
             usePoissonDisk = true,
-            minDistanceBetweenObjects = 5f,  // REDUCED: Trees closer together in forests
-            maxPlacementAttempts = 40,        // More attempts to pack trees into clusters
+            minDistanceBetweenObjects = 8f,    // 8 units minimum spacing
+            maxPlacementAttempts = 100,
 
-            // REALISTIC BIOME CLUSTERING: Tight forest zones with 3-10 trees each
+            // Clustering for natural forest feel
             enableClustering = true,
-            clusterNoiseScale = 0.02f,        // LARGER-scale: Creates distinct forest "zones"
-            clusterThreshold = 0.55f,         // HIGHER: Fewer but more concentrated clusters
-            detailNoiseScale = 0.3f,          // HIGHER: More variation = smaller tight groups
-            clusterDensityMultiplier = 4.0f,  // MUCH HIGHER: Pack 3-10 trees per zone
+            clusterNoiseScale = 0.08f,
+            clusterThreshold = 0.5f,
+            detailNoiseScale = 0.15f,
+            clusterDensityMultiplier = 1.5f,
 
             minHeight = 0.5f,
             maxHeight = 8f,
             maxSlope = 35f,
 
-            // More trees in valleys, fewer on peaks
             useHeightVariation = true,
-            lowlandBonus = 1.3f,
-            highlandPenalty = 0.5f
+            lowlandBonus = 1.2f,
+            highlandPenalty = 0.8f
         };
 
         private readonly EnvironmentSpawnSettings bushSettings = new()
         {
-            // TIGHT CLUSTERING: Creates understory "zones" with 3-8 bushes per cluster around forest areas
-            objectsPerChunk = 40,
-            spawnProbability = 0.9f,         // High probability INSIDE clusters
+            // Production: Normal density
+            objectsPerChunk = 400,             // Bushes per chunk
+            spawnProbability = 0.65f,          // 65% chance to spawn
 
-            // Tight spacing within undergrowth zones (bushes cluster like real forest understory)
+            // Natural spacing
             usePoissonDisk = true,
-            minDistanceBetweenObjects = 2.5f, // REDUCED: Bushes very close together in undergrowth
-            maxPlacementAttempts = 35,        // More attempts to pack bushes into clusters
+            minDistanceBetweenObjects = 6f,    // 6 units minimum spacing
+            maxPlacementAttempts = 100,
 
-            // REALISTIC BIOME CLUSTERING: Tight undergrowth zones with 3-8 bushes each
+            // Clustering for natural undergrowth
             enableClustering = true,
-            clusterNoiseScale = 0.025f,       // LARGER-scale: Match tree zones (slightly offset)
-            clusterThreshold = 0.50f,         // HIGHER: Fewer but more concentrated clusters
-            detailNoiseScale = 0.35f,         // HIGHER: More variation = smaller tight groups
-            clusterDensityMultiplier = 3.5f,  // HIGH: Pack 3-8 bushes per zone (understory layer)
+            clusterNoiseScale = 0.1f,
+            clusterThreshold = 0.5f,
+            detailNoiseScale = 0.2f,
+            clusterDensityMultiplier = 1.8f,
 
             minHeight = 0.2f,
             maxHeight = 6f,
             maxSlope = 40f,
 
             useHeightVariation = true,
-            lowlandBonus = 1.4f,
+            lowlandBonus = 1.3f,
             highlandPenalty = 0.7f
         };
 
         private readonly EnvironmentSpawnSettings rockSettings = new()
         {
-            // TIGHT CLUSTERING: Creates distinct rock "outcrops" with 2-6 rocks per formation
-            objectsPerChunk = 18,
-            spawnProbability = 0.85f,        // High probability INSIDE outcrops
+            // Production: Normal density
+            objectsPerChunk = 175,             // Rocks per chunk
+            spawnProbability = 0.6f,           // 60% chance to spawn
 
-            // Tight spacing within rock formations (rocks cluster like real geological outcrops)
+            // Natural spacing
             usePoissonDisk = true,
-            minDistanceBetweenObjects = 3f,  // REDUCED: Rocks close together in formations
-            maxPlacementAttempts = 30,       // More attempts to pack rocks into outcrops
+            minDistanceBetweenObjects = 10f,   // 10 units minimum spacing
+            maxPlacementAttempts = 100,
 
-            // REALISTIC BIOME CLUSTERING: Tight outcrop formations with 2-6 rocks each
+            // Clustering for natural rock formations
             enableClustering = true,
-            clusterNoiseScale = 0.04f,       // LARGER-scale: Creates distinct outcrop zones
-            clusterThreshold = 0.60f,        // HIGHER: Fewer but more concentrated formations
-            detailNoiseScale = 0.25f,        // HIGHER: More variation = smaller tight groups
-            clusterDensityMultiplier = 3.0f, // HIGH: Pack 2-6 rocks per outcrop formation
+            clusterNoiseScale = 0.12f,
+            clusterThreshold = 0.5f,
+            detailNoiseScale = 0.18f,
+            clusterDensityMultiplier = 2.0f,
 
             minHeight = 0f,
             maxHeight = 10f,
-            maxSlope = 60f, // Rocks can spawn on steeper terrain
+            maxSlope = 60f,
 
-            // More rocks at higher elevations (rocky peaks)
             useHeightVariation = true,
-            lowlandBonus = 0.8f,
-            highlandPenalty = 1.5f  // BONUS on highlands (inverted from trees)
+            lowlandBonus = 0.9f,
+            highlandPenalty = 1.2f
         };
 
         private readonly EnvironmentSpawnSettings grassSettings = new()
@@ -271,12 +271,14 @@ namespace BugWars.Terrain
 
         private async UniTask InitializeEnvironmentSystemAsync(CancellationToken cancellationToken)
         {
-            InitializeEnvironmentContainerAndAssets();
+            await InitializeEnvironmentContainerAndAssets(cancellationToken);
 
             // Yield to prevent blocking
             await UniTask.Yield(cancellationToken);
 
             isInitialized = true;
+
+            Debug.Log("[EnvironmentManager] Environment system fully initialized and ready to spawn objects");
 
             // Start the update loop using UniTask PlayerLoop
             UpdateLoop(cancellationToken).Forget();
@@ -310,9 +312,9 @@ namespace BugWars.Terrain
         }
 
         /// <summary>
-        /// Synchronous initialization for recovery scenarios (when container is destroyed)
+        /// Async initialization - CRITICAL: Must wait for Addressables to load before spawning
         /// </summary>
-        private void InitializeEnvironmentContainerAndAssets()
+        private async UniTask InitializeEnvironmentContainerAndAssets(CancellationToken cancellationToken)
         {
             // Check if we already have a container reference (from previous init)
             if (environmentContainer == null)
@@ -338,20 +340,119 @@ namespace BugWars.Terrain
             }
 
             // Load prefabs programmatically if arrays are empty (for dynamic instantiation via VContainer)
+            // CRITICAL: AWAIT this to ensure prefabs are loaded before spawning starts
             if (treeAssets.Count == 0)
             {
-                LoadEnvironmentPrefabs();
+                Debug.Log("[EnvironmentManager] Loading environment prefabs - WAITING for completion before spawning");
+                await LoadEnvironmentPrefabsAsync(cancellationToken);
             }
         }
 
         /// <summary>
-        /// Load environment prefabs from Resources folder
+        /// Load environment prefabs from Addressables
         /// Called automatically when EnvironmentManager is created dynamically
+        /// Loads prefabs asynchronously using Addressable labels: "Trees", "Bushes", "Rocks"
+        /// CRITICAL: This returns UniTask and MUST be awaited to ensure prefabs load before spawning
         /// </summary>
-        private void LoadEnvironmentPrefabs()
+        private async UniTask LoadEnvironmentPrefabsAsync(CancellationToken cancellationToken)
         {
+            Debug.Log("[EnvironmentManager] Loading environment prefabs from Addressables...");
+
+            try
+            {
+                // Load all tree prefabs with "Trees" label
+                var treesHandle = Addressables.LoadAssetsAsync<GameObject>("Trees", null);
+                var treePrefabs = await treesHandle.ToUniTask(cancellationToken: cancellationToken);
+
+                foreach (var prefab in treePrefabs)
+                {
+                    if (prefab != null)
+                    {
+                        treeAssets.Add(new EnvironmentAsset
+                        {
+                            assetName = prefab.name,
+                            prefab = prefab,
+                            type = EnvironmentObjectType.Tree,
+                            spawnWeight = 1f,
+                            minScale = 0.8f,
+                            maxScale = 1.2f
+                        });
+                    }
+                }
+                Debug.Log($"[EnvironmentManager] Loaded {treeAssets.Count} tree prefabs from Addressables");
+
+                // Load all bush prefabs with "Bushes" label
+                var bushesHandle = Addressables.LoadAssetsAsync<GameObject>("Bushes", null);
+                var bushPrefabs = await bushesHandle.ToUniTask(cancellationToken: cancellationToken);
+
+                foreach (var prefab in bushPrefabs)
+                {
+                    if (prefab != null)
+                    {
+                        bushAssets.Add(new EnvironmentAsset
+                        {
+                            assetName = prefab.name,
+                            prefab = prefab,
+                            type = EnvironmentObjectType.Bush,
+                            spawnWeight = 1f,
+                            minScale = 0.7f,
+                            maxScale = 1.1f
+                        });
+                    }
+                }
+                Debug.Log($"[EnvironmentManager] Loaded {bushAssets.Count} bush prefabs from Addressables");
+
+                // Load all rock prefabs with "Rocks" label
+                var rocksHandle = Addressables.LoadAssetsAsync<GameObject>("Rocks", null);
+                var rockPrefabs = await rocksHandle.ToUniTask(cancellationToken: cancellationToken);
+
+                foreach (var prefab in rockPrefabs)
+                {
+                    if (prefab != null)
+                    {
+                        rockAssets.Add(new EnvironmentAsset
+                        {
+                            assetName = prefab.name,
+                            prefab = prefab,
+                            type = EnvironmentObjectType.Rock,
+                            spawnWeight = 1f,
+                            minScale = 0.9f,
+                            maxScale = 1.3f
+                        });
+                    }
+                }
+                Debug.Log($"[EnvironmentManager] Loaded {rockAssets.Count} rock prefabs from Addressables");
+
+                if (treeAssets.Count == 0 || bushAssets.Count == 0 || rockAssets.Count == 0)
+                {
+                    Debug.LogWarning("[EnvironmentManager] Some prefab types failed to load! Make sure prefabs are marked as Addressable with labels: 'Trees', 'Bushes', 'Rocks'");
+                }
+                else
+                {
+                    Debug.Log($"[EnvironmentManager] Successfully loaded all environment prefabs: {treeAssets.Count} trees, {bushAssets.Count} bushes, {rockAssets.Count} rocks");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[EnvironmentManager] Failed to load environment prefabs from Addressables: {ex.Message}");
+                Debug.LogError("[EnvironmentManager] Falling back to Resources folder...");
+                LoadEnvironmentPrefabsFromResources();
+            }
+        }
+
+        /// <summary>
+        /// Fallback method to load from Resources folder if Addressables fails
+        /// This ensures the game still works in the editor even if Addressables aren't configured
+        /// WARNING: Resources folder doesn't work in WebGL builds! This is EDITOR ONLY.
+        /// </summary>
+        private void LoadEnvironmentPrefabsFromResources()
+        {
+            Debug.LogWarning("[EnvironmentManager] ⚠️ FALLING BACK TO RESOURCES FOLDER - THIS WON'T WORK IN WEBGL!");
+            Debug.LogWarning("[EnvironmentManager] If you see this in WebGL, Addressables failed to load!");
+
             // Load all tree prefabs
             GameObject[] treePrefabs = Resources.LoadAll<GameObject>("Prefabs/Forest/Trees");
+            Debug.Log($"[EnvironmentManager] Resources.LoadAll found {treePrefabs?.Length ?? 0} tree prefabs");
             foreach (var prefab in treePrefabs)
             {
                 treeAssets.Add(new EnvironmentAsset
@@ -395,10 +496,7 @@ namespace BugWars.Terrain
                 });
             }
 
-            if (treeAssets.Count == 0 || bushAssets.Count == 0 || rockAssets.Count == 0)
-            {
-                Debug.LogWarning("[EnvironmentManager] Some prefab types failed to load! Make sure prefabs are in Resources/Prefabs/Forest/ folders.");
-            }
+            Debug.Log($"[EnvironmentManager] Loaded from Resources: {treeAssets.Count} trees, {bushAssets.Count} bushes, {rockAssets.Count} rocks");
         }
 
         /// <summary>
@@ -610,7 +708,7 @@ namespace BugWars.Terrain
             if (environmentContainer == null)
             {
                 Debug.LogWarning("[EnvironmentManager] Environment container was destroyed, reinitializing...");
-                InitializeEnvironmentContainerAndAssets();
+                InitializeEnvironmentContainerAndAssets(CancellationToken.None);
                 if (environmentContainer == null)
                 {
                     Debug.LogError("[EnvironmentManager] Failed to reinitialize environment container!");
@@ -622,8 +720,72 @@ namespace BugWars.Terrain
             float terrainHeight = GetTerrainHeightAtPosition(position);
             position.y = terrainHeight;
 
+            // DEBUG: Log terrain height
+            Debug.Log($"[EnvironmentManager] Terrain height at {position.x}, {position.z}: {terrainHeight}");
+
             // Instantiate object
             GameObject obj = UnityEngine.Object.Instantiate(asset.prefab, position, Quaternion.identity, environmentContainer.transform);
+
+            // CRITICAL FIX: Force objects to Default layer (0) so camera renders them
+            // The prefabs are on layer 8 (Interactable) which the camera might not be rendering
+            // Must set layer recursively to affect all child objects with renderers
+            SetLayerRecursively(obj, 0);
+            Debug.Log($"[EnvironmentManager] ⚠️ FORCED object and all children to layer 0 (Default) for visibility");
+
+            // CRITICAL FIX FOR WEBGL: Replace URP/Lit shader with WebGL-compatible shader
+            // URP/Lit has known compatibility issues in WebGL builds - materials can become invisible
+            FixWebGLMaterials(obj);
+
+            // DEBUG: Comprehensive logging to diagnose rendering issues
+            var renderer = obj.GetComponent<Renderer>();
+            var meshFilter = obj.GetComponent<MeshFilter>();
+
+            Debug.Log($"[EnvironmentManager] ========== SPAWNED OBJECT DEBUG ==========");
+            Debug.Log($"[EnvironmentManager] Name: {asset.assetName}");
+            Debug.Log($"[EnvironmentManager] Position: {obj.transform.position}");
+            Debug.Log($"[EnvironmentManager] Layer: {obj.layer} ({LayerMask.LayerToName(obj.layer)})");
+            Debug.Log($"[EnvironmentManager] Active: {obj.activeSelf}");
+            Debug.Log($"[EnvironmentManager] Scale: {obj.transform.localScale}");
+
+            if (meshFilter != null)
+            {
+                Debug.Log($"[EnvironmentManager] Mesh: {meshFilter.sharedMesh?.name ?? "NULL"}, Vertices: {meshFilter.sharedMesh?.vertexCount ?? 0}");
+            }
+            else
+            {
+                Debug.LogWarning($"[EnvironmentManager] NO MESH FILTER!");
+            }
+
+            if (renderer != null)
+            {
+                Debug.Log($"[EnvironmentManager] Renderer: Type={renderer.GetType().Name}, Enabled={renderer.enabled}");
+                Debug.Log($"[EnvironmentManager] Bounds: {renderer.bounds}");
+
+                if (renderer.sharedMaterials != null && renderer.sharedMaterials.Length > 0)
+                {
+                    Debug.Log($"[EnvironmentManager] Materials: {renderer.sharedMaterials.Length}");
+                    foreach (var mat in renderer.sharedMaterials)
+                    {
+                        if (mat != null)
+                        {
+                            Debug.Log($"[EnvironmentManager]   → {mat.name}: Shader={mat.shader?.name ?? "NULL"}");
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[EnvironmentManager]   → Material is NULL!");
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[EnvironmentManager] NO MATERIALS!");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[EnvironmentManager] NO RENDERER!");
+            }
+            Debug.Log($"[EnvironmentManager] ==========================================");
 
             // Random rotation (Y-axis only for most objects)
             float randomRotation = UnityEngine.Random.Range(0f, 360f);
@@ -832,6 +994,83 @@ namespace BugWars.Terrain
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Recursively set layer on GameObject and all its children
+        /// Critical for ensuring objects render properly (e.g., forcing Layer 0 for camera visibility)
+        /// </summary>
+        private void SetLayerRecursively(GameObject obj, int layer)
+        {
+            if (obj == null) return;
+
+            obj.layer = layer;
+
+            foreach (Transform child in obj.transform)
+            {
+                if (child != null)
+                {
+                    SetLayerRecursively(child.gameObject, layer);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fix WebGL material compatibility issues
+        /// Replace URP/Lit with custom BugWars/ForestEnvironment shader (uses same approach as character shaders)
+        /// </summary>
+        private void FixWebGLMaterials(GameObject obj)
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Only run this fix in actual WebGL builds (not in editor)
+            Renderer[] renderers = obj.GetComponentsInChildren<Renderer>(true);
+
+            foreach (var renderer in renderers)
+            {
+                if (renderer == null) continue;
+
+                foreach (var material in renderer.sharedMaterials)
+                {
+                    if (material == null) continue;
+
+                    // Check if using URP/Lit shader
+                    if (material.shader != null && material.shader.name == "Universal Render Pipeline/Lit")
+                    {
+                        // Store original properties
+                        Color baseColor = material.HasProperty("_BaseColor") ? material.GetColor("_BaseColor") : Color.white;
+                        Texture baseMap = material.HasProperty("_BaseMap") ? material.GetTexture("_BaseMap") : null;
+
+                        // Use the same shader approach as characters (BugWars/ForestEnvironment)
+                        // This shader is proven to work in WebGL builds (based on PixelArtCharacter shader)
+                        Shader webglShader = Shader.Find("BugWars/ForestEnvironment");
+
+                        if (webglShader != null)
+                        {
+                            Debug.Log($"[EnvironmentManager] [WebGL Fix] Replacing shader: {material.shader.name} → {webglShader.name} on {renderer.gameObject.name}");
+
+                            material.shader = webglShader;
+
+                            // Restore color and texture (same property names)
+                            if (material.HasProperty("_BaseMap") && baseMap != null)
+                            {
+                                material.SetTexture("_BaseMap", baseMap);
+                            }
+                            if (material.HasProperty("_BaseColor"))
+                            {
+                                material.SetColor("_BaseColor", baseColor);
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogError($"[EnvironmentManager] [WebGL Fix] BugWars/ForestEnvironment shader not found!");
+                        }
+                    }
+                }
+            }
+#else
+            // Not in WebGL build - no fix needed
+            // Debug.Log($"[EnvironmentManager] Skipping WebGL material fix (not in WebGL build)");
+#endif
         }
 
         /// <summary>

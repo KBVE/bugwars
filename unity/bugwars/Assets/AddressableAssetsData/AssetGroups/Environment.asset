@@ -1,0 +1,968 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Environment
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Environment
+  m_GUID: a02b479e8e4424fc0a268223d720d40e
+  m_SerializeEntries:
+  - m_GUID: 007c4d4f118f64b9bb3f9708ccde3f7d
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_Q_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 00c090596e3494ab69f159ed19e4c08d
+    m_Address: Rock_1_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 01962adc451c54f8f9d61c4f2f3731c1
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_2_E_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 019ba60eecbf84082ac532f73fe864c8
+    m_Address: Rock_1_M_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0223e114be027494f8dd42303fce45ee
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_K_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 038009f6e4d1a4792b199248f660444c
+    m_Address: Rock_1_L_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0397ae74fbbd84410a2423fd3b42bc8a
+    m_Address: Bush_4_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 03fb3973f1677469488069f6f0a1be64
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_2_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0471ae9af08614037b20178a575ca10e
+    m_Address: Bush_4_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 069f021620b59477d92df38e207ee9c6
+    m_Address: Rock_3_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0960ae92a5eff49f982f5e7e442edb25
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_3_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0cd9edcf7e25441e5b9dc25fb6721059
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_2_E_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 10ef7f9ddc51e4f7ca9151b9b6b6ae4e
+    m_Address: Tree_4_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1202bd768240947fca595609c3f01d0d
+    m_Address: Rock_3_E_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1203622ccc6a64458bdbc312d6e1cb48
+    m_Address: Bush_1_E_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 141076e3f6cf44f2395d43dd2ddd4401
+    m_Address: Rock_2_F_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 14f426503fb5a4dd283183ced43e8e60
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_4_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 154a7cb3c732147e79856d24057f9c05
+    m_Address: Rock_1_Q_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 16343717a9be24943bcbcbaf589db6c3
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_Bare_2_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 174b442cc0d7a4671905372fa707b50e
+    m_Address: Tree_Bare_1_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 17f5e3a6de7714b5ba120b584879285e
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_1_D_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 18230570974304c8b9e7ccda58b653a2
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_Bare_2_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1c42cd84ae7b347d2b846364ecfeeccf
+    m_Address: Tree_1_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1c614f7e29e3646f6a4744dc919b13fa
+    m_Address: Bush_4_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1d833a92bf4904324896e7603ef7968a
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1f7ef10d1628d49bb857833251fd2101
+    m_Address: Tree_3_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2140a34b6a3134b7aa68baae2c122ce8
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_2_D_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2155f26a5a10943bca9fd7bc3efd3c0e
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_3_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 238059d40299443fe93bd5c9961c17fc
+    m_Address: Rock_1_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 27bc24dc50e3e4b3e98fc77ae38305c3
+    m_Address: Rock_3_M_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2884953a30a42424ab60ed960670346d
+    m_Address: Tree_4_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 28ac2e6d68bf140d8840d11f4b54127a
+    m_Address: Rock_3_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2b510078bf2714dfeb0e6a0c28952a95
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2bf1c0dd2299b41bdb25fd8931d58455
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_F_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2e7736e80301841ec95857809899869e
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_R_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 380ae63d7d67540efa0e9cfe558b8d1c
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_2_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3905d8486741a4cadb2d5925bd561285
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_O_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3b83ee448fc3f439db239e79752ff0f9
+    m_Address: Bush_3_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3b91f1740b1184227b08a2ef79773a20
+    m_Address: Rock_1_D_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3d69accc9bf1245e493ad85b41d299d6
+    m_Address: Rock_3_F_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3e54c96833b114becba3572e924241df
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_4_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3e8229b90c2b04d838e390e099b52b55
+    m_Address: Tree_2_E_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 485d1755825a34521ae3bf4584e4acdb
+    m_Address: Rock_1_F_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 48fc1a6a7440348b4a73821a667c87ef
+    m_Address: Rock_2_D_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4bb820c217de4416596b4c191728637f
+    m_Address: Rock_1_G_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4c960611a34fc4f539a53ac9662e88ef
+    m_Address: Rock_3_L_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 51341614ee8e341a78f6c22c61d6da62
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_G_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 542b009a6601f4f60ae5927f50b1cd33
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5622d744f9ab94a96b47479e30f78384
+    m_Address: Bush_3_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 589d83be3febc4618b38604800d5652c
+    m_Address: Rock_1_K_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 58e037c5ec60147549e8c50f79f46978
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_2_E_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 59e141d15b85b4b96b3d395f3929a69d
+    m_Address: Rock_3_N_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5ce314ba0a43a4e71991c6639297d25d
+    m_Address: Tree_3_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5f1c9d59129b940ac8a630808023397c
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_J_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5f4315e040f324bf0b11840327e35a38
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_1_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 60515a301799946a8b52cd34836f1153
+    m_Address: Bush_1_F_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 614f7e5dd7d1f4ab99453cd76d287e88
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 619c742e06fd34075ab97ef6b76e6cde
+    m_Address: Rock_3_O_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6317fac456a1d4c459e00e5c67cbdc35
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_2_G_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 64d459d0ff38f401bab12a8e636d6450
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_2_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 64d751df4fe25422fb4aeec50b659ad1
+    m_Address: Tree_Bare_2_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 65fe26269dd6148d0a6e74af0a219400
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_2_D_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 66301ca1c163748b5923aaf6a74adad9
+    m_Address: Bush_2_F_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 663acc6ac3b8c4ffdb8951ce5bc20b42
+    m_Address: Rock_3_P_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6850d8d753a3341a3993144993c75faf
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_2_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6a501c15b4355472f97d09c7385b2ac0
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_4_D_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6f38db5e932294d83a6b1955a3a9e18e
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_Bare_1_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6faed21a73213498aa91125079e8fec7
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_N_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 70f6bf61ebb0c4e998f387011e712ab6
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_J_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 723e848e66f714fd88a3bb81c574c9bf
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_2_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 734179400860f43c1b14a3337ed5dfb7
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_2_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 763cf471035074f59b085f404f167d12
+    m_Address: Bush_1_G_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 76eb6657e04b6424fa09d5dbbef248ff
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_4_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 76ed6979aa4ef4f4b9c57947246f5f52
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_O_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 77fd38e31c18c40e7be838090a572785
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_I_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7865a4da5e7f141babe07c4c5db6ce13
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_E_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7aea585a344e54cb59f38165c4e3d211
+    m_Address: Tree_1_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7af91aa0c309a456d9932cc78b5c6161
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_P_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7afc0fd2e13df43ca889799460c6803b
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_2_H_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7edcf2eaa677c4260a57abc83f3da4f1
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_L_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 80ec31fb73cd24f3cbdca25204bad626
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 81e2cb69d1a414160b7ef2ba162c0160
+    m_Address: Rock_1_E_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 84d3608d1c07d46ab9dc94b991126389
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_1_G_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 87b90d948e1604c89a139230478dd88f
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_Q_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8affe660700bb472d8a6096ed8dcb35a
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_3_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8c0639e433fd4478e823806905cb8e0f
+    m_Address: Bush_2_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8c1e28d4fc6034a7fa1095ace9104452
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_H_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8e2b10c16409e474ea059c766dedf6c5
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_1_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8e58334878bac485a87bb260d7bec272
+    m_Address: Bush_3_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 93048c5b55d5b492294d654126abe036
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 933532a4fcc9baf4fa0491de14d08ed7
+    m_Address: Packages/com.unity.render-pipelines.universal/Shaders/Lit.shader
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9364c391191da40fbaf317a7a2c5e37a
+    m_Address: Bush_2_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 93ecd6c79b14947d8866b5e049790333
+    m_Address: Bush_2_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 94884cfd3390b403ca0f27a01341bc21
+    m_Address: Rock_1_I_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 95768d37c7e5c4aba972f608093cde20
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/forest_texture.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 96110f25be8a54244a9d1ea647ba04f8
+    m_Address: Tree_Bare_2_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9630a90c175ed49d6905d7d71a234769
+    m_Address: Bush_4_D_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9718e6b9078e144b1b22e8c2544a4356
+    m_Address: Rock_3_G_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 98d43324a12e9498ba4f6f6fddd11aa0
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_2_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9aceda80299c340029606d10287b9068
+    m_Address: Rock_2_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9e8f611611b334c72b4ccb9308c1a54a
+    m_Address: Bush_1_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9ef13f3536c6e4b8d8cb25288baea728
+    m_Address: Bush_1_D_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9f200c48562a74f16acf38498b907e8e
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_F_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a0c3108726e834948894cdfee8d2ab76
+    m_Address: Rock_2_H_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a1580333e8e234b159b8e9796741367a
+    m_Address: Tree_Bare_2_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a2b1d9d0527f34675966288a1d307fc5
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_I_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a3541f5c7fc024da8b5f5b4d6616aca4
+    m_Address: Tree_2_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a50b5d29b57e04a8cb858c46a009980b
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_3_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a55b0f8b3e56b4f2a9d21f87b04f3289
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_K_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a8d06a25b91b24b7faf15fac8e86ae79
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_Bare_1_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a91f12ad38254405eadce29c8cf6bd7b
+    m_Address: Rock_2_G_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: aad08e66b8a0949ea8aba336f78fd77f
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_3_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ad22a3c40c99c486aabcf76f2b8ed1b8
+    m_Address: Rock_3_D_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ae30911952bd8486bbc0921d2acae624
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_H_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b333d340f2bf94313b51809ddef83c61
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_L_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b58d7528445774984b1c77bf5c0130cd
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_4_F_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b6346022de3444c959ee1581aaff2672
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_3_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b8c72f6565eea4e83baecf9eee1fb3ab
+    m_Address: Tree_3_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bb72ec6dd08af46599f6159471f51fc1
+    m_Address: Rock_3_H_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bbc6b2ddd1ffe412ca28790f6d462ef4
+    m_Address: Rock_1_P_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bc7c209d8f57d4e95a5d74e9f62bd404
+    m_Address: Tree_2_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bcd19ffe40b5549cd8db49eb2222dc24
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_1_E_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c152ae49b31a84e52882b5732189330b
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_E_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c18e8f1fd112c47a8a403ea36be794b6
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_Bare_2_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c46816c5f642046d5957562646c94f99
+    m_Address: Rock_1_N_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c56ab8b13637a4c73be0e7be8634fd2c
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_2_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c76db312e0ddc402db014f6d14223d8e
+    m_Address: Rock_3_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c7baadc77aa2c40a28886870a6dd6a6a
+    m_Address: Bush_4_E_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c856845b2ce3a4b3cbf9b63e4d1fa987
+    m_Address: Bush_1_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c93cc4818e4954783bd0d8b52176912e
+    m_Address: Rock_1_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c9c3ba64ed3734f9e8f6e804303f7d6c
+    m_Address: Rock_3_R_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cc7256cb4750e46deb1b6ce6cc8ad8a0
+    m_Address: Rock_2_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d0df524937bee438ab937bc3e4020387
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_D_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d17ed5b7f51f84962b95ef9626da2327
+    m_Address: Rock_1_O_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d25860cbfca4441ed95ed70ba57cd038
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_1_F_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d39e7059e8ec2437fa1f8dd3a4fcf610
+    m_Address: Rock_2_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d3a999066552541518b2ae7b631d2bbc
+    m_Address: Rock_1_J_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d41c8cadbc3a0498aac44abd46509b8c
+    m_Address: Tree_Bare_1_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d440d3b9d8f6a447baa7ec73d0cf545b
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_P_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d5ce678f2a09442478f59e66a4b8b352
+    m_Address: Tree_2_D_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d900e8ccf30da4cdfa61601f88ee1f82
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_4_E_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d9db05667701841b3af6582375ae2f6f
+    m_Address: Bush_1_B_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d9fe1d22a4364430f9c0203468918260
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_Bare_1_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: da0db8ce83d2b4ce58609e442bfb3eca
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_2_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dc4a7d5bacc5c4e3e9c8cb067ac2a3c1
+    m_Address: Rock_3_I_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dce1a7f4366fe4d568aa719495dd113b
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_4_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: de6e1462bd0164b63bad95b0ebe3991a
+    m_Address: Rock_3_K_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: df544f70b659844ab939eb36c2321a26
+    m_Address: Tree_4_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e03cd81a673154e348e752b5f781bc44
+    m_Address: Tree_2_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e0921d8e8547945a7a642439a392cf24
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_4_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e11362676030b44239a122f8a7826083
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_M_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e18966bcf30754a0f9bd38ae0e46a8ce
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_2_D_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e41bb63806ad54309a9421166e71a132
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_1_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e547abb26c71548abb2c9fbed6d35fc5
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_4_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e89ff402ded574442822c8d5b07d6da7
+    m_Address: Tree_Bare_1_C_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e8b16ff984dd3419d8069c7e3831bb8e
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_3_M_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: eacd1e483a370498fb5a7980f5d08311
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_D_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: eb3ac49ca34c94baa8e2049decf035ed
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_1_B_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ec793f3288dd64f59ba797c5fc71d97f
+    m_Address: Rock_3_J_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ec902bc574a2b40cdac2cd2d9d9385aa
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_1_A_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f022348d3e85d48fd8a73b05083526c6
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_N_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f0c5660548b9c4a7db0230bceb554301
+    m_Address: Bush_2_E_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f1e0f1c67bb934dcd8672cae16e5d89c
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_2_F_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f298e03626f9d43a4ad58ef514644ed6
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Tree_1_C_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f2ff292bb762d4d588d96f99778941f3
+    m_Address: Tree_1_A_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Trees
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f51343e7b4bc840028aff97c13e4fb56
+    m_Address: Rock_1_H_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f66d773e21c4f4c8d8453e806a67917b
+    m_Address: Rock_3_Q_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f7dc844efacc4499a8e9273843af357d
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Bush_2_F_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f9482fdba33d048a09580758b494bb43
+    m_Address: Rock_2_E_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Rocks
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fc9e39d5947c44c41ab6318420e596bf
+    m_Address: Assets/BugWars/Prefabs/Forest/Models/Rock_1_G_Color1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fe87b9e4574f14de4af6f02a6267acfc
+    m_Address: Bush_4_F_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ff2770a1dc933430ca282fd60d845e90
+    m_Address: Bush_2_D_Color1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bushes
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 9612687def10146edb862057af323964, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 60030887704744e3884f49d87f3f239a, type: 2}
+    - {fileID: 11400000, guid: 1d98d05f199c141bcaa120975774fb39, type: 2}
