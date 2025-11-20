@@ -156,8 +156,11 @@ export const ReactUnity: FC<ReactUnityProps> = ({
     const handleBridgeReady = (data: string) => {
       try {
         const readyData = JSON.parse(data);
-        console.log('[ReactUnity] Unity bridge is ready:', readyData);
+        console.log('[ReactUnity] ✓ Unity bridge is ready:', readyData);
         setBridgeReady(true);
+
+        // Immediately send a test message to verify Web → Unity communication
+        console.log('[ReactUnity] → Sending test handshake message to Unity...');
       } catch (error) {
         console.error('[ReactUnity] Error parsing BridgeReady data:', error);
         // Still mark as ready even if parsing fails
@@ -169,6 +172,27 @@ export const ReactUnity: FC<ReactUnityProps> = ({
 
     return () => {
       removeEventListener('BridgeReady', handleBridgeReady);
+    };
+  }, [addEventListener, removeEventListener]);
+
+  /**
+   * Listen for SessionReceived acknowledgment from Unity
+   */
+  useEffect(() => {
+    const handleSessionReceived = (data: string) => {
+      try {
+        const ackData = JSON.parse(data);
+        console.log('[ReactUnity] ✓ Unity acknowledged session data:', ackData);
+        console.log('[ReactUnity] ✓✓✓ HANDSHAKE COMPLETE - Bidirectional communication established!');
+      } catch (error) {
+        console.error('[ReactUnity] Error parsing SessionReceived data:', error);
+      }
+    };
+
+    addEventListener('SessionReceived', handleSessionReceived);
+
+    return () => {
+      removeEventListener('SessionReceived', handleSessionReceived);
     };
   }, [addEventListener, removeEventListener]);
 
@@ -195,10 +219,18 @@ export const ReactUnity: FC<ReactUnityProps> = ({
 
       const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
 
-      console.log('[ReactUnity] Sending session update to Unity:', {
+      // Get JWT tokens from session
+      const accessToken = session.access_token || '';
+      const refreshToken = session.refresh_token || '';
+      const expiresAt = session.expires_at || 0;
+
+      console.log('[ReactUnity] → Sending session update to Unity:', {
         userId: user?.id,
         displayName,
-        username
+        username,
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        expiresAt
       });
 
       sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({
@@ -206,10 +238,62 @@ export const ReactUnity: FC<ReactUnityProps> = ({
         email: user?.email,
         displayName,
         username,
-        avatarUrl
+        avatarUrl,
+        accessToken,
+        refreshToken,
+        expiresAt
       }));
     }
   }, [isLoaded, bridgeReady, sessionReady, session, sendMessage]);
+
+  /**
+   * Listen for TokenRefreshRequest from Unity
+   */
+  useEffect(() => {
+    const handleTokenRefreshRequest = () => {
+      try {
+        console.log('[ReactUnity] Unity requested token refresh');
+
+        // Send the current session back to Unity
+        // The SupaProvider automatically handles token refresh
+        if (session && sessionReady) {
+          const user = session.user;
+          const username = user?.user_metadata?.user_name ||
+                          user?.user_metadata?.preferred_username ||
+                          user?.user_metadata?.username ||
+                          user?.user_metadata?.global_name ||
+                          user?.user_metadata?.name ||
+                          user?.email?.split('@')[0] ||
+                          'Player';
+          const displayName = user?.user_metadata?.full_name || username;
+          const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
+
+          sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({
+            userId: user?.id,
+            email: user?.email,
+            displayName,
+            username,
+            avatarUrl,
+            accessToken: session.access_token || '',
+            refreshToken: session.refresh_token || '',
+            expiresAt: session.expires_at || 0
+          }));
+
+          console.log('[ReactUnity] ✓ Sent refreshed tokens to Unity');
+        } else {
+          console.warn('[ReactUnity] Cannot refresh tokens - no session available');
+        }
+      } catch (error) {
+        console.error('[ReactUnity] Error refreshing token:', error);
+      }
+    };
+
+    addEventListener('TokenRefreshRequest', handleTokenRefreshRequest);
+
+    return () => {
+      removeEventListener('TokenRefreshRequest', handleTokenRefreshRequest);
+    };
+  }, [addEventListener, removeEventListener, sendMessage, session, sessionReady]);
 
   /**
    * Listen for custom Unity events

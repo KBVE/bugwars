@@ -37,6 +37,13 @@ namespace BugWars.JavaScriptBridge
 
         private bool _isReady = false;
 
+        // Authentication state
+        private SessionData _sessionData;
+        public SessionData CurrentSession => _sessionData;
+        public string AccessToken => _sessionData?.accessToken;
+        public string RefreshToken => _sessionData?.refreshToken;
+        public bool IsAuthenticated => !string.IsNullOrEmpty(_sessionData?.accessToken);
+
         // External JavaScript functions (from react-unity-webgl)
         [DllImport("__Internal")]
         private static extern void SendMessageToWeb(string eventType, string data);
@@ -87,7 +94,7 @@ namespace BugWars.JavaScriptBridge
 
         /// <summary>
         /// Called from JavaScript when session data is available.
-        /// JavaScript: sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({userId, email, username, displayName}))
+        /// JavaScript: sendMessage('WebGLBridge', 'OnSessionUpdate', JSON.stringify({userId, email, username, displayName, accessToken, refreshToken, expiresAt}))
         /// </summary>
         public void OnSessionUpdate(string sessionJson)
         {
@@ -99,8 +106,17 @@ namespace BugWars.JavaScriptBridge
                                     "This may indicate a race condition. Message will still be processed.");
                 }
 
-                Debug.Log($"[WebGLBridge] Received session update: {sessionJson}");
+                Debug.Log($"[WebGLBridge] Received session update (JWT tokens included)");
                 var sessionData = JsonUtility.FromJson<SessionData>(sessionJson);
+
+                // Store session data with JWT tokens
+                _sessionData = sessionData;
+
+                // Log token info (without exposing the actual tokens)
+                Debug.Log($"[WebGLBridge] User ID: {sessionData.userId}");
+                Debug.Log($"[WebGLBridge] Access Token: {(!string.IsNullOrEmpty(sessionData.accessToken) ? "✓ Present" : "✗ Missing")}");
+                Debug.Log($"[WebGLBridge] Refresh Token: {(!string.IsNullOrEmpty(sessionData.refreshToken) ? "✓ Present" : "✗ Missing")}");
+                Debug.Log($"[WebGLBridge] Token Expires At: {sessionData.expiresAt}");
 
                 // Update player name in EntityManager if available
                 if (!string.IsNullOrEmpty(sessionData.displayName) || !string.IsNullOrEmpty(sessionData.username))
@@ -119,8 +135,13 @@ namespace BugWars.JavaScriptBridge
                 // Broadcast event through the game's event system
                 _eventManager?.TriggerEvent("SessionUpdated", sessionData);
 
-                // Acknowledge receipt
-                SendToWeb("SessionReceived", new SessionReceivedData { success = true, userId = sessionData.userId });
+                // Acknowledge receipt with token status
+                SendToWeb("SessionReceived", new SessionReceivedData {
+                    success = true,
+                    userId = sessionData.userId,
+                    hasAccessToken = !string.IsNullOrEmpty(sessionData.accessToken),
+                    hasRefreshToken = !string.IsNullOrEmpty(sessionData.refreshToken)
+                });
             }
             catch (Exception e)
             {
@@ -426,6 +447,51 @@ namespace BugWars.JavaScriptBridge
             }
         }
 
+        /// <summary>
+        /// Request a token refresh from JavaScript/Supabase.
+        /// This should be called when the access token is about to expire.
+        /// </summary>
+        public void RequestTokenRefresh()
+        {
+            Debug.Log("[WebGLBridge] Requesting token refresh from JavaScript");
+            SendToWeb("TokenRefreshRequest", new TokenRefreshRequestData
+            {
+                userId = _sessionData?.userId,
+                refreshToken = _sessionData?.refreshToken,
+                timestamp = DateTime.UtcNow.ToString("o")
+            });
+        }
+
+        /// <summary>
+        /// Check if the current access token is expired or about to expire.
+        /// </summary>
+        public bool IsTokenExpired()
+        {
+            if (_sessionData == null || string.IsNullOrEmpty(_sessionData.accessToken))
+                return true;
+
+            // Convert Unix timestamp to DateTime
+            var expiresAt = DateTimeOffset.FromUnixTimeSeconds(_sessionData.expiresAt).UtcDateTime;
+            var now = DateTime.UtcNow;
+
+            // Consider token expired if it expires in less than 5 minutes
+            return (expiresAt - now).TotalMinutes < 5;
+        }
+
+        /// <summary>
+        /// Get the current access token, requesting a refresh if needed.
+        /// </summary>
+        public string GetValidAccessToken()
+        {
+            if (IsTokenExpired())
+            {
+                RequestTokenRefresh();
+                return null; // Will be updated via OnSessionUpdate when refresh completes
+            }
+
+            return _sessionData?.accessToken;
+        }
+
         #endregion
     }
 
@@ -447,6 +513,9 @@ namespace BugWars.JavaScriptBridge
         public string username;
         public string displayName;
         public string avatarUrl;
+        public string accessToken;
+        public string refreshToken;
+        public long expiresAt;
     }
 
     [Serializable]
@@ -486,6 +555,8 @@ namespace BugWars.JavaScriptBridge
     {
         public bool success;
         public string userId;
+        public bool hasAccessToken;
+        public bool hasRefreshToken;
     }
 
     [Serializable]
@@ -518,6 +589,14 @@ namespace BugWars.JavaScriptBridge
     [Serializable]
     public class PlayerProfileRequestData
     {
+        public string timestamp;
+    }
+
+    [Serializable]
+    public class TokenRefreshRequestData
+    {
+        public string userId;
+        public string refreshToken;
         public string timestamp;
     }
 
