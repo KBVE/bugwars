@@ -1,6 +1,7 @@
 mod core;
 mod astro;
 mod auth;
+mod game;
 
 mod transports {
     pub mod https;
@@ -71,6 +72,10 @@ async fn main() -> anyhow::Result<()> {
         warn!("SUPABASE_SERVICE_ROLE_KEY not configured - admin operations will be disabled");
     }
 
+    // Entity state manager for Unity game clients (players, NPCs, enemies, bosses)
+    let entity_state = game::EntityStateManager::new(120); // 2 minute stale timeout
+    info!("Entity state manager initialized for Unity clients");
+
     // Spawn cache manager task
     let cache_manager = {
         let cache = jwt_cache.clone();
@@ -79,8 +84,16 @@ async fn main() -> anyhow::Result<()> {
         })
     };
 
+    // Spawn entity state cleanup task
+    let entity_cleanup = {
+        let entity_mgr = entity_state.clone();
+        tokio::spawn(async move {
+            entity_mgr.run_cleanup_task(60).await; // Cleanup every 60 seconds
+        })
+    };
+
     // Tokio
-    let http = tokio::spawn(transports::https::serve(bus.clone(), jwt_cache.clone()));
+    let http = tokio::spawn(transports::https::serve(bus.clone(), jwt_cache.clone(), entity_state.clone()));
 
     // Print
     info!("BugWars v{}", env!("CARGO_PKG_VERSION"));
@@ -91,6 +104,9 @@ async fn main() -> anyhow::Result<()> {
         //  _ = grpc => {},
         _ = cache_manager => {
             error!("JWT cache manager task terminated unexpectedly");
+        },
+        _ = entity_cleanup => {
+            error!("Entity state cleanup task terminated unexpectedly");
         },
         _ = tokio::signal::ctrl_c() => {
             tracing::info!("shutdown signal received");

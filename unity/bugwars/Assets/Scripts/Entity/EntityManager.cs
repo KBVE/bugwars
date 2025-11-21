@@ -61,12 +61,14 @@ namespace BugWars.Entity
         // Dependency Injection
         private EventManager _eventManager;
         private BugWars.Terrain.TerrainManager _terrainManager;
+        private VContainer.IObjectResolver _container;
 
         [Inject]
-        public void Construct(EventManager eventManager, BugWars.Terrain.TerrainManager terrainManager)
+        public void Construct(EventManager eventManager, BugWars.Terrain.TerrainManager terrainManager, VContainer.IObjectResolver container)
         {
             _eventManager = eventManager;
             _terrainManager = terrainManager;
+            _container = container;
         }
 
         // Terrain streaming
@@ -185,6 +187,17 @@ namespace BugWars.Entity
             // Instantiate player
             GameObject playerObj = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
             playerObj.name = playerData != null ? playerData.PlayerName : "Player";
+
+            // Inject dependencies into all components on the spawned player (including EntityInventory)
+            if (_container != null)
+            {
+                _container.Inject(playerObj);
+                Debug.Log("[EntityManager] Injected dependencies into spawned player GameObject");
+            }
+            else
+            {
+                Debug.LogWarning("[EntityManager] Container is null, cannot inject dependencies into spawned player");
+            }
 
             // Get Entity component
             Entity entity = playerObj.GetComponent<Entity>();

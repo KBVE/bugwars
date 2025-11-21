@@ -25,10 +25,11 @@ use tracing::{debug, error, info, warn, Level};
 
 use crate::core::{AppBus, AppCmd};
 use crate::auth::{extract_auth_user_from_parts, AuthUser, jwt_cache::JwtCache};
+use crate::game::{EntityStateManager, GameMessage, ServerMessage};
 
 /* ------------------------------- serve() -------------------------------- */
 
-pub async fn serve(bus: AppBus, jwt_cache: JwtCache) -> Result<()> {
+pub async fn serve(bus: AppBus, jwt_cache: JwtCache, entity_state: EntityStateManager) -> Result<()> {
     // Env-configurable bind
     let host = std::env::var("HTTP_HOST").unwrap_or_else(|_| "0.0.0.0".into());
     let port: u16 = std::env::var("HTTP_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(4321);
@@ -40,7 +41,7 @@ pub async fn serve(bus: AppBus, jwt_cache: JwtCache) -> Result<()> {
     info!("HTTP/WS listening on http://{addr}");
 
     // Build app
-    let app = router(bus, jwt_cache);
+    let app = router(bus, jwt_cache, entity_state);
 
     // Axum/Hyper tuning
     axum::serve(listener, app)
@@ -53,7 +54,7 @@ pub async fn serve(bus: AppBus, jwt_cache: JwtCache) -> Result<()> {
 
 /* ------------------------------- router() ------------------------------- */
 
-fn router(bus: crate::core::AppBus, jwt_cache: JwtCache) -> axum::Router {
+fn router(bus: crate::core::AppBus, jwt_cache: JwtCache, entity_state: EntityStateManager) -> axum::Router {
     // bring trait for .and() on compression predicates
     use tower_http::compression::Predicate as _;
 
@@ -112,11 +113,11 @@ fn router(bus: crate::core::AppBus, jwt_cache: JwtCache) -> axum::Router {
     let dynamic_router = axum::Router::new()
         .route("/health", axum::routing::get(health))
         .route("/echo", axum::routing::post(echo))
-        .route("/ws", axum::routing::get(ws_upgrade))
+        .route("/ws", axum::routing::get(ws_upgrade))  // WebSocket for both browser and Unity clients
         // Optional: Add dynamic Askama routes
         // .route("/dashboard", axum::routing::get(crate::astro::askama::private_dashboard))
         // .route("/page/*path", axum::routing::get(crate::astro::askama::dynamic_page_handler))
-        .with_state((bus, jwt_cache));
+        .with_state((bus, jwt_cache, entity_state));
 
     // Merge static and dynamic routers, then apply middleware
     static_router
@@ -148,7 +149,7 @@ struct EchoOut {
     message: String,
 }
 
-async fn echo(State((bus, _)): State<(AppBus, JwtCache)>, Json(input): Json<EchoIn>) -> impl IntoResponse {
+async fn echo(State((bus, _, _)): State<(AppBus, JwtCache, EntityStateManager)>, Json(input): Json<EchoIn>) -> impl IntoResponse {
     use tokio::sync::oneshot;
     let (tx, rx) = oneshot::channel();
     let _ = bus.tx.send(AppCmd::Hello { name: input.name, reply: tx }).await;
@@ -167,7 +168,7 @@ struct WsQuery {
 
 async fn ws_upgrade(
     ws: WebSocketUpgrade,
-    State((bus, jwt_cache)): State<(AppBus, JwtCache)>,
+    State((bus, jwt_cache, entity_state)): State<(AppBus, JwtCache, EntityStateManager)>,
     Query(query): Query<WsQuery>,
     req: Request<axum::body::Body>,
 ) -> impl IntoResponse {
@@ -277,7 +278,7 @@ async fn ws_upgrade(
         .max_frame_size(1 << 20)
         .on_upgrade(move |socket| {
             debug!(user_id = %auth_user.user_id(), "WebSocket connection upgraded, entering message loop");
-            ws_loop(socket, bus, auth_user)
+            ws_loop(socket, bus, auth_user, entity_state)
         })
 }
 
@@ -297,10 +298,11 @@ fn extract_token_from_header(headers: &http::HeaderMap) -> Result<String, String
     Ok(auth_str[7..].to_string())
 }
 
-async fn ws_loop(mut socket: WebSocket, _bus: AppBus, auth_user: AuthUser) {
+async fn ws_loop(mut socket: WebSocket, _bus: AppBus, auth_user: AuthUser, entity_state: EntityStateManager) {
     use tokio::sync::oneshot;
 
     let user_id = auth_user.user_id();
+    let user_email = auth_user.email().map(|s| s.to_string());
     info!(user_id = %user_id, "WebSocket session starting, sending welcome message");
 
     // Send welcome message with user info
@@ -332,32 +334,33 @@ async fn ws_loop(mut socket: WebSocket, _bus: AppBus, auth_user: AuthUser) {
                             "Received text message"
                         );
 
-                        // Check if this is an application-level ping/pong
-                        if text_str.contains("\"type\":\"ping\"") {
-                            debug!(user_id = %user_id, "Received application-level ping, sending pong");
-                            let pong_response = format!("{{\"type\":\"pong\",\"timestamp\":{}}}",
-                                std::time::SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .unwrap_or_default()
-                                    .as_secs()
-                            );
-                            if let Err(e) = socket.send(Message::Text(pong_response.into())).await {
-                                error!(user_id = %user_id, error = %e, "Failed to send pong response");
-                                break;
+                        // Try to parse as game message
+                        match serde_json::from_str::<GameMessage>(&text_str) {
+                            Ok(game_msg) => {
+                                // Handle game-specific messages
+                                let response = handle_game_message(game_msg, &user_id, &user_email, &entity_state).await;
+                                let response_json = serde_json::to_string(&response)
+                                    .unwrap_or_else(|_| "{\"type\":\"error\",\"message\":\"serialization failed\"}".to_string());
+
+                                if let Err(e) = socket.send(Message::Text(response_json.into())).await {
+                                    error!(user_id = %user_id, error = %e, "Failed to send game response");
+                                    break;
+                                }
                             }
-                            continue;
-                        }
+                            Err(_) => {
+                                // Not a game message, echo back for compatibility
+                                debug!(user_id = %user_id, "Received non-game message, echoing back");
+                                let response = format!(
+                                    "{{\"type\":\"echo\",\"user_id\":\"{}\",\"message\":{}}}",
+                                    user_id,
+                                    serde_json::to_string(&text_str).unwrap_or_else(|_| "\"invalid\"".to_string())
+                                );
 
-                        // For now, echo back with user context
-                        let response = format!(
-                            "{{\"type\":\"echo\",\"user_id\":\"{}\",\"message\":{}}}",
-                            user_id,
-                            serde_json::to_string(&text_str).unwrap_or_else(|_| "\"invalid\"".to_string())
-                        );
-
-                        if let Err(e) = socket.send(Message::Text(response.into())).await {
-                            error!(user_id = %user_id, error = %e, "Failed to send text response");
-                            break;
+                                if let Err(e) = socket.send(Message::Text(response.into())).await {
+                                    error!(user_id = %user_id, error = %e, "Failed to send echo response");
+                                    break;
+                                }
+                            }
                         }
 
                         // Optional: Send to AppBus for processing
@@ -416,11 +419,148 @@ async fn ws_loop(mut socket: WebSocket, _bus: AppBus, auth_user: AuthUser) {
         }
     }
 
-    info!(
-        user_id = %user_id,
-        total_messages = message_count,
-        "WebSocket session ended"
-    );
+    // Clean up entity state when connection ends
+    if let Some(removed_entity) = entity_state.remove_entity(&user_id) {
+        info!(
+            user_id = %user_id,
+            total_messages = message_count,
+            was_in_game = true,
+            "WebSocket session ended, player removed from game state"
+        );
+    } else {
+        info!(
+            user_id = %user_id,
+            total_messages = message_count,
+            "WebSocket session ended"
+        );
+    }
+}
+
+/// Handle game-specific messages from Unity clients
+async fn handle_game_message(
+    msg: GameMessage,
+    user_id: &str,
+    user_email: &Option<String>,
+    entity_state: &EntityStateManager,
+) -> ServerMessage {
+    match msg {
+        GameMessage::Ping => {
+            debug!(user_id = %user_id, "Game ping received");
+            ServerMessage::Pong {
+                timestamp: chrono::Utc::now().timestamp(),
+            }
+        }
+        GameMessage::Join { position } => {
+            let mut entity = entity_state.add_player(user_id.to_string(), user_email.clone());
+            if let Some(pos) = position {
+                entity_state.update_position(user_id, pos, None);
+                entity.position = pos;
+            }
+            info!(
+                user_id = %user_id,
+                entity_type = ?entity.entity_type,
+                position = ?entity.position,
+                "Player entity joined game"
+            );
+            ServerMessage::Joined {
+                user_id: user_id.to_string(),
+                position: entity.position,
+            }
+        }
+        GameMessage::UpdatePosition { position, rotation } => {
+            if let Some(updated_entity) = entity_state.update_position(user_id, position, rotation) {
+                ServerMessage::PlayerMoved {
+                    user_id: user_id.to_string(),
+                    position: updated_entity.position,
+                    rotation: updated_entity.rotation,
+                }
+            } else {
+                warn!(user_id = %user_id, "Received position update for non-existent entity");
+                ServerMessage::Error {
+                    message: "Player not in game. Send 'join' first.".to_string(),
+                }
+            }
+        }
+        GameMessage::UpdateHealth { health } => {
+            if let Some(updated_entity) = entity_state.update_health(user_id, health) {
+                ServerMessage::PlayerHealthChanged {
+                    user_id: user_id.to_string(),
+                    health: updated_entity.health,
+                    is_alive: updated_entity.is_alive,
+                }
+            } else {
+                warn!(user_id = %user_id, "Received health update for non-existent entity");
+                ServerMessage::Error {
+                    message: "Player not in game. Send 'join' first.".to_string(),
+                }
+            }
+        }
+        GameMessage::AddItem { item_id, quantity } => {
+            if let Some((success, inventory)) = entity_state.add_item(user_id, item_id.clone(), quantity) {
+                ServerMessage::ItemAdded {
+                    item_id,
+                    quantity,
+                    success,
+                }
+            } else {
+                warn!(user_id = %user_id, "Received add_item for non-existent entity");
+                ServerMessage::Error {
+                    message: "Player not in game. Send 'join' first.".to_string(),
+                }
+            }
+        }
+        GameMessage::RemoveItem { item_id, quantity } => {
+            if let Some((success, inventory)) = entity_state.remove_item(user_id, &item_id, quantity) {
+                ServerMessage::ItemRemoved {
+                    item_id,
+                    quantity,
+                    success,
+                }
+            } else {
+                warn!(user_id = %user_id, "Received remove_item for non-existent entity");
+                ServerMessage::Error {
+                    message: "Player not in game. Send 'join' first.".to_string(),
+                }
+            }
+        }
+        GameMessage::GetInventory => {
+            if let Some(inventory) = entity_state.get_inventory(user_id) {
+                info!(
+                    user_id = %user_id,
+                    item_count = inventory.items.len(),
+                    "Client requested inventory"
+                );
+                ServerMessage::InventoryUpdated {
+                    user_id: user_id.to_string(),
+                    inventory,
+                }
+            } else {
+                warn!(user_id = %user_id, "Received get_inventory for non-existent entity");
+                ServerMessage::Error {
+                    message: "Player not in game. Send 'join' first.".to_string(),
+                }
+            }
+        }
+        GameMessage::GetState => {
+            let players = entity_state.get_all_players();
+            info!(
+                user_id = %user_id,
+                player_count = players.len(),
+                "Client requested game state"
+            );
+            ServerMessage::GameState {
+                players,
+                timestamp: chrono::Utc::now().timestamp(),
+            }
+        }
+        GameMessage::Leave => {
+            entity_state.remove_entity(user_id);
+            info!(user_id = %user_id, "Player left game (explicit leave message)");
+            ServerMessage::PlayerLeft {
+                user_id: user_id.to_string(),
+            }
+        }
+    }
 }
 
 /* ----------------------------- Socket tuning ---------------------------- */
