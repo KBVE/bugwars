@@ -1,13 +1,16 @@
 [package]
 name = "kbve-bugwars"
 authors = ["kbve", "h0lybyte", "richie911", "fudster"]
-version = "1.0.24"
+version = "1.0.25"
 edition = "2021"
 publish = false
 
 
 [dependencies]
 jsonwebtoken = { version = "10", features = ["rust_crypto"] }
+dashmap = { version = "6.1.0", features = ["rayon"] }
+rayon = "1.10"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 bytes = "1.10.1"
 http = "1.0"
 anyhow = "1.0.99"

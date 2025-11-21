@@ -22,4 +22,10 @@ else
 fi
 
 log "Running Docker image '${IMAGE_NAME}' on port ${PORT}..."
-docker run --rm -p "${PORT}:${PORT}" "${IMAGE_NAME}"
+if [[ -f ".env" ]]; then
+  log "Loading environment variables from .env file"
+  docker run --rm -p "${PORT}:${PORT}" --env-file .env "${IMAGE_NAME}"
+else
+  log "No .env file found, running without environment variables"
+  docker run --rm -p "${PORT}:${PORT}" "${IMAGE_NAME}"
+fi

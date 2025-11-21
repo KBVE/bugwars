@@ -6,7 +6,10 @@
         <ui:VisualElement name="TopBar" class="hud-top-bar">
             <!-- Left Section - Player Info -->
             <ui:VisualElement name="PlayerInfo" class="hud-section player-info">
-                <ui:Label text="Player" name="PlayerNameText" class="hud-label player-name" />
+                <ui:VisualElement name="PlayerIdentity" class="player-identity-row">
+                    <ui:Label text="Player" name="PlayerNameText" class="hud-label player-name" />
+                    <ui:VisualElement name="AuthStatusIndicator" class="auth-status-indicator auth-guest" />
+                </ui:VisualElement>
                 <ui:Label text="Health" name="HealthLabel" class="hud-label" />
                 <ui:VisualElement name="HealthBarContainer" class="health-bar-container">
                     <ui:VisualElement name="HealthBarFill" class="health-bar-fill" />

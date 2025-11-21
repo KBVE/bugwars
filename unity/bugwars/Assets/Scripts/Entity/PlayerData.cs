@@ -41,12 +41,13 @@ namespace BugWars.Entity
         private readonly ReactiveProperty<int> _experienceReactive = new(0);
         private readonly ReactiveProperty<int> _scoreReactive = new(0);
 
-        // Read-only reactive observables for external subscribers
-        public ReadOnlyReactiveProperty<bool> IsAuthenticatedObservable => _isAuthenticatedReactive;
-        public ReadOnlyReactiveProperty<string> DisplayNameObservable => _displayNameReactive;
-        public ReadOnlyReactiveProperty<int> LevelObservable => _levelReactive;
-        public ReadOnlyReactiveProperty<int> ExperienceObservable => _experienceReactive;
-        public ReadOnlyReactiveProperty<int> ScoreObservable => _scoreReactive;
+        // Public reactive observables for external subscribers
+        // In R3, ReactiveProperty<T> itself implements IObservable<T> and can be subscribed to directly
+        public ReactiveProperty<bool> IsAuthenticatedObservable => _isAuthenticatedReactive;
+        public ReactiveProperty<string> DisplayNameObservable => _displayNameReactive;
+        public ReactiveProperty<int> LevelObservable => _levelReactive;
+        public ReactiveProperty<int> ExperienceObservable => _experienceReactive;
+        public ReactiveProperty<int> ScoreObservable => _scoreReactive;
 
         // Properties for easy access
         public string PlayerName

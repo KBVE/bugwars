@@ -24,11 +24,11 @@ use tower_http::{
 use tracing::{error, info, Level};
 
 use crate::core::{AppBus, AppCmd};
-use crate::auth::{extract_auth_user_from_parts, AuthUser};
+use crate::auth::{extract_auth_user_from_parts, AuthUser, jwt_cache::JwtCache};
 
 /* ------------------------------- serve() -------------------------------- */
 
-pub async fn serve(bus: AppBus) -> Result<()> {
+pub async fn serve(bus: AppBus, jwt_cache: JwtCache) -> Result<()> {
     // Env-configurable bind
     let host = std::env::var("HTTP_HOST").unwrap_or_else(|_| "0.0.0.0".into());
     let port: u16 = std::env::var("HTTP_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(4321);
@@ -40,7 +40,7 @@ pub async fn serve(bus: AppBus) -> Result<()> {
     info!("HTTP/WS listening on http://{addr}");
 
     // Build app
-    let app = router(bus);
+    let app = router(bus, jwt_cache);
 
     // Axum/Hyper tuning
     axum::serve(listener, app)
@@ -53,7 +53,7 @@ pub async fn serve(bus: AppBus) -> Result<()> {
 
 /* ------------------------------- router() ------------------------------- */
 
-fn router(bus: crate::core::AppBus) -> axum::Router {
+fn router(bus: crate::core::AppBus, jwt_cache: JwtCache) -> axum::Router {
     // bring trait for .and() on compression predicates
     use tower_http::compression::Predicate as _;
 
@@ -116,7 +116,7 @@ fn router(bus: crate::core::AppBus) -> axum::Router {
         // Optional: Add dynamic Askama routes
         // .route("/dashboard", axum::routing::get(crate::astro::askama::private_dashboard))
         // .route("/page/*path", axum::routing::get(crate::astro::askama::dynamic_page_handler))
-        .with_state(bus);
+        .with_state((bus, jwt_cache));
 
     // Merge static and dynamic routers, then apply middleware
     static_router
@@ -148,7 +148,7 @@ struct EchoOut {
     message: String,
 }
 
-async fn echo(State(bus): State<AppBus>, Json(input): Json<EchoIn>) -> impl IntoResponse {
+async fn echo(State((bus, _)): State<(AppBus, JwtCache)>, Json(input): Json<EchoIn>) -> impl IntoResponse {
     use tokio::sync::oneshot;
     let (tx, rx) = oneshot::channel();
     let _ = bus.tx.send(AppCmd::Hello { name: input.name, reply: tx }).await;
@@ -160,32 +160,90 @@ async fn echo(State(bus): State<AppBus>, Json(input): Json<EchoIn>) -> impl Into
 
 async fn ws_upgrade(
     ws: WebSocketUpgrade,
-    State(bus): State<AppBus>,
+    State((bus, jwt_cache)): State<(AppBus, JwtCache)>,
     req: Request<axum::body::Body>,
 ) -> impl IntoResponse {
-    // Extract and validate JWT token from request
-    let (parts, _) = req.into_parts();
+    use crate::auth::jwt_cache::AuthCacheError;
 
-    let auth_user = match extract_auth_user_from_parts(&parts) {
-        Ok(user) => {
-            // Check if token is expired
-            if user.is_expired() {
-                info!("WebSocket connection rejected: expired token for user {}", user.user_id());
-                return (StatusCode::UNAUTHORIZED, "Token expired").into_response();
-            }
-            info!("WebSocket connection authenticated: user_id={}, role={}", user.user_id(), user.role());
-            user
-        }
+    // Extract JWT token from Authorization header
+    let (parts, _) = req.into_parts();
+    let token = match extract_token_from_header(&parts.headers) {
+        Ok(t) => t,
         Err(e) => {
             info!("WebSocket connection rejected: {}", e);
-            return (StatusCode::UNAUTHORIZED, format!("Authentication failed: {}", e)).into_response();
+            return (StatusCode::UNAUTHORIZED, format!("Missing or invalid auth token: {}", e)).into_response();
         }
     };
+
+    // Verify JWT using cache (fast path) or Supabase API (slow path)
+    let token_info = match jwt_cache.verify_and_cache(&token).await {
+        Ok(info) => {
+            info!(
+                user_id = %info.user_id,
+                email = ?info.email,
+                role = %info.role,
+                "WebSocket connection authenticated via JWT cache"
+            );
+            info
+        }
+        Err(AuthCacheError::InvalidToken(msg)) => {
+            info!(error = %msg, "WebSocket connection rejected: invalid token");
+            return (StatusCode::UNAUTHORIZED, format!("Invalid token: {}", msg)).into_response();
+        }
+        Err(e) => {
+            error!(error = %e, "WebSocket JWT verification failed");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Authentication service error").into_response();
+        }
+    };
+
+    // Check if token is expired
+    if token_info.is_expired() {
+        info!(user_id = %token_info.user_id, "WebSocket connection rejected: token expired");
+        return (StatusCode::UNAUTHORIZED, "Token expired").into_response();
+    }
+
+    // Create AuthUser from token info
+    let auth_user = AuthUser {
+        claims: crate::auth::Claims {
+            sub: token_info.user_id.clone(),
+            iat: 0, // Not needed for WebSocket session
+            exp: token_info.expires_at,
+            iss: "supabase".to_string(),
+            role: token_info.role.clone(),
+            email: token_info.email.clone(),
+            phone: None,
+            app_metadata: None,
+            user_metadata: None,
+        },
+        token: token.clone(),
+    };
+
+    info!(
+        user_id = %auth_user.user_id(),
+        role = %auth_user.role(),
+        "WebSocket upgrade successful"
+    );
 
     // Set sizes to defend allocations; tune to your needs
     ws.max_message_size(1 << 20) // 1 MiB per message
         .max_frame_size(1 << 20)
         .on_upgrade(move |socket| ws_loop(socket, bus, auth_user))
+}
+
+fn extract_token_from_header(headers: &http::HeaderMap) -> Result<String, String> {
+    let auth_header = headers
+        .get(http::header::AUTHORIZATION)
+        .ok_or_else(|| "Missing Authorization header".to_string())?;
+
+    let auth_str = auth_header
+        .to_str()
+        .map_err(|_| "Invalid Authorization header".to_string())?;
+
+    if !auth_str.starts_with("Bearer ") {
+        return Err("Authorization header must start with 'Bearer '".to_string());
+    }
+
+    Ok(auth_str[7..].to_string())
 }
 
 async fn ws_loop(mut socket: WebSocket, bus: AppBus, auth_user: AuthUser) {

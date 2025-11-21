@@ -50,17 +50,36 @@ async fn main() -> anyhow::Result<()> {
     let (bus, rx) = new_bus(1024);
     tokio::spawn(run_app(rx));
 
-    // Tokio
-    let http = tokio::spawn(transports::https::serve(bus.clone()));
+    // JWT Cache - uses Supabase URL from environment or defaults to local
+    let supabase_url = std::env::var("SUPABASE_URL")
+        .unwrap_or_else(|_| {
+            warn!("SUPABASE_URL not set, using local default (for development only)");
+            "http://localhost:8000".to_string()
+        });
+    let jwt_cache = auth::jwt_cache::JwtCache::new(supabase_url);
+    info!("JWT cache initialized with Supabase verification");
 
+    // Spawn cache manager task
+    let cache_manager = {
+        let cache = jwt_cache.clone();
+        tokio::spawn(async move {
+            cache.run_manager().await;
+        })
+    };
+
+    // Tokio
+    let http = tokio::spawn(transports::https::serve(bus.clone(), jwt_cache.clone()));
 
     // Print
-    info!("StarYo v{}", env!("CARGO_PKG_VERSION"));
+    info!("BugWars v{}", env!("CARGO_PKG_VERSION"));
 
      tokio::select! {
         _ = http => {},
         //  _ = tcp  => {},
         //  _ = grpc => {},
+        _ = cache_manager => {
+            error!("JWT cache manager task terminated unexpectedly");
+        },
         _ = tokio::signal::ctrl_c() => {
             tracing::info!("shutdown signal received");
         }

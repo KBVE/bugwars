@@ -35,6 +35,7 @@ namespace BugWars.UI
 
         // Player Identity elements
         private Label _playerNameText;
+        private VisualElement _authStatusIndicator;
 
         // Health UI elements
         private Label _healthLabel;
@@ -134,6 +135,7 @@ namespace BugWars.UI
 
             // Get Player Identity references
             _playerNameText = _root.Q<Label>("PlayerNameText");
+            _authStatusIndicator = _root.Q<VisualElement>("AuthStatusIndicator");
 
             // Get Health UI references
             _healthLabel = _root.Q<Label>("HealthLabel");
@@ -153,6 +155,7 @@ namespace BugWars.UI
 
             // Verify all elements were found
             if (_playerNameText == null) Debug.LogWarning("[HUDManager] PlayerNameText not found in UXML!");
+            if (_authStatusIndicator == null) Debug.LogWarning("[HUDManager] AuthStatusIndicator not found in UXML!");
             if (_healthText == null) Debug.LogWarning("[HUDManager] HealthText not found in UXML!");
             if (_healthBarFill == null) Debug.LogWarning("[HUDManager] HealthBarFill not found in UXML!");
             if (_waveText == null) Debug.LogWarning("[HUDManager] WaveText not found in UXML!");
@@ -165,6 +168,9 @@ namespace BugWars.UI
 
             // Update UI with initial values
             UpdateAllUI();
+
+            // Set initial auth status to guest (yellow) until authentication is confirmed
+            UpdateAuthStatus(false);
         }
         #endregion
 
@@ -225,10 +231,57 @@ namespace BugWars.UI
         public void UpdatePlayerName(string playerName)
         {
             _currentPlayerName = playerName;
+            Debug.Log($"[HUDManager] UpdatePlayerName called with: '{playerName}' | _playerNameText null? {_playerNameText == null}");
             if (_playerNameText != null)
             {
                 _playerNameText.text = _currentPlayerName;
+                Debug.Log($"[HUDManager] Set _playerNameText.text to: '{_playerNameText.text}'");
             }
+        }
+
+        /// <summary>
+        /// Updates the authentication status indicator
+        /// </summary>
+        /// <param name="isAuthenticated">Whether the player is authenticated</param>
+        public void UpdateAuthStatus(bool isAuthenticated)
+        {
+            if (_authStatusIndicator == null)
+            {
+                Debug.LogWarning("[HUDManager] Cannot update auth status - indicator is null");
+                return;
+            }
+
+            // Remove all status classes
+            _authStatusIndicator.RemoveFromClassList("auth-guest");
+            _authStatusIndicator.RemoveFromClassList("auth-authenticated");
+            _authStatusIndicator.RemoveFromClassList("auth-error");
+
+            // Add appropriate class based on authentication state
+            if (isAuthenticated)
+            {
+                _authStatusIndicator.AddToClassList("auth-authenticated");
+                Debug.Log("[HUDManager] Auth status: AUTHENTICATED (Green)");
+            }
+            else
+            {
+                _authStatusIndicator.AddToClassList("auth-guest");
+                Debug.Log("[HUDManager] Auth status: GUEST (Yellow)");
+            }
+        }
+
+        /// <summary>
+        /// Sets the authentication status to error state
+        /// </summary>
+        /// <param name="errorMessage">Optional error message to log</param>
+        public void SetAuthError(string errorMessage = "")
+        {
+            if (_authStatusIndicator == null) return;
+
+            _authStatusIndicator.RemoveFromClassList("auth-guest");
+            _authStatusIndicator.RemoveFromClassList("auth-authenticated");
+            _authStatusIndicator.AddToClassList("auth-error");
+
+            Debug.LogWarning($"[HUDManager] Auth status: ERROR (Red) - {errorMessage}");
         }
 
         /// <summary>
@@ -421,10 +474,15 @@ namespace BugWars.UI
             }
 
             Debug.Log("[HUDManager] PlayerData available, setting up reactive subscriptions");
+            Debug.Log($"[HUDManager] Current display name before subscription: {playerData.GetBestDisplayName()}");
 
             // Subscribe to display name changes
             _displayNameSubscription = playerData.DisplayNameObservable
-                .Subscribe(displayName => UpdatePlayerName(displayName));
+                .Subscribe(displayName =>
+                {
+                    Debug.Log($"[HUDManager] DisplayName subscription fired: '{displayName}'");
+                    UpdatePlayerName(displayName);
+                });
 
             // Subscribe to level changes
             _levelSubscription = playerData.LevelObservable
@@ -442,7 +500,8 @@ namespace BugWars.UI
             _authStatusSubscription = playerData.IsAuthenticatedObservable
                 .Subscribe(isAuth =>
                 {
-                    Debug.Log($"[HUDManager] Auth: {(isAuth ? "✓" : "Guest")} | Player: {playerData.GetBestDisplayName()}");
+                    Debug.Log($"[HUDManager] Auth subscription fired: {(isAuth ? "✓ Authenticated" : "Guest")} | Player: {playerData.GetBestDisplayName()}");
+                    UpdateAuthStatus(isAuth);
                 });
 
             Debug.Log($"[HUDManager] Reactive subscriptions established for {playerData.GetBestDisplayName()}");

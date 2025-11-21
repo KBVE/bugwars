@@ -4,6 +4,8 @@
 //! This module provides JWT validation for Supabase-issued tokens.
 //! Tokens are validated using HS256 (HMAC with SHA-256) algorithm.
 
+pub mod jwt_cache;
+
 use axum::{
     extract::{Request, FromRequestParts},
     http::{StatusCode, header::{AUTHORIZATION, HeaderValue}},
