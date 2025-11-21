@@ -1,0 +1,29 @@
+---
+title: Authentication Callback
+description: OAuth callback handler for BugWars authentication
+---
+
+import AstroCallback from '@/components/auth/AstroCallback.astro';
+
+<AstroCallback />
+
+## What's Happening?
+
+After you authorize BugWars with your chosen authentication provider (GitHub or Discord), you'll be redirected back here to complete the sign-in process.
+
+This page:
+
+1. **Receives the OAuth token** from your authentication provider
+2. **Stores your session** securely in IndexedDB
+3. **Initializes the SharedWorker** to manage your session across tabs
+4. **Redirects you** to the home page once authentication is complete
+
+## Troubleshooting
+
+If you're stuck on this page:
+
+- Make sure you completed the authorization with your provider
+- Check that third-party cookies are enabled in your browser
+- Try the sign-in process again from the [authentication page](/auth)
+
+If problems persist, you can return to the [home page](/) and try signing in again.

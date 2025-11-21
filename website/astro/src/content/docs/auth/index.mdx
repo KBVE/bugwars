@@ -1,0 +1,40 @@
+---
+title: Authentication
+description: Learn about authentication in BugWars
+---
+
+import AstroLogin from '@/components/auth/AstroLogin.astro';
+
+BugWars uses Supabase authentication to securely manage user accounts and sessions.
+
+## Sign In
+
+Choose your preferred authentication provider to get started:
+
+<AstroLogin />
+
+## Features
+
+When you sign in, you'll be able to:
+
+- **Save Your Progress**: Your game progress is automatically saved to your account
+- **Compete on Leaderboards**: See how you rank against other players
+- **Unlock Achievements**: Track your accomplishments across sessions
+- **Cross-Device Play**: Access your account from any device
+
+## Privacy & Security
+
+Your authentication is handled securely through Supabase:
+
+- Passwords are never stored in plain text
+- OAuth providers (GitHub, Discord) follow industry-standard security practices
+- Your session data is encrypted and stored locally using IndexedDB
+- You can sign out at any time from the [logout page](/auth/logout)
+
+## Need Help?
+
+If you're experiencing issues with authentication, try:
+
+1. Clearing your browser cache and cookies
+2. Signing out completely and signing back in
+3. Checking that third-party cookies are enabled for OAuth providers

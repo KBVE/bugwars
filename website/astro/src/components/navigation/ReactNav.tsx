@@ -53,11 +53,11 @@ export default function ReactNav() {
   const busy = authLoading;
 
   const state = useMemo(() => {
-    if (!ready) return { tone: 'loading' as const, label: 'Loading…', displayName: 'Staryo', avatarUrl: undefined };
-    if (error) return { tone: 'error' as const, label: `Error: ${error}`, displayName: 'Staryo', avatarUrl: undefined };
+    if (!ready) return { tone: 'loading' as const, label: 'Loading…', displayName: 'KBVE', avatarUrl: undefined };
+    if (error) return { tone: 'error' as const, label: `Error: ${error}`, displayName: 'KBVE', avatarUrl: undefined };
     if (!session?.user) {
       console.log('[ReactNav] No session, showing anonymous state');
-      return { tone: 'anon' as const, label: 'Anonymous user', displayName: 'Staryo Guest', avatarUrl: undefined };
+      return { tone: 'anon' as const, label: 'Anonymous user', displayName: 'KBVE Guest', avatarUrl: undefined };
     }
 
     const user = session.user;
