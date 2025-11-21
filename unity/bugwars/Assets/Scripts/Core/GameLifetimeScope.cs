@@ -136,6 +136,38 @@ namespace BugWars.Core
             wsRegistration.DontDestroyOnLoad().AsImplementedInterfaces();
             Debug.Log("[GameLifetimeScope] WebSocketManager registered via VContainer");
 
+            // NetworkSyncManager for centralized data synchronization
+            builder.Register<BugWars.Network.NetworkSyncManager>(Lifetime.Singleton)
+                .AsImplementedInterfaces()
+                .AsSelf();
+            Debug.Log("[GameLifetimeScope] NetworkSyncManager registered via VContainer");
+
+            // Register sync handlers after container is built
+            builder.RegisterBuildCallback(container =>
+            {
+                var syncManager = container.Resolve<BugWars.Network.NetworkSyncManager>();
+                var entityMgr = container.Resolve<EntityManager>();
+
+                // Get player's inventory (assuming it's on the same GameObject as EntityManager)
+                var playerInventory = entityMgr.GetComponent<EntityInventory>();
+                if (playerInventory == null)
+                {
+                    // Create inventory component if it doesn't exist
+                    playerInventory = entityMgr.gameObject.AddComponent<EntityInventory>();
+                    playerInventory.SetPlayerInventory(true);
+                    Debug.Log("[GameLifetimeScope] Created player EntityInventory");
+                }
+
+                // Create and register sync handlers
+                var playerDataSync = new PlayerDataSync(entityMgr.PlayerData);
+                var inventorySync = new InventorySync(playerInventory);
+
+                syncManager.RegisterSyncable(playerDataSync);
+                syncManager.RegisterSyncable(inventorySync);
+
+                Debug.Log("[GameLifetimeScope] Registered PlayerDataSync and InventorySync with NetworkSyncManager");
+            });
+
             // GameManager depends on EventManager and MainMenuManager - register last
             if (gameManager != null)
             {

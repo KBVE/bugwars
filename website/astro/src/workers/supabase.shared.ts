@@ -3,6 +3,7 @@
 /* eslint-disable no-restricted-globals */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import Dexie, { type Table } from 'dexie';
+import { getWorkerCommunication } from '../lib/gateway/WorkerCommunication';
 
 type Req =
   | { id: string; type: 'init'; payload: { url: string; anonKey: string; options?: any } }
@@ -91,6 +92,9 @@ class IDBStorage implements AsyncStorage {
 let client: SupabaseClient | null = null;
 const storage = new IDBStorage();
 
+// ---- Shared communication layer ----
+const comm = getWorkerCommunication();
+
 const subscriptions = new Map<
   string,
   { unsubscribe: () => Promise<void> | void }
@@ -169,6 +173,12 @@ async function connectWebSocket(wsUrl?: string) {
           url
         });
       }
+
+      // Broadcast to worker pool via BroadcastChannel
+      comm.broadcast({
+        type: 'ws.status',
+        data: { status: 'connected', url }
+      });
     };
 
     ws.onmessage = (event) => {
@@ -190,6 +200,12 @@ async function connectWebSocket(wsUrl?: string) {
             data: message
           });
         }
+
+        // Broadcast to worker pool via BroadcastChannel
+        comm.broadcast({
+          type: 'ws.message',
+          data: message
+        });
       } catch (error) {
         console.error('[SharedWorker] Failed to parse WebSocket message:', error);
       }
@@ -357,6 +373,12 @@ async function ensureClient(url: string, anonKey: string, options: any = {}) {
     for (const p of ports) {
       p.postMessage({ type: 'auth', session });
     }
+
+    // Broadcast to worker pool via BroadcastChannel
+    comm.broadcast({
+      type: 'auth',
+      data: { session }
+    });
   });
 
   return client;

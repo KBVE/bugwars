@@ -198,13 +198,44 @@ namespace BugWars.Network
 
                 Debug.Log($"[WebSocketManager] Using access token (length: {_accessToken.Length})");
 
-                // Create WebSocket with Authorization header
+                // Create WebSocket connection
+                // Note: In WebGL builds, the browser's WebSocket API doesn't support custom headers.
+                // For WebGL compatibility, we append the token as a query parameter instead.
+                // For native platforms, we use both header and query for redundancy.
+                string connectionUrl = _webSocketUrl;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+                // WebGL: Use query parameter only (browser WebSocket API limitation)
+                if (_webSocketUrl.Contains("?"))
+                {
+                    connectionUrl = $"{_webSocketUrl}&token={_accessToken}";
+                }
+                else
+                {
+                    connectionUrl = $"{_webSocketUrl}?token={_accessToken}";
+                }
+                Debug.Log($"[WebSocketManager] WebGL build - using query parameter auth");
+                _webSocket = new WebSocket(connectionUrl);
+#else
+                // Native platforms: Use Authorization header (preferred) with query fallback
                 var headers = new Dictionary<string, string>
                 {
                     { "Authorization", $"Bearer {_accessToken}" }
                 };
 
-                _webSocket = new WebSocket(_webSocketUrl, headers);
+                // Add query parameter as fallback
+                if (_webSocketUrl.Contains("?"))
+                {
+                    connectionUrl = $"{_webSocketUrl}&token={_accessToken}";
+                }
+                else
+                {
+                    connectionUrl = $"{_webSocketUrl}?token={_accessToken}";
+                }
+
+                Debug.Log($"[WebSocketManager] Native build - using Authorization header with query fallback");
+                _webSocket = new WebSocket(connectionUrl, headers);
+#endif
 
                 // Set up event handlers
                 _webSocket.OnOpen += OnWebSocketOpen;
