@@ -1915,7 +1915,7 @@ dependencies = [
 
 [[package]]
 name = "kbve-bugwars"
-version = "1.0.24"
+version = "1.0.26"
 dependencies = [
  "anyhow",
  "askama",

@@ -16,7 +16,11 @@ type Req =
   | { id: string; type: 'from.delete'; payload: { table: string; match: Record<string, any> } }
   | { id: string; type: 'rpc'; payload: { fn: string; args?: Record<string, any> } }
   | { id: string; type: 'realtime.subscribe'; payload: { key: string; params: any } }
-  | { id: string; type: 'realtime.unsubscribe'; payload: { key: string } };
+  | { id: string; type: 'realtime.unsubscribe'; payload: { key: string } }
+  | { id: string; type: 'ws.connect'; payload?: { wsUrl?: string } }
+  | { id: string; type: 'ws.disconnect' }
+  | { id: string; type: 'ws.send'; payload: { data: any } }
+  | { id: string; type: 'ws.status' };
 
 type Res =
   | { id: string; ok: true; data?: any }
@@ -91,6 +95,184 @@ const subscriptions = new Map<
   string,
   { unsubscribe: () => Promise<void> | void }
 >();
+
+// ---- WebSocket management ----
+let ws: WebSocket | null = null;
+let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let wsReconnectAttempts = 0;
+const WS_MAX_RECONNECT_ATTEMPTS = 5;
+const WS_RECONNECT_DELAY_MS = 3000;
+
+function getWebSocketUrl(customUrl?: string): string {
+  if (customUrl) return customUrl;
+
+  // Determine WebSocket URL based on current environment
+  // Use location if available (in SharedWorker context)
+  if (typeof location !== 'undefined') {
+    const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const port = isLocalhost ? '4321' : location.port;
+    const host = location.hostname;
+    return `${protocol}//${host}${port ? ':' + port : ''}/ws`;
+  }
+
+  // Fallback to localhost
+  return 'ws://localhost:4321/ws';
+}
+
+async function connectWebSocket(wsUrl?: string) {
+  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+    console.log('[SharedWorker] WebSocket already connected or connecting');
+    return;
+  }
+
+  try {
+    // Get access token from current session
+    if (!client) {
+      throw new Error('Supabase client not initialized - call init first');
+    }
+
+    const { data: { session }, error } = await client.auth.getSession();
+    if (error || !session?.access_token) {
+      throw new Error('No active session - user must be authenticated');
+    }
+
+    const url = getWebSocketUrl(wsUrl);
+    const accessToken = session.access_token;
+
+    // WebSocket API doesn't support custom headers, so pass token as query parameter
+    const authenticatedUrl = `${url}?token=${encodeURIComponent(accessToken)}`;
+    console.log('[SharedWorker] Connecting to WebSocket:', url);
+
+    // Create WebSocket connection with token in URL
+    ws = new WebSocket(authenticatedUrl);
+
+    ws.onopen = () => {
+      console.log('[SharedWorker] WebSocket connected and authenticated via query parameter');
+      wsReconnectAttempts = 0;
+
+      // Broadcast connection status to all tabs
+      for (const p of ports) {
+        p.postMessage({
+          type: 'ws.status',
+          status: 'connected',
+          url
+        });
+      }
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('[SharedWorker] WebSocket message:', message);
+
+        // Broadcast message to all connected tabs
+        for (const p of ports) {
+          p.postMessage({
+            type: 'ws.message',
+            data: message
+          });
+        }
+      } catch (error) {
+        console.error('[SharedWorker] Failed to parse WebSocket message:', error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('[SharedWorker] WebSocket error:', error);
+
+      // Broadcast error to all tabs
+      for (const p of ports) {
+        p.postMessage({
+          type: 'ws.status',
+          status: 'error',
+          error: 'WebSocket connection error'
+        });
+      }
+    };
+
+    ws.onclose = (event) => {
+      console.log('[SharedWorker] WebSocket closed:', event.code, event.reason);
+      ws = null;
+
+      // Broadcast disconnection to all tabs
+      for (const p of ports) {
+        p.postMessage({
+          type: 'ws.status',
+          status: 'disconnected',
+          code: event.code,
+          reason: event.reason
+        });
+      }
+
+      // Attempt reconnection if not a normal closure
+      if (event.code !== 1000 && wsReconnectAttempts < WS_MAX_RECONNECT_ATTEMPTS) {
+        wsReconnectAttempts++;
+        console.log(`[SharedWorker] Attempting WebSocket reconnection (${wsReconnectAttempts}/${WS_MAX_RECONNECT_ATTEMPTS})...`);
+
+        wsReconnectTimer = setTimeout(() => {
+          connectWebSocket(wsUrl).catch((err) => {
+            console.error('[SharedWorker] WebSocket reconnection failed:', err);
+          });
+        }, WS_RECONNECT_DELAY_MS);
+      }
+    };
+
+  } catch (error) {
+    console.error('[SharedWorker] Failed to connect WebSocket:', error);
+    throw error;
+  }
+}
+
+function disconnectWebSocket() {
+  if (wsReconnectTimer) {
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = null;
+  }
+
+  if (ws) {
+    console.log('[SharedWorker] Disconnecting WebSocket');
+    ws.close(1000, 'Requested by client');
+    ws = null;
+    wsReconnectAttempts = 0;
+
+    // Broadcast disconnection to all tabs
+    for (const p of ports) {
+      p.postMessage({
+        type: 'ws.status',
+        status: 'disconnected'
+      });
+    }
+  }
+}
+
+function sendWebSocketMessage(data: any) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    throw new Error('WebSocket not connected');
+  }
+
+  const message = typeof data === 'string' ? data : JSON.stringify(data);
+  console.log('[SharedWorker] Sending WebSocket message:', message);
+  ws.send(message);
+}
+
+function getWebSocketStatus() {
+  if (!ws) {
+    return { status: 'disconnected', readyState: null };
+  }
+
+  const readyStateMap = {
+    [WebSocket.CONNECTING]: 'connecting',
+    [WebSocket.OPEN]: 'connected',
+    [WebSocket.CLOSING]: 'closing',
+    [WebSocket.CLOSED]: 'disconnected'
+  };
+
+  return {
+    status: readyStateMap[ws.readyState] || 'unknown',
+    readyState: ws.readyState
+  };
+}
 
 async function ensureClient(url: string, anonKey: string, options: any = {}) {
   if (client) return client;
@@ -266,6 +448,29 @@ function reply(port: MessagePort, msg: Res) {
             subscriptions.delete(m.payload.key);
           }
           reply(port, { id: m.id, ok: true });
+          break;
+        }
+
+        case 'ws.connect': {
+          await connectWebSocket(m.payload?.wsUrl);
+          reply(port, { id: m.id, ok: true, data: getWebSocketStatus() });
+          break;
+        }
+
+        case 'ws.disconnect': {
+          disconnectWebSocket();
+          reply(port, { id: m.id, ok: true });
+          break;
+        }
+
+        case 'ws.send': {
+          sendWebSocketMessage(m.payload.data);
+          reply(port, { id: m.id, ok: true });
+          break;
+        }
+
+        case 'ws.status': {
+          reply(port, { id: m.id, ok: true, data: getWebSocketStatus() });
           break;
         }
 

@@ -28,6 +28,15 @@ export class SupaShared {
       this.emit(`realtime:${msg.key}`, msg.payload);
       return;
     }
+    // Handle WebSocket messages
+    if (msg?.type === 'ws.message') {
+      this.emit('ws.message', msg.data);
+      return;
+    }
+    if (msg?.type === 'ws.status') {
+      this.emit('ws.status', msg);
+      return;
+    }
     const { id, ok, data, error } = msg ?? {};
     if (id && this.pending.has(id)) {
       const { resolve, reject } = this.pending.get(id)!;
@@ -87,5 +96,25 @@ export class SupaShared {
       off(); console.error(e);
     });
     return () => { off(); this.send('realtime.unsubscribe', { key }).catch(() => {}); };
+  }
+
+  // WebSocket methods
+  connectWebSocket(wsUrl?: string) {
+    return this.send<{ status: string; readyState: number | null }>('ws.connect', { wsUrl });
+  }
+  disconnectWebSocket() {
+    return this.send('ws.disconnect');
+  }
+  sendWebSocketMessage(data: any) {
+    return this.send('ws.send', { data });
+  }
+  getWebSocketStatus() {
+    return this.send<{ status: string; readyState: number | null }>('ws.status');
+  }
+  onWebSocketMessage(cb: (message: any) => void) {
+    return this.on('ws.message', cb);
+  }
+  onWebSocketStatus(cb: (status: any) => void) {
+    return this.on('ws.status', cb);
   }
 }

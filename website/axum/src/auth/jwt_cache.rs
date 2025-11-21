@@ -77,15 +77,32 @@ impl JwtCache {
     pub async fn verify_and_cache(&self, token: &str) -> Result<TokenInfo, AuthCacheError> {
         // First check cache (fast path)
         if let Some(info) = self.get(token) {
+            debug!(
+                user_id = %info.user_id,
+                cache_hit = true,
+                "JWT verified from cache (fast path)"
+            );
             return Ok(info);
         }
 
         // Cache miss - verify with Supabase API (slow path)
-        debug!("Verifying JWT with Supabase API");
+        info!(
+            cache_hit = false,
+            cache_size = self.tokens.len(),
+            "JWT cache miss, verifying with Supabase API (slow path)"
+        );
+        let api_start = std::time::Instant::now();
         let token_info = self.verify_with_supabase(token).await?;
+        let api_duration = api_start.elapsed();
 
         // Cache the verified token
         self.insert(token.to_string(), token_info.clone());
+
+        info!(
+            user_id = %token_info.user_id,
+            supabase_api_ms = %api_duration.as_millis(),
+            "JWT verified via Supabase API and cached"
+        );
 
         Ok(token_info)
     }
@@ -94,22 +111,47 @@ impl JwtCache {
     async fn verify_with_supabase(&self, token: &str) -> Result<TokenInfo, AuthCacheError> {
         let url = format!("{}/auth/v1/user", self.supabase_url);
 
+        debug!(
+            url = %url,
+            token_preview = %&token[..token.len().min(20)],
+            "Calling Supabase user verification API"
+        );
+
+        let request_start = std::time::Instant::now();
         let response = self.http_client
             .get(&url)
             .bearer_auth(token)
             .send()
             .await
             .map_err(|e| {
-                warn!(error = %e, "Failed to call Supabase API");
+                let request_duration = request_start.elapsed();
+                warn!(
+                    error = %e,
+                    request_ms = %request_duration.as_millis(),
+                    "Failed to call Supabase API (network/timeout error)"
+                );
                 AuthCacheError::SupabaseApiError(e.to_string())
             })?;
 
-        if !response.status().is_success() {
-            let status = response.status();
+        let request_duration = request_start.elapsed();
+        let status = response.status();
+
+        if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
-            warn!(status = %status, body = %body, "Supabase API returned error");
+            warn!(
+                status = %status,
+                body = %body,
+                request_ms = %request_duration.as_millis(),
+                "Supabase API returned error response"
+            );
             return Err(AuthCacheError::InvalidToken(format!("Status: {}, Body: {}", status, body)));
         }
+
+        debug!(
+            status = %status,
+            request_ms = %request_duration.as_millis(),
+            "Supabase API responded successfully"
+        );
 
         let user_data: serde_json::Value = response.json().await
             .map_err(|e| AuthCacheError::InvalidResponse(e.to_string()))?;
@@ -139,12 +181,14 @@ impl JwtCache {
             .as_i64()
             .ok_or_else(|| AuthCacheError::InvalidToken("Missing exp claim".to_string()))?;
 
+        let expires_in = expires_at - chrono::Utc::now().timestamp();
         info!(
             user_id = %user_id,
             email = ?email,
             role = %role,
             expires_at = %expires_at,
-            "JWT verified successfully via Supabase API"
+            expires_in_seconds = %expires_in,
+            "JWT verified successfully via Supabase API, token parsed"
         );
 
         Ok(TokenInfo {
@@ -158,23 +202,40 @@ impl JwtCache {
 
     /// Insert a token into the cache
     fn insert(&self, token: String, info: TokenInfo) {
+        let cache_size = self.tokens.len();
+
         // Check size limit before inserting
-        if self.tokens.len() >= MAX_CACHE_SIZE {
+        if cache_size >= MAX_CACHE_SIZE {
             warn!(
-                current_size = self.tokens.len(),
+                current_size = cache_size,
                 max_size = MAX_CACHE_SIZE,
-                "JWT cache at max size, evicting oldest entries"
+                user_id = %info.user_id,
+                "JWT cache at max size, evicting oldest entries before insert"
             );
             self.evict_oldest(MAX_CACHE_SIZE / 10); // Evict 10% of cache
         }
 
-        debug!(user_id = %info.user_id, "Caching JWT");
+        debug!(
+            user_id = %info.user_id,
+            cache_size_before = cache_size,
+            cache_size_after = %(cache_size + 1).min(MAX_CACHE_SIZE),
+            "Inserting JWT into cache"
+        );
         self.tokens.insert(token, info);
     }
 
     /// Evict the oldest N entries from the cache (LRU)
     fn evict_oldest(&self, count: usize) {
         use rayon::prelude::*;
+
+        let eviction_start = std::time::Instant::now();
+        let cache_size_before = self.tokens.len();
+
+        debug!(
+            count_to_evict = count,
+            cache_size = cache_size_before,
+            "Starting LRU eviction"
+        );
 
         // Parallel collect entries with their timestamps
         let mut entries: Vec<_> = self.tokens
@@ -198,14 +259,28 @@ impl JwtCache {
             })
             .sum();
 
-        info!(removed = removed, "Evicted oldest JWT cache entries");
+        let eviction_duration = eviction_start.elapsed();
+        info!(
+            removed = removed,
+            cache_size_before = cache_size_before,
+            cache_size_after = self.tokens.len(),
+            eviction_ms = %eviction_duration.as_millis(),
+            "Evicted oldest JWT cache entries (LRU)"
+        );
     }
 
     /// Remove expired tokens from the cache
     fn cleanup_expired(&self) {
         use rayon::prelude::*;
 
+        let cleanup_start = std::time::Instant::now();
         let now = chrono::Utc::now().timestamp();
+        let cache_size_before = self.tokens.len();
+
+        debug!(
+            cache_size = cache_size_before,
+            "Starting expired token cleanup"
+        );
 
         // Parallel identify expired tokens
         let expired_tokens: Vec<String> = self.tokens
@@ -225,14 +300,22 @@ impl JwtCache {
             self.tokens.remove(&token);
         }
 
+        let cleanup_duration = cleanup_start.elapsed();
+
         if removed > 0 {
             info!(
                 removed = removed,
-                remaining = self.tokens.len(),
+                cache_size_before = cache_size_before,
+                cache_size_after = self.tokens.len(),
+                cleanup_ms = %cleanup_duration.as_millis(),
                 "Cleaned up expired JWT cache entries"
             );
         } else {
-            debug!(cache_size = self.tokens.len(), "JWT cache cleanup: no expired entries");
+            debug!(
+                cache_size = self.tokens.len(),
+                cleanup_ms = %cleanup_duration.as_millis(),
+                "JWT cache cleanup: no expired entries found"
+            );
         }
     }
 

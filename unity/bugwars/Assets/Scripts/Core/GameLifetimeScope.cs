@@ -123,12 +123,18 @@ namespace BugWars.Core
             var hudManagerInstance = CreateHUDManager();
             if (hudManagerInstance != null)
             {
-                builder.RegisterComponent(hudManagerInstance);
+                // Register as entry point so VContainer calls StartAsync (HUDManager implements IAsyncStartable)
+                builder.RegisterComponent(hudManagerInstance).AsImplementedInterfaces();
             }
             else
             {
                 Debug.LogError("[GameLifetimeScope] Failed to create HUDManager - HUD will not function!");
             }
+
+            // WebSocketManager for real-time server communication
+            var wsRegistration = builder.RegisterComponentOnNewGameObject<BugWars.Network.WebSocketManager>(Lifetime.Singleton, "WebSocketManager");
+            wsRegistration.DontDestroyOnLoad().AsImplementedInterfaces();
+            Debug.Log("[GameLifetimeScope] WebSocketManager registered via VContainer");
 
             // GameManager depends on EventManager and MainMenuManager - register last
             if (gameManager != null)
