@@ -1,7 +1,7 @@
 // src/auth/jwt_cache.rs
 // JWT cache using DashMap for concurrent access across HTTP/TCP/gRPC
 use dashmap::DashMap;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use tokio::time;
 use tracing::{debug, info, warn};
@@ -9,6 +9,10 @@ use tracing::{debug, info, warn};
 const MAX_CACHE_SIZE: usize = 10_000; // Maximum number of cached tokens
 const CLEANUP_INTERVAL: Duration = Duration::from_secs(60); // Cleanup every 60 seconds
 const TOKEN_GRACE_PERIOD: i64 = 300; // 5 minutes grace period before expiry
+
+/// Global service role key - set once at startup, used only for admin operations
+/// This bypasses RLS and has full database access - use with extreme caution
+static SERVICE_ROLE_KEY: OnceLock<String> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct TokenInfo {
@@ -35,15 +39,17 @@ impl TokenInfo {
 pub struct JwtCache {
     tokens: Arc<DashMap<String, TokenInfo>>,
     supabase_url: String,
+    supabase_anon_key: String,
     http_client: reqwest::Client,
 }
 
 impl JwtCache {
-    pub fn new(supabase_url: String) -> Self {
+    pub fn new(supabase_url: String, supabase_anon_key: String) -> Self {
         info!("Initializing JWT cache with Supabase URL: {}", supabase_url);
         Self {
             tokens: Arc::new(DashMap::new()),
             supabase_url,
+            supabase_anon_key,
             http_client: reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
                 .build()
@@ -120,7 +126,8 @@ impl JwtCache {
         let request_start = std::time::Instant::now();
         let response = self.http_client
             .get(&url)
-            .bearer_auth(token)
+            .header("apikey", &self.supabase_anon_key)  // Supabase requires the anon key
+            .bearer_auth(token)                          // And the user's JWT token
             .send()
             .await
             .map_err(|e| {
@@ -169,6 +176,7 @@ impl JwtCache {
         use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
         let mut validation = Validation::new(Algorithm::HS256);
         validation.validate_exp = false; // Don't validate expiry here, Supabase already did
+        validation.validate_aud = false; // Don't validate audience, Supabase already did
         validation.insecure_disable_signature_validation(); // We trust Supabase's response
 
         let token_data = decode::<serde_json::Value>(
@@ -351,6 +359,50 @@ impl JwtCache {
                 max_size = MAX_CACHE_SIZE,
                 "JWT cache manager tick"
             );
+        }
+    }
+}
+
+/// Initialize the service role key - MUST be called exactly once at startup
+/// This key bypasses RLS and has full database access
+pub fn init_service_role_key(key: String) -> Result<(), String> {
+    SERVICE_ROLE_KEY
+        .set(key)
+        .map_err(|_| "Service role key already initialized".to_string())?;
+    info!("Service role key initialized (admin operations enabled)");
+    Ok(())
+}
+
+/// Check if service role is available
+pub fn has_service_role() -> bool {
+    SERVICE_ROLE_KEY.get().is_some()
+}
+
+/// Execute an admin operation with the service role key
+/// This bypasses RLS - use ONLY for legitimate admin operations
+/// Returns None if service role key is not configured
+pub async fn with_service_role<F, Fut, T>(
+    supabase_url: &str,
+    operation: F,
+) -> Result<Option<T>, AuthCacheError>
+where
+    F: FnOnce(reqwest::Client, String, String) -> Fut,
+    Fut: std::future::Future<Output = Result<T, AuthCacheError>>,
+{
+    match SERVICE_ROLE_KEY.get() {
+        Some(key) => {
+            warn!("Executing admin operation with service role (bypasses RLS)");
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_secs(10))
+                .build()
+                .map_err(|e| AuthCacheError::SupabaseApiError(e.to_string()))?;
+
+            let result = operation(client, supabase_url.to_string(), key.clone()).await?;
+            Ok(Some(result))
+        }
+        None => {
+            debug!("Service role not configured, admin operation skipped");
+            Ok(None)
         }
     }
 }

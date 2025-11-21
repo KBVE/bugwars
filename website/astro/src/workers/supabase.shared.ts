@@ -103,6 +103,12 @@ let wsReconnectAttempts = 0;
 const WS_MAX_RECONNECT_ATTEMPTS = 5;
 const WS_RECONNECT_DELAY_MS = 3000;
 
+// ---- Heartbeat management ----
+let wsHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+let wsLastPongTime: number = 0;
+const WS_HEARTBEAT_INTERVAL_MS = 30000; // Send ping every 30 seconds
+const WS_HEARTBEAT_TIMEOUT_MS = 60000; // Disconnect if no pong for 60 seconds
+
 function getWebSocketUrl(customUrl?: string): string {
   if (customUrl) return customUrl;
 
@@ -150,6 +156,10 @@ async function connectWebSocket(wsUrl?: string) {
     ws.onopen = () => {
       console.log('[SharedWorker] WebSocket connected and authenticated via query parameter');
       wsReconnectAttempts = 0;
+      wsLastPongTime = Date.now();
+
+      // Start heartbeat
+      startHeartbeat();
 
       // Broadcast connection status to all tabs
       for (const p of ports) {
@@ -165,6 +175,13 @@ async function connectWebSocket(wsUrl?: string) {
       try {
         const message = JSON.parse(event.data);
         console.log('[SharedWorker] WebSocket message:', message);
+
+        // Handle pong response
+        if (message.type === 'pong') {
+          wsLastPongTime = Date.now();
+          console.log('[SharedWorker] ♥ Pong received');
+          return; // Don't broadcast heartbeat messages to tabs
+        }
 
         // Broadcast message to all connected tabs
         for (const p of ports) {
@@ -195,6 +212,9 @@ async function connectWebSocket(wsUrl?: string) {
       console.log('[SharedWorker] WebSocket closed:', event.code, event.reason);
       ws = null;
 
+      // Stop heartbeat
+      stopHeartbeat();
+
       // Broadcast disconnection to all tabs
       for (const p of ports) {
         p.postMessage({
@@ -224,11 +244,48 @@ async function connectWebSocket(wsUrl?: string) {
   }
 }
 
+function startHeartbeat() {
+  stopHeartbeat(); // Clear any existing timer
+
+  wsHeartbeatTimer = setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      stopHeartbeat();
+      return;
+    }
+
+    // Check if we've received a pong recently
+    const now = Date.now();
+    if (wsLastPongTime > 0 && now - wsLastPongTime > WS_HEARTBEAT_TIMEOUT_MS) {
+      console.warn('[SharedWorker] No pong received for 60s, connection appears dead');
+      stopHeartbeat();
+      ws.close(1001, 'Heartbeat timeout');
+      return;
+    }
+
+    // Send ping
+    try {
+      ws.send(JSON.stringify({ type: 'ping' }));
+      console.log('[SharedWorker] Heartbeat ping sent');
+    } catch (error) {
+      console.error('[SharedWorker] Failed to send heartbeat:', error);
+    }
+  }, WS_HEARTBEAT_INTERVAL_MS);
+}
+
+function stopHeartbeat() {
+  if (wsHeartbeatTimer) {
+    clearInterval(wsHeartbeatTimer);
+    wsHeartbeatTimer = null;
+  }
+}
+
 function disconnectWebSocket() {
   if (wsReconnectTimer) {
     clearTimeout(wsReconnectTimer);
     wsReconnectTimer = null;
   }
+
+  stopHeartbeat();
 
   if (ws) {
     console.log('[SharedWorker] Disconnecting WebSocket');

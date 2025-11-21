@@ -50,14 +50,26 @@ async fn main() -> anyhow::Result<()> {
     let (bus, rx) = new_bus(1024);
     tokio::spawn(run_app(rx));
 
-    // JWT Cache - uses Supabase URL from environment or defaults to local
+    // JWT Cache - uses Supabase URL and anon key from environment
     let supabase_url = std::env::var("SUPABASE_URL")
         .unwrap_or_else(|_| {
             warn!("SUPABASE_URL not set, using local default (for development only)");
             "http://localhost:8000".to_string()
         });
-    let jwt_cache = auth::jwt_cache::JwtCache::new(supabase_url);
+    let supabase_anon_key = std::env::var("SUPABASE_ANON_KEY")
+        .expect("SUPABASE_ANON_KEY must be set in environment");
+
+    let jwt_cache = auth::jwt_cache::JwtCache::new(supabase_url, supabase_anon_key);
     info!("JWT cache initialized with Supabase verification");
+
+    // Service role key initialization - validate at startup (kills app if invalid)
+    if let Ok(service_key) = std::env::var("SUPABASE_SERVICE_ROLE_KEY") {
+        auth::jwt_cache::init_service_role_key(service_key)
+            .expect("CRITICAL: Failed to initialize service role key - this should never happen (key was already set). Terminating application for safety.");
+        info!("Service role key initialized successfully - admin operations enabled (bypasses RLS)");
+    } else {
+        warn!("SUPABASE_SERVICE_ROLE_KEY not configured - admin operations will be disabled");
+    }
 
     // Spawn cache manager task
     let cache_manager = {

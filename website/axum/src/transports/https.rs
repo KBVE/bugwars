@@ -332,6 +332,22 @@ async fn ws_loop(mut socket: WebSocket, _bus: AppBus, auth_user: AuthUser) {
                             "Received text message"
                         );
 
+                        // Check if this is an application-level ping/pong
+                        if text_str.contains("\"type\":\"ping\"") {
+                            debug!(user_id = %user_id, "Received application-level ping, sending pong");
+                            let pong_response = format!("{{\"type\":\"pong\",\"timestamp\":{}}}",
+                                std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_secs()
+                            );
+                            if let Err(e) = socket.send(Message::Text(pong_response.into())).await {
+                                error!(user_id = %user_id, error = %e, "Failed to send pong response");
+                                break;
+                            }
+                            continue;
+                        }
+
                         // For now, echo back with user context
                         let response = format!(
                             "{{\"type\":\"echo\",\"user_id\":\"{}\",\"message\":{}}}",

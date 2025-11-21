@@ -23,6 +23,15 @@ export default function ReactAuthCallback() {
           // Force the worker to check the session
           await supa.getSession();
 
+          // Connect WebSocket for real-time communication
+          try {
+            await supa.connectWebSocket();
+            console.log('[Auth Callback] WebSocket connection initiated');
+          } catch (wsError) {
+            console.error('[Auth Callback] Failed to connect WebSocket:', wsError);
+            // Non-fatal - continue with redirect
+          }
+
           // Give the worker a moment to process
           await new Promise(resolve => setTimeout(resolve, 500));
 

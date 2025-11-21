@@ -1,0 +1,29 @@
+---
+title: "WebSocket Game Server Test"
+description: "Test WebSocket connection to the Axum game server"
+---
+
+import AstroGameServer from '@/components/gameserver/AstroGameServer.astro';
+
+# WebSocket Game Server Test
+
+This page tests the WebSocket connection to the Axum game server via the SharedWorker.
+
+## Features
+
+- **Automatic Authentication**: Uses your current session to authenticate WebSocket connections
+- **Real-time Messaging**: Send and receive messages through the game server
+- **Heartbeat Monitoring**: Automatic ping/pong every 30 seconds
+- **Connection Status**: Live connection status indicator
+- **Message Log**: View all WebSocket communication in real-time
+
+## Instructions
+
+1. Make sure you're signed in (check the user email above)
+2. Click "Connect WebSocket" to establish a connection
+3. Send messages using the input field (JSON or plain text)
+4. Monitor the log for server responses and heartbeat activity
+
+---
+
+<AstroGameServer />

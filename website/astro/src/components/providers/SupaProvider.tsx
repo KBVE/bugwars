@@ -18,6 +18,8 @@ export function SupaProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let off: (() => void) | null = null;
+    let wsInitialized = false;
+
     (async () => {
       await initSupa();
       const supa = getSupa();
@@ -26,8 +28,42 @@ export function SupaProvider({ children }: { children: ReactNode }) {
       const s = await supa.getSession().catch(() => null);
       setSession(s?.session ?? null);
 
+      // If user is already authenticated, connect WebSocket
+      if (s?.session && !wsInitialized) {
+        try {
+          await supa.connectWebSocket();
+          wsInitialized = true;
+          console.log('[SupaProvider] WebSocket connected for authenticated user');
+        } catch (wsError) {
+          console.error('[SupaProvider] Failed to connect WebSocket:', wsError);
+        }
+      }
+
       // live updates broadcast from the worker
-      off = supa.on('auth', (msg) => setSession(msg.session ?? null));
+      off = supa.on('auth', async (msg) => {
+        const newSession = msg.session ?? null;
+        setSession(newSession);
+
+        // Connect WebSocket when user authenticates
+        if (newSession && !wsInitialized) {
+          try {
+            await supa.connectWebSocket();
+            wsInitialized = true;
+            console.log('[SupaProvider] WebSocket connected after authentication');
+          } catch (wsError) {
+            console.error('[SupaProvider] Failed to connect WebSocket:', wsError);
+          }
+        } else if (!newSession && wsInitialized) {
+          // Disconnect WebSocket when user logs out
+          try {
+            await supa.disconnectWebSocket();
+            wsInitialized = false;
+            console.log('[SupaProvider] WebSocket disconnected after logout');
+          } catch (wsError) {
+            console.error('[SupaProvider] Failed to disconnect WebSocket:', wsError);
+          }
+        }
+      });
 
       setReady(true);
     })();

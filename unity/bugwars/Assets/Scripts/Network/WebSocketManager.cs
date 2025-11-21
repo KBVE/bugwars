@@ -34,6 +34,12 @@ namespace BugWars.Network
         private Queue<string> _messageQueue = new Queue<string>();
         private const int MaxQueueSize = 100;
 
+        // Heartbeat tracking
+        private float _lastHeartbeatTime = 0f;
+        private float _lastPongReceivedTime = 0f;
+        private const float HeartbeatIntervalSeconds = 30f; // Send ping every 30 seconds
+        private const float HeartbeatTimeoutSeconds = 60f; // Disconnect if no pong for 60 seconds
+
         // R3 reactive subscription
         private IDisposable _authSubscription;
         #endregion
@@ -111,6 +117,27 @@ namespace BugWars.Network
 #if !UNITY_WEBGL || UNITY_EDITOR
             _webSocket?.DispatchMessageQueue();
 #endif
+
+            // Handle heartbeat (ping/pong)
+            if (_isConnected && _webSocket != null)
+            {
+                float currentTime = Time.time;
+
+                // Send ping every HeartbeatIntervalSeconds
+                if (currentTime - _lastHeartbeatTime >= HeartbeatIntervalSeconds)
+                {
+                    SendMessage("ping");
+                    _lastHeartbeatTime = currentTime;
+                }
+
+                // Check if we've received a pong recently
+                if (_lastPongReceivedTime > 0 && currentTime - _lastPongReceivedTime >= HeartbeatTimeoutSeconds)
+                {
+                    Debug.LogWarning($"[WebSocketManager] No pong received for {HeartbeatTimeoutSeconds}s, connection may be dead");
+                    // Disconnect and attempt reconnection
+                    DisconnectAsync().Forget();
+                }
+            }
         }
 
         private void OnDestroy()
@@ -251,6 +278,10 @@ namespace BugWars.Network
             _isConnecting = false;
             _reconnectAttempts = 0;
 
+            // Initialize heartbeat timers
+            _lastHeartbeatTime = Time.time;
+            _lastPongReceivedTime = Time.time;
+
             var playerData = BugWars.Entity.EntityManager.Instance?.PlayerData;
             Debug.Log($"[WebSocketManager] ✓ Connected to WebSocket server as {playerData?.GetBestDisplayName() ?? "Unknown"}");
 
@@ -318,6 +349,12 @@ namespace BugWars.Network
                 {
                     case "connected":
                         Debug.Log($"[WebSocketManager] Server confirmed connection: {message}");
+                        break;
+
+                    case "pong":
+                        // Update last pong time - connection is alive
+                        _lastPongReceivedTime = Time.time;
+                        Debug.Log("[WebSocketManager] ♥ Pong received");
                         break;
 
                     case "echo":
