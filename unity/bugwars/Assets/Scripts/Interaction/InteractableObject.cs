@@ -1,12 +1,14 @@
 using UnityEngine;
 using R3;
 using System;
+using MessagePipe;
 
 namespace BugWars.Interaction
 {
     /// <summary>
     /// Base class for all interactable objects in the world (trees, rocks, bushes, etc.)
     /// Uses R3 reactive streams for clean event handling
+    /// Uses MessagePipe for decoupled object pooling
     /// </summary>
     public class InteractableObject : MonoBehaviour
     {
@@ -20,65 +22,74 @@ namespace BugWars.Interaction
         [SerializeField] private int resourceAmount = 5;
         [SerializeField] private float harvestTime = 2f;
 
-        // R3 Reactive properties
         private readonly ReactiveProperty<bool> _isPlayerNearby = new(false);
         private readonly ReactiveProperty<bool> _isBeingInteracted = new(false);
         private readonly Subject<InteractionEvent> _onInteractionStarted = new();
         private readonly Subject<InteractionEvent> _onInteractionCompleted = new();
         private readonly Subject<Unit> _onDestroyed = new();
 
-        // Observables exposed to other systems
+        private string _cachedPrompt;
+        private static readonly string[] InteractionTypeStrings = { "chop", "mine", "harvest", "pickup", "open", "use" };
+
+        private IPublisher<ObjectHarvestedMessage> _harvestedPublisher;
+        private string _assetName;
+
         public ReadOnlyReactiveProperty<bool> IsPlayerNearby => _isPlayerNearby;
         public ReadOnlyReactiveProperty<bool> IsBeingInteracted => _isBeingInteracted;
         public Observable<InteractionEvent> OnInteractionStarted => _onInteractionStarted;
         public Observable<InteractionEvent> OnInteractionCompleted => _onInteractionCompleted;
         public Observable<Unit> OnDestroyed => _onDestroyed;
 
-        // Public properties
-        public string InteractionPrompt => $"{interactionPrompt} to {interactionType.ToString().ToLower()}";
+        public string InteractionPrompt => _cachedPrompt;
         public float InteractionDistance => interactionDistance;
         public InteractionType Type => interactionType;
         public ResourceType Resource => resourceType;
         public float HarvestTime => harvestTime;
 
-        /// <summary>
-        /// Configure interactable object at runtime (for dynamically spawned objects)
-        /// </summary>
-        public void Configure(InteractionType type, ResourceType resource, int amount, float harvestDuration = 2f, string prompt = "Press E")
+        public void Configure(InteractionType type, ResourceType resource, int amount, float harvestDuration = 2f, string prompt = "Press E", string assetName = null)
         {
             interactionType = type;
             resourceType = resource;
             resourceAmount = amount;
             harvestTime = harvestDuration;
             interactionPrompt = prompt;
+            _assetName = assetName;
+            UpdateCachedPrompt();
+        }
+
+        public void SetMessagePublisher(IPublisher<ObjectHarvestedMessage> publisher)
+        {
+            _harvestedPublisher = publisher;
+        }
+
+        private void UpdateCachedPrompt()
+        {
+            _cachedPrompt = $"{interactionPrompt} to {InteractionTypeStrings[(int)interactionType]}";
+        }
+
+        private void Awake()
+        {
+            UpdateCachedPrompt();
         }
 
         private void Start()
         {
-            // Example: Log when player gets nearby (can be used for UI, audio, etc.)
             _isPlayerNearby
-                .Where(nearby => nearby)
-                .Subscribe(_ => OnPlayerEnterRange())
-                .AddTo(this);
-
-            _isPlayerNearby
-                .Where(nearby => !nearby)
-                .Subscribe(_ => OnPlayerExitRange())
+                .Subscribe(nearby =>
+                {
+                    if (!nearby)
+                    {
+                        CancelInteraction();
+                    }
+                })
                 .AddTo(this);
         }
 
-        /// <summary>
-        /// Called by InteractionManager via raycast or proximity detection
-        /// </summary>
         public void SetPlayerNearby(bool nearby)
         {
             _isPlayerNearby.Value = nearby;
         }
 
-        /// <summary>
-        /// Start interaction (e.g., player pressed E)
-        /// Returns an observable that completes when interaction is done
-        /// </summary>
         public Observable<InteractionResult> Interact(Transform player)
         {
             if (_isBeingInteracted.Value)
@@ -96,7 +107,6 @@ namespace BugWars.Interaction
 
             _onInteractionStarted.OnNext(interactionEvent);
 
-            // Simulate harvest time with R3's timer
             return Observable.Timer(TimeSpan.FromSeconds(harvestTime))
                 .Select(_ =>
                 {
@@ -111,36 +121,24 @@ namespace BugWars.Interaction
                     _onInteractionCompleted.OnNext(interactionEvent);
                     _isBeingInteracted.Value = false;
 
-                    // Destroy object after harvesting
                     DestroyObject();
 
                     return result;
                 });
         }
 
-        /// <summary>
-        /// Cancel ongoing interaction
-        /// </summary>
         public void CancelInteraction()
         {
             if (_isBeingInteracted.Value)
             {
                 _isBeingInteracted.Value = false;
-                Debug.Log($"[InteractableObject] Interaction cancelled: {gameObject.name}");
             }
         }
 
-        /// <summary>
-        /// Manually begin interaction (for EntityAction system)
-        /// Sets the interaction state without starting the built-in timer
-        /// </summary>
         public bool BeginInteraction(Transform interactor)
         {
             if (_isBeingInteracted.Value)
-            {
-                Debug.LogWarning($"[InteractableObject] Cannot begin interaction - {gameObject.name} is already being interacted with!");
                 return false;
-            }
 
             _isBeingInteracted.Value = true;
 
@@ -153,43 +151,40 @@ namespace BugWars.Interaction
             };
 
             _onInteractionStarted.OnNext(interactionEvent);
-            Debug.Log($"[InteractableObject] Interaction started: {gameObject.name}");
             return true;
         }
 
-        /// <summary>
-        /// Manually end interaction (for EntityAction system)
-        /// Resets the interaction state without destroying the object
-        /// </summary>
         public void EndInteraction()
         {
             if (_isBeingInteracted.Value)
             {
                 _isBeingInteracted.Value = false;
-                Debug.Log($"[InteractableObject] Interaction ended: {gameObject.name}");
             }
-        }
-
-        private void OnPlayerEnterRange()
-        {
-            Debug.Log($"[InteractableObject] Player nearby: {gameObject.name}");
-        }
-
-        private void OnPlayerExitRange()
-        {
-            Debug.Log($"[InteractableObject] Player left: {gameObject.name}");
-            CancelInteraction();
         }
 
         private void DestroyObject()
         {
             _onDestroyed.OnNext(Unit.Default);
-            Destroy(gameObject);
+
+            if (_harvestedPublisher != null)
+            {
+                var message = new ObjectHarvestedMessage(
+                    gameObject,
+                    _assetName ?? gameObject.name,
+                    resourceType,
+                    resourceAmount
+                );
+                _harvestedPublisher.Publish(message);
+            }
+            else
+            {
+                Debug.LogWarning($"[InteractableObject] No publisher set for {gameObject.name}, destroying instead of returning to pool");
+                Destroy(gameObject);
+            }
         }
 
         private void OnDestroy()
         {
-            // Cleanup R3 subscriptions
             _isPlayerNearby?.Dispose();
             _isBeingInteracted?.Dispose();
             _onInteractionStarted?.Dispose();
@@ -199,7 +194,6 @@ namespace BugWars.Interaction
 
         private void OnDrawGizmosSelected()
         {
-            // Visualize interaction range in editor
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireSphere(transform.position, interactionDistance);
         }

@@ -335,8 +335,6 @@ namespace BugWars.Interaction
             Vector3 worldPosition = target.position + worldOffset;
             transform.position = worldPosition;
 
-            Debug.Log($"[InteractionPromptUIToolkit] Positioning UI at world position: {worldPosition}, target: {target.position}");
-
             // Make UI face camera
             transform.LookAt(transform.position + mainCamera.transform.rotation * Vector3.forward,
                 mainCamera.transform.rotation * Vector3.up);

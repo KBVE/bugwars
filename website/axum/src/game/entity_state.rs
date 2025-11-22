@@ -168,7 +168,7 @@ pub enum EntityType {
 pub struct EntityState {
     pub entity_id: String,  // Unique entity ID (user_id for players, generated for NPCs)
     pub entity_type: EntityType,
-    pub email: Option<String>, // Only for players
+    pub display_name: String, // Display name for players (visible to others)
     pub position: Position,
     pub rotation: Rotation,
     pub health: f32,
@@ -180,11 +180,11 @@ pub struct EntityState {
 }
 
 impl EntityState {
-    pub fn new_player(user_id: String, email: Option<String>) -> Self {
+    pub fn new_player(user_id: String, display_name: String) -> Self {
         Self {
             entity_id: user_id,
             entity_type: EntityType::Player,
-            email,
+            display_name,
             position: Position::default(),
             rotation: Rotation::default(),
             health: 100.0,
@@ -197,9 +197,9 @@ impl EntityState {
 
     pub fn new_npc(npc_id: String) -> Self {
         Self {
-            entity_id: npc_id,
+            entity_id: npc_id.clone(),
             entity_type: EntityType::Npc,
-            email: None,
+            display_name: format!("NPC_{}", &npc_id[..8]), // Use first 8 chars of ID
             position: Position::default(),
             rotation: Rotation::default(),
             health: 100.0,
@@ -212,9 +212,9 @@ impl EntityState {
 
     pub fn new_enemy(enemy_id: String) -> Self {
         Self {
-            entity_id: enemy_id,
+            entity_id: enemy_id.clone(),
             entity_type: EntityType::Enemy,
-            email: None,
+            display_name: format!("Enemy_{}", &enemy_id[..8]), // Use first 8 chars of ID
             position: Position::default(),
             rotation: Rotation::default(),
             health: 100.0,
@@ -227,9 +227,9 @@ impl EntityState {
 
     pub fn new_boss(boss_id: String, health: f32) -> Self {
         Self {
-            entity_id: boss_id,
+            entity_id: boss_id.clone(),
             entity_type: EntityType::Boss,
-            email: None,
+            display_name: format!("Boss_{}", &boss_id[..8]), // Use first 8 chars of ID
             position: Position::default(),
             rotation: Rotation::default(),
             health,
@@ -380,11 +380,12 @@ impl EntityStateManager {
     }
 
     /// Add or update a player entity
-    pub fn add_player(&self, user_id: String, email: Option<String>) -> EntityState {
-        let entity = EntityState::new_player(user_id.clone(), email);
+    pub fn add_player(&self, user_id: String, display_name: String) -> EntityState {
+        let entity = EntityState::new_player(user_id.clone(), display_name);
         info!(
             entity_id = %user_id,
             entity_type = ?entity.entity_type,
+            display_name = %entity.display_name,
             entity_count = self.entities.len() + 1,
             "Player entity added to game state"
         );

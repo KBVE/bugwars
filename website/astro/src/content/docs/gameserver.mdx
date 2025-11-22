@@ -1,0 +1,25 @@
+---
+title: "Game Server Dashboard"
+description: "Monitor connected players and game server metrics in real-time"
+---
+
+import AstroGameServer from '@/components/gameserver/AstroGameServer.astro';
+
+# Game Server Dashboard
+
+Real-time monitoring dashboard for the BugWars game server. Track connected players, their inventory, and positions.
+
+## Server Metrics
+
+- **Connected Players**: Number of authenticated players currently online
+- **Player Inventory**: Track what items each player has collected
+- **Player Locations**: Monitor player positions in the game world
+- **Server Status**: Live WebSocket connection health
+
+## Privacy Note
+
+This dashboard displays player usernames and UUIDs for debugging purposes. JWT tokens are **never** displayed for security. In production, player UUIDs and emails will be replaced with in-game usernames.
+
+---
+
+<AstroGameServer />

@@ -8,6 +8,8 @@ using VContainer;
 using VContainer.Unity;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using MessagePipe;
+using BugWars.Interaction;
 
 namespace BugWars.Terrain
 {
@@ -237,6 +239,9 @@ namespace BugWars.Terrain
 
         // Dependencies
         private TerrainManager terrainManager;
+        private IPublisher<ObjectHarvestedMessage> harvestedPublisher;
+        private ISubscriber<ObjectHarvestedMessage> harvestedSubscriber;
+        private IDisposable harvestSubscription;
 
         // Chunk tracking
         private Dictionary<Vector2Int, ChunkEnvironmentData> chunkEnvironmentData = new Dictionary<Vector2Int, ChunkEnvironmentData>();
@@ -263,9 +268,14 @@ namespace BugWars.Terrain
         /// VContainer dependency injection
         /// </summary>
         [Inject]
-        public void Construct(TerrainManager terrainMgr)
+        public void Construct(
+            TerrainManager terrainMgr,
+            IPublisher<ObjectHarvestedMessage> publisher,
+            ISubscriber<ObjectHarvestedMessage> subscriber)
         {
             terrainManager = terrainMgr;
+            harvestedPublisher = publisher;
+            harvestedSubscriber = subscriber;
         }
 
         /// <summary>
@@ -289,6 +299,9 @@ namespace BugWars.Terrain
         private async UniTask InitializeEnvironmentSystemAsync(CancellationToken cancellationToken)
         {
             await InitializeEnvironmentContainerAndAssets(cancellationToken);
+
+            // Subscribe to object harvested messages for pooling
+            harvestSubscription = harvestedSubscriber.Subscribe(OnObjectHarvested);
 
             // Yield to prevent blocking
             await UniTask.Yield(cancellationToken);
@@ -1117,7 +1130,29 @@ namespace BugWars.Terrain
                     break;
             }
 
-            interactable.Configure(interactionType, resourceType, resourceAmount, harvestTime, prompt);
+            interactable.Configure(interactionType, resourceType, resourceAmount, harvestTime, prompt, asset.assetName);
+            interactable.SetMessagePublisher(harvestedPublisher);
+        }
+
+        /// <summary>
+        /// Handle object harvested messages and return to pool
+        /// </summary>
+        private void OnObjectHarvested(ObjectHarvestedMessage message)
+        {
+            if (message.GameObject == null)
+            {
+                Debug.LogWarning("[EnvironmentManager] Received harvest message with null GameObject");
+                return;
+            }
+
+            if (useObjectPooling && objectPool != null)
+            {
+                objectPool.Return(message.GameObject, message.AssetName);
+            }
+            else
+            {
+                UnityEngine.Object.Destroy(message.GameObject);
+            }
         }
 
         /// <summary>
@@ -1440,6 +1475,7 @@ namespace BugWars.Terrain
             _cts?.Cancel();
             _cts?.Dispose();
             _disposables?.Dispose();
+            harvestSubscription?.Dispose();
 
             // Clean up object pool
             if (objectPool != null)

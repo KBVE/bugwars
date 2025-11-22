@@ -451,7 +451,14 @@ async fn handle_game_message(
             }
         }
         GameMessage::Join { position } => {
-            let mut entity = entity_state.add_player(user_id.to_string(), user_email.clone());
+            // Generate display name from email (use part before @, or full user_id if no email)
+            let display_name = user_email
+                .as_ref()
+                .and_then(|email| email.split('@').next())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("Player_{}", &user_id[..8]));
+
+            let mut entity = entity_state.add_player(user_id.to_string(), display_name);
             if let Some(pos) = position {
                 entity_state.update_position(user_id, pos, None);
                 entity.position = pos;

@@ -27,6 +27,9 @@ namespace BugWars.Interaction
         [SerializeField] private float proximityCheckRadius = 10f;
         [SerializeField] private float proximityCheckInterval = 0.5f;
 
+        [Header("Raycast Settings - Performance")]
+        [SerializeField] private float raycastCheckInterval = 0.33f; // 3 checks per second
+
         [Header("Input Settings")]
         [SerializeField] private Key interactKey = Key.E;
 
@@ -47,12 +50,17 @@ namespace BugWars.Interaction
 
         // Tracked interactables
         private HashSet<InteractableObject> nearbyInteractables = new();
+        private HashSet<InteractableObject> tempNearbySet = new(); // Reusable set for proximity checks
 
-        // Debug visualization
-        private LineRenderer raycastLine;
+        // Reusable buffers to avoid per-frame/periodic allocations
+        private readonly Collider[] proximityBuffer = new Collider[32];
+        private readonly Collider[] closeRaycastBuffer = new Collider[16]; // Buffer for close-range raycast checks
 
-        // Reusable buffer for proximity checks (avoids allocations)
-        private Collider[] proximityBuffer = new Collider[32];
+        // Component cache to avoid repeated GetComponent calls
+        private readonly Dictionary<Collider, InteractableObject> componentCache = new();
+
+        // Cached values to avoid per-call allocations
+        private Vector3 cachedHeightOffset;
 
         /// <summary>
         /// Configure interaction settings programmatically and initialize the manager
@@ -61,7 +69,7 @@ namespace BugWars.Interaction
         {
             raycastDistance = distance;
             interactableLayer = layer;
-            Debug.Log($"[InteractionManager] Configured with distance: {distance}, layer: {layer.value}");
+            //Debug.Log($"[InteractionManager] Configured with distance: {distance}, layer: {layer.value}");
         }
 
         private async void Start()
@@ -100,18 +108,13 @@ namespace BugWars.Interaction
             var harvestAction = playerActionManager.GetComponent<BugWars.Entity.Actions.HarvestAction>();
             if (harvestAction != null)
             {
-                // Set harvest range slightly larger than raycast to account for object size
                 float newRange = raycastDistance + 1f;
-                Debug.Log($"[InteractionManager] BEFORE SetHarvestRange - raycastDistance: {raycastDistance}, newRange: {newRange}");
                 harvestAction.SetHarvestRange(newRange);
-                Debug.Log($"[InteractionManager] AFTER SetHarvestRange - configured harvest range to: {newRange}");
             }
             else
             {
                 Debug.LogWarning("[InteractionManager] HarvestAction not found after EntityActionManager creation!");
             }
-
-            Debug.Log($"[InteractionManager] Found player: {playerObj.name}");
 
             // Get camera
             playerCamera = Camera.main;
@@ -120,52 +123,22 @@ namespace BugWars.Interaction
             {
                 Debug.LogError("[InteractionManager] No main camera found!");
             }
-            else
-            {
-                Debug.Log($"[InteractionManager] Found camera: {playerCamera.name}");
-            }
 
-            // Create LineRenderer for runtime raycast visualization
-            CreateRaycastVisualizer();
+            // Cache height offset vector to avoid repeated allocation
+            cachedHeightOffset = Vector3.up * raycastHeightOffset;
 
             SetupRaycastStream();
             SetupProximityStream();
             SetupInputStream();
-
-            Debug.Log($"[InteractionManager] Initialized - Layer mask: {interactableLayer.value}, Raycast distance: {raycastDistance}");
-
-            // Count interactables without spamming logs
-            var allInteractables = FindObjectsByType<InteractableObject>(FindObjectsSortMode.None);
-            if (allInteractables.Length > 0)
-            {
-                Debug.Log($"[InteractionManager] Found {allInteractables.Length} interactable objects in scene");
-            }
-            else
-            {
-                Debug.LogWarning("[InteractionManager] No InteractableObject components found in scene! Make sure environment objects have been spawned.");
-            }
-        }
-
-        private void CreateRaycastVisualizer()
-        {
-            GameObject lineObj = new GameObject("RaycastVisualizer");
-            lineObj.transform.SetParent(transform);
-            raycastLine = lineObj.AddComponent<LineRenderer>();
-
-            // Configure LineRenderer for visibility
-            raycastLine.material = new Material(Shader.Find("Sprites/Default"));
-            raycastLine.startWidth = 0.02f;
-            raycastLine.endWidth = 0.02f;
-            raycastLine.positionCount = 2;
-            raycastLine.useWorldSpace = true;
         }
 
         /// <summary>
-        /// R3 Raycast stream - fires every frame when player is looking at an interactable
+        /// R3 Raycast stream - checks for interactables at fixed interval for WebGL performance
+        /// Optimized from EveryUpdate to reduce CPU overhead
         /// </summary>
         private void SetupRaycastStream()
         {
-            Observable.EveryUpdate()
+            Observable.Interval(TimeSpan.FromSeconds(raycastCheckInterval))
                 .Where(_ => playerCamera != null && playerActionManager != null && !playerActionManager.IsPerformingAction.CurrentValue)
                 .Select(_ => PerformRaycast())
                 .DistinctUntilChanged() // Only trigger when target changes
@@ -191,19 +164,17 @@ namespace BugWars.Interaction
         /// <summary>
         /// R3 Input stream - handles interaction key presses reactively
         /// Uses new Input System instead of legacy Input
+        /// Combined stream for E key and mouse click to reduce overhead
         /// </summary>
         private void SetupInputStream()
         {
-            // E key interaction
             Observable.EveryUpdate()
-                .Where(_ => Keyboard.current != null && Keyboard.current[interactKey].wasPressedThisFrame)
-                .Where(_ => _currentTarget.Value != null && playerActionManager != null && !playerActionManager.IsPerformingAction.CurrentValue)
-                .Subscribe(_ => StartInteraction())
-                .AddTo(this);
-
-            // Mouse click interaction
-            Observable.EveryUpdate()
-                .Where(_ => Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+                .Where(_ =>
+                {
+                    bool keyPressed = Keyboard.current != null && Keyboard.current[interactKey].wasPressedThisFrame;
+                    bool mousePressed = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
+                    return keyPressed || mousePressed;
+                })
                 .Where(_ => _currentTarget.Value != null && playerActionManager != null && !playerActionManager.IsPerformingAction.CurrentValue)
                 .Subscribe(_ => StartInteraction())
                 .AddTo(this);
@@ -214,34 +185,54 @@ namespace BugWars.Interaction
         /// Uses player's forward direction from chest/center height for better ground object detection
         /// CRITICAL: Checks very close objects first (OverlapSphere) then distant objects (SphereCast)
         /// This prevents missing objects when player is standing inside/very close to them
+        /// Optimized with NonAlloc, component caching, and vector reuse to eliminate allocations
         /// </summary>
         private InteractableObject PerformRaycast()
         {
             if (playerTransform == null || playerCamera == null)
                 return null;
 
-            // Raycast from player position at chest height, in camera forward direction
-            Vector3 rayOrigin = playerTransform.position + Vector3.up * raycastHeightOffset;
+            Vector3 rayOrigin = playerTransform.position + cachedHeightOffset;
             Vector3 rayDirection = playerCamera.transform.forward;
-            Ray ray = new Ray(rayOrigin, rayDirection);
 
-            // CRITICAL: First check for very close objects using OverlapSphere
-            // SphereCast misses objects when the sphere starts inside them
-            Collider[] nearbyColliders = Physics.OverlapSphere(rayOrigin, raycastRadius * 2f, interactableLayer);
-            if (nearbyColliders.Length > 0)
+            // CRITICAL: First check for very close objects using OverlapSphereNonAlloc (zero allocation)
+            // Ignore triggers for better performance
+            int closeHitCount = Physics.OverlapSphereNonAlloc(
+                rayOrigin,
+                raycastRadius * 2f,
+                closeRaycastBuffer,
+                interactableLayer,
+                QueryTriggerInteraction.Ignore
+            );
+
+            if (closeHitCount >= closeRaycastBuffer.Length)
             {
-                // Find the closest one that's in front of the camera
+                Debug.LogWarning($"[InteractionManager] Close raycast buffer overflow! Found {closeHitCount}+ objects, buffer size is {closeRaycastBuffer.Length}. Some objects may be missed.");
+            }
+
+            if (closeHitCount > 0)
+            {
                 InteractableObject closestInFront = null;
                 float closestDot = 0.5f; // Only consider objects somewhat in front (45 degree cone)
 
-                foreach (var collider in nearbyColliders)
+                for (int i = 0; i < closeHitCount; i++)
                 {
-                    Vector3 toObject = (collider.transform.position - rayOrigin).normalized;
-                    float dot = Vector3.Dot(rayDirection, toObject);
+                    var collider = closeRaycastBuffer[i];
+                    if (collider == null) continue;
+
+                    // Use unnormalized vector for dot product (avoids sqrt)
+                    Vector3 toObject = collider.transform.position - rayOrigin;
+                    float sqrMag = toObject.sqrMagnitude;
+
+                    // Early skip if too far
+                    if (sqrMag > raycastDistance * raycastDistance) continue;
+
+                    // Normalize manually only when needed
+                    float dot = Vector3.Dot(rayDirection, toObject) / Mathf.Sqrt(sqrMag);
 
                     if (dot > closestDot)
                     {
-                        var interactable = collider.GetComponent<InteractableObject>();
+                        var interactable = GetCachedComponent(collider);
                         if (interactable != null)
                         {
                             closestDot = dot;
@@ -251,58 +242,51 @@ namespace BugWars.Interaction
                 }
 
                 if (closestInFront != null)
-                {
-                    // Update visualization for close object
-                    if (raycastLine != null)
-                    {
-                        Vector3 targetPos = closestInFront.transform.position;
-                        raycastLine.SetPosition(0, ray.origin);
-                        raycastLine.SetPosition(1, targetPos);
-                        raycastLine.startColor = Color.yellow; // Yellow for close detection
-                        raycastLine.endColor = Color.yellow;
-                    }
                     return closestInFront;
-                }
             }
 
             // No close objects - use SphereCast for distant objects
-            if (Physics.SphereCast(ray, raycastRadius, out RaycastHit hit, raycastDistance, interactableLayer))
+            if (Physics.SphereCast(rayOrigin, raycastRadius, rayDirection, out RaycastHit hit, raycastDistance, interactableLayer, QueryTriggerInteraction.Ignore))
             {
-                // Update visualization
-                if (raycastLine != null)
-                {
-                    raycastLine.SetPosition(0, ray.origin);
-                    raycastLine.SetPosition(1, ray.origin + ray.direction * hit.distance);
-                    raycastLine.startColor = Color.green;
-                    raycastLine.endColor = Color.green;
-                }
-
-                return hit.collider.GetComponent<InteractableObject>();
-            }
-
-            // No hit - show red line
-            if (raycastLine != null)
-            {
-                raycastLine.SetPosition(0, ray.origin);
-                raycastLine.SetPosition(1, ray.origin + ray.direction * raycastDistance);
-                raycastLine.startColor = Color.red;
-                raycastLine.endColor = Color.red;
+                return GetCachedComponent(hit.collider);
             }
 
             return null;
         }
 
         /// <summary>
+        /// Get InteractableObject component from collider with caching to avoid repeated GetComponent calls
+        /// </summary>
+        private InteractableObject GetCachedComponent(Collider collider)
+        {
+            if (collider == null)
+                return null;
+
+            if (!componentCache.TryGetValue(collider, out var interactable))
+            {
+                interactable = collider.GetComponent<InteractableObject>();
+                if (interactable != null)
+                {
+                    componentCache[collider] = interactable;
+                }
+            }
+
+            return interactable;
+        }
+
+        /// <summary>
         /// Check for interactables within proximity range
         /// Updates their "player nearby" state
-        /// Optimized with NonAlloc to reduce GC pressure
+        /// Optimized with NonAlloc and reusable HashSet to eliminate allocations
         /// </summary>
         private void CheckNearbyInteractables()
         {
             if (playerTransform == null)
+            {
+                Debug.LogWarning("[InteractionManager] CheckNearbyInteractables called with null playerTransform!");
                 return;
+            }
 
-            // Use NonAlloc with reusable buffer to avoid garbage collection
             int hitCount = Physics.OverlapSphereNonAlloc(
                 playerTransform.position,
                 proximityCheckRadius,
@@ -310,14 +294,23 @@ namespace BugWars.Interaction
                 interactableLayer
             );
 
-            HashSet<InteractableObject> currentNearby = new();
+            if (hitCount >= proximityBuffer.Length)
+            {
+                Debug.LogWarning($"[InteractionManager] Proximity buffer overflow! Found {hitCount}+ objects, buffer size is {proximityBuffer.Length}. Consider increasing buffer size.");
+            }
+
+            // Reuse temp set instead of allocating new one
+            tempNearbySet.Clear();
 
             for (int i = 0; i < hitCount; i++)
             {
-                var interactable = proximityBuffer[i].GetComponent<InteractableObject>();
+                var collider = proximityBuffer[i];
+                if (collider == null) continue;
+
+                var interactable = GetCachedComponent(collider);
                 if (interactable != null)
                 {
-                    currentNearby.Add(interactable);
+                    tempNearbySet.Add(interactable);
 
                     // Notify if newly in range
                     if (!nearbyInteractables.Contains(interactable))
@@ -330,13 +323,14 @@ namespace BugWars.Interaction
             // Notify objects that player left range
             foreach (var oldInteractable in nearbyInteractables)
             {
-                if (oldInteractable != null && !currentNearby.Contains(oldInteractable))
+                if (oldInteractable != null && !tempNearbySet.Contains(oldInteractable))
                 {
                     oldInteractable.SetPlayerNearby(false);
                 }
             }
 
-            nearbyInteractables = currentNearby;
+            // Swap sets instead of allocating new one
+            (nearbyInteractables, tempNearbySet) = (tempNearbySet, nearbyInteractables);
         }
 
         /// <summary>
@@ -363,9 +357,6 @@ namespace BugWars.Interaction
                 return;
             }
 
-            Debug.Log($"[InteractionManager] Triggering harvest action on {target.name}");
-
-            // Simple delegation - let EntityActionManager handle everything
             if (playerActionManager == null)
             {
                 Debug.LogError("[InteractionManager] No EntityActionManager found! Cannot start interaction.");
@@ -379,11 +370,7 @@ namespace BugWars.Interaction
         private void OnDestroy()
         {
             _currentTarget?.Dispose();
-
-            if (raycastLine != null)
-            {
-                Destroy(raycastLine.gameObject);
-            }
+            componentCache?.Clear();
         }
 
         private void OnDrawGizmosSelected()

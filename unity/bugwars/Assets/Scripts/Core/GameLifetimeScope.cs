@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using VContainer;
 using VContainer.Unity;
+using MessagePipe;
 using BugWars.UI;
 using BugWars.Terrain;
 using BugWars.Entity;
@@ -48,14 +49,18 @@ namespace BugWars.Core
         private BugWars.Network.WebSocketManager webSocketManager;
         [SerializeField] [Tooltip("Optional - NetworkSyncManager component to register. Will create if not assigned.")]
         private BugWars.Network.NetworkSyncManager networkSyncManager;
+        [SerializeField] [Tooltip("Optional - TokenRefreshManager component to register. Will create if not assigned.")]
+        private BugWars.Auth.TokenRefreshManager tokenRefreshManager;
         [SerializeField] [Tooltip("Optional - InteractionPromptUIToolkit prefab to instantiate. If not assigned, interaction UI will not be shown.")]
         private GameObject interactionPromptUIPrefab;
 
 
         protected override void Configure(IContainerBuilder builder)
         {
+            var options = builder.RegisterMessagePipe();
+            builder.RegisterBuildCallback(c => GlobalMessagePipe.SetProvider(c.AsServiceProvider()));
+
             // Register core managers in dependency order
-            // EventManager has no dependencies - register first
             if (eventManager != null)
             {
                 builder.RegisterComponent(eventManager);
@@ -153,6 +158,16 @@ namespace BugWars.Core
             else
             {
                 RegisterOrCreateManager<BugWars.Network.NetworkSyncManager>(builder, "NetworkSyncManager");
+            }
+
+            // TokenRefreshManager to prevent token expiration
+            if (tokenRefreshManager != null)
+            {
+                builder.RegisterComponent(tokenRefreshManager);
+            }
+            else
+            {
+                RegisterOrCreateManager<BugWars.Auth.TokenRefreshManager>(builder, "TokenRefreshManager");
             }
 
             // Register sync handlers after container is built

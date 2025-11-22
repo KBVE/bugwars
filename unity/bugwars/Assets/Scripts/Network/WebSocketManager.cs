@@ -88,8 +88,18 @@ namespace BugWars.Network
                     Debug.Log($"[WebSocketManager] Auth status changed: {(isAuth ? "Authenticated" : "Guest")}");
                     if (isAuth)
                     {
-                        // Player authenticated, connect to WebSocket
-                        ConnectAsync(_cts.Token).Forget();
+                        // Player authenticated or token refreshed
+                        // If already connected, disconnect first to reconnect with new token
+                        if (_isConnected || _isConnecting)
+                        {
+                            Debug.Log("[WebSocketManager] Token refreshed, reconnecting with new token");
+                            DisconnectAsync().ContinueWith(() => ConnectAsync(_cts.Token)).Forget();
+                        }
+                        else
+                        {
+                            // Not connected, connect normally
+                            ConnectAsync(_cts.Token).Forget();
+                        }
                     }
                     else
                     {
@@ -385,7 +395,7 @@ namespace BugWars.Network
                     case "pong":
                         // Update last pong time - connection is alive
                         _lastPongReceivedTime = Time.time;
-                        Debug.Log("[WebSocketManager] ♥ Pong received");
+                        // Heartbeat confirmed - connection healthy
                         break;
 
                     case "echo":
