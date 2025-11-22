@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using VContainer;
 using VContainer.Unity;
 
 namespace BugWars.Network
@@ -21,9 +22,9 @@ namespace BugWars.Network
     /// 2. Manager handles connect/disconnect automatically
     /// 3. Call SyncAll() to force sync all dirty data
     /// </summary>
-    public class NetworkSyncManager : ITickable, IAsyncStartable, IDisposable
+    public class NetworkSyncManager : MonoBehaviour, ITickable, IAsyncStartable
     {
-        private readonly WebSocketManager _webSocketManager;
+        private WebSocketManager _webSocketManager;
         private readonly Dictionary<string, INetworkSyncable> _syncables = new();
         private readonly Dictionary<string, SyncConfig> _syncConfigs = new();
 
@@ -39,10 +40,12 @@ namespace BugWars.Network
             public float BatchInterval;
         }
 
-        public NetworkSyncManager(WebSocketManager webSocketManager)
+        // VContainer injection
+        [Inject]
+        public void Construct(WebSocketManager webSocketManager)
         {
             _webSocketManager = webSocketManager;
-            Debug.Log("[NetworkSyncManager] Constructed");
+            Debug.Log("[NetworkSyncManager] WebSocketManager injected via VContainer");
         }
 
         #region Registration
@@ -168,9 +171,9 @@ namespace BugWars.Network
             }
         }
 
-        public void Dispose()
+        private void OnDestroy()
         {
-            Debug.Log("[NetworkSyncManager] Disposing");
+            Debug.Log("[NetworkSyncManager] OnDestroy - cleaning up");
 
             // Notify all syncables of disconnection
             foreach (var syncable in _syncables.Values)

@@ -53,11 +53,19 @@ MonoBehaviour:
   playerData:
     playerName: Player
     playerId: 84cb97e0-5c59-4ffd-84a7-9e9d785acd81
+    displayName: Player
+    username: 
+    email: 
+    avatarUrl: 
     level: 1
     experience: 0
     score: 0
     playTime: 0
     lastKnownPosition: {x: 0, y: 0, z: 0}
+    isAuthenticated: 0
+    accessToken: 
+    refreshToken: 
+    expiresAt: 0
   enableTerrainStreaming: 1
   terrainStreamingInterval: 1
 --- !u!1 &2572028443775040931
@@ -104,6 +112,94 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4ce5b41c96b474a54b10809eed366c43, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BugWars.Core.GameManager
+--- !u!1 &3364457828817850273
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5022000439380738421}
+  - component: {fileID: 9149531709091882784}
+  m_Layer: 0
+  m_Name: WebSocketManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5022000439380738421
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3364457828817850273}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8462317456789012346}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9149531709091882784
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3364457828817850273}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d789450bbb144816813f7c08a3a99eb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Network.WebSocketManager
+--- !u!1 &3391714042954651502
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7047807397832696103}
+  - component: {fileID: 3349400252626822799}
+  m_Layer: 0
+  m_Name: NetworkSyncManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7047807397832696103
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3391714042954651502}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8462317456789012346}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3349400252626822799
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3391714042954651502}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5d5061e317f34e37accb4753c826ad6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BugWars.Network.NetworkSyncManager
 --- !u!1 &3615737229741170740
 GameObject:
   m_ObjectHideFlags: 0
@@ -356,6 +452,7 @@ MonoBehaviour:
   cameraDistanceBehind: 21000
   cameraMode: 1
   autoRotateToMovement: 1
+  rotationSmoothing: 0.15
   autoRotateSpeed: 120
   movementThreshold: 0.1
   enableCameraLag: 1
@@ -472,6 +569,8 @@ Transform:
   - {fileID: 393329099463632125}
   - {fileID: 4998318005036485852}
   - {fileID: 1735736264222090280}
+  - {fileID: 5022000439380738421}
+  - {fileID: 7047807397832696103}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &8462317456789012347
@@ -502,6 +601,8 @@ MonoBehaviour:
   cameraManager: {fileID: 9078858066107133751}
   entityManager: {fileID: 7079581847023201318}
   interactionManager: {fileID: 6383346758455814039}
+  webSocketManager: {fileID: 9149531709091882784}
+  networkSyncManager: {fileID: 3349400252626822799}
   interactionPromptUIPrefab: {fileID: 4969149913543290532, guid: 742516da40d2846238c87a57e285e990, type: 3}
 --- !u!1 &9191352141979102719
 GameObject:

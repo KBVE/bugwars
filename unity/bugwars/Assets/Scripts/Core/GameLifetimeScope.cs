@@ -44,6 +44,10 @@ namespace BugWars.Core
         private EntityManager entityManager;
         [SerializeField] [Tooltip("Optional - InteractionManager component to register. Will create if not assigned.")]
         private InteractionManager interactionManager;
+        [SerializeField] [Tooltip("Optional - WebSocketManager component to register. Will create if not assigned.")]
+        private BugWars.Network.WebSocketManager webSocketManager;
+        [SerializeField] [Tooltip("Optional - NetworkSyncManager component to register. Will create if not assigned.")]
+        private BugWars.Network.NetworkSyncManager networkSyncManager;
         [SerializeField] [Tooltip("Optional - InteractionPromptUIToolkit prefab to instantiate. If not assigned, interaction UI will not be shown.")]
         private GameObject interactionPromptUIPrefab;
 
@@ -132,15 +136,24 @@ namespace BugWars.Core
             }
 
             // WebSocketManager for real-time server communication
-            var wsRegistration = builder.RegisterComponentOnNewGameObject<BugWars.Network.WebSocketManager>(Lifetime.Singleton, "WebSocketManager");
-            wsRegistration.DontDestroyOnLoad().AsImplementedInterfaces();
-            Debug.Log("[GameLifetimeScope] WebSocketManager registered via VContainer");
+            if (webSocketManager != null)
+            {
+                builder.RegisterComponent(webSocketManager).AsImplementedInterfaces();
+            }
+            else
+            {
+                RegisterOrCreateManager<BugWars.Network.WebSocketManager>(builder, "WebSocketManager");
+            }
 
             // NetworkSyncManager for centralized data synchronization
-            builder.Register<BugWars.Network.NetworkSyncManager>(Lifetime.Singleton)
-                .AsImplementedInterfaces()
-                .AsSelf();
-            Debug.Log("[GameLifetimeScope] NetworkSyncManager registered via VContainer");
+            if (networkSyncManager != null)
+            {
+                builder.RegisterComponent(networkSyncManager).AsImplementedInterfaces().AsSelf();
+            }
+            else
+            {
+                RegisterOrCreateManager<BugWars.Network.NetworkSyncManager>(builder, "NetworkSyncManager");
+            }
 
             // Register sync handlers after container is built
             builder.RegisterBuildCallback(container =>
