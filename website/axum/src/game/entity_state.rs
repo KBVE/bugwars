@@ -296,6 +296,11 @@ pub enum GameMessage {
     GetState,
     /// Heartbeat/keepalive
     Ping,
+    /// Request to harvest an environment object (tree, rock, bush)
+    HarvestObject {
+        object_id: String,
+        player_position: Position,
+    },
 }
 
 /// Server response messages
@@ -357,6 +362,22 @@ pub enum ServerMessage {
     /// Pong response to ping
     Pong {
         timestamp: i64,
+    },
+    /// Initial environment objects sent when player connects
+    EnvironmentObjects {
+        objects: Vec<serde_json::Value>, // Using Value to avoid circular dependency
+    },
+    /// Harvest result (success or failure)
+    HarvestResult {
+        object_id: String,
+        success: bool,
+        message: String,
+        resources: Option<Vec<(String, u32)>>, // resource_type, quantity
+    },
+    /// Object respawned (broadcast to nearby players)
+    ObjectRespawned {
+        object_id: String,
+        object_data: serde_json::Value,
     },
     /// Error message
     Error {

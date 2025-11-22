@@ -22,6 +22,9 @@ namespace BugWars.Interaction
         [SerializeField] private int resourceAmount = 5;
         [SerializeField] private float harvestTime = 2f;
 
+        [Header("Server Sync (Phase 3)")]
+        [SerializeField] private string objectId = ""; // Server-assigned unique ID for this object
+
         private readonly ReactiveProperty<bool> _isPlayerNearby = new(false);
         private readonly ReactiveProperty<bool> _isBeingInteracted = new(false);
         private readonly Subject<InteractionEvent> _onInteractionStarted = new();
@@ -45,6 +48,7 @@ namespace BugWars.Interaction
         public InteractionType Type => interactionType;
         public ResourceType Resource => resourceType;
         public float HarvestTime => harvestTime;
+        public string ObjectId => objectId;
 
         public void Configure(InteractionType type, ResourceType resource, int amount, float harvestDuration = 2f, string prompt = "Press E", string assetName = null)
         {
@@ -60,6 +64,15 @@ namespace BugWars.Interaction
         public void SetMessagePublisher(IPublisher<ObjectHarvestedMessage> publisher)
         {
             _harvestedPublisher = publisher;
+        }
+
+        /// <summary>
+        /// Set the server-assigned unique ID for this object (Phase 3)
+        /// Called by EnvironmentManager when spawning from server data
+        /// </summary>
+        public void SetObjectId(string serverId)
+        {
+            objectId = serverId;
         }
 
         private void UpdateCachedPrompt()

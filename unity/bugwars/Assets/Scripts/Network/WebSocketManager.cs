@@ -4,6 +4,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using NativeWebSocket;
 using UnityEngine;
+using VContainer;
 using VContainer.Unity;
 using R3;
 
@@ -12,7 +13,7 @@ namespace BugWars.Network
     /// <summary>
     /// WebSocket Manager - Handles real-time connection to Axum server
     /// Uses NativeWebSocket for WebGL-compatible WebSocket communication
-    /// Connects with JWT authentication from PlayerData
+    /// Connects with JWT authentication from PlayerData or Supabase anon key for guests
     /// Implements IAsyncStartable for async initialization with UniTask
     /// </summary>
     public class WebSocketManager : MonoBehaviour, IAsyncStartable
@@ -24,6 +25,10 @@ namespace BugWars.Network
         private bool _isConnecting = false;
         private string _webSocketUrl;
         private string _accessToken;
+        private bool _isGuestMode = false;
+
+        [Inject] private BugWars.Auth.SupabaseManager _supabaseManager;
+        private EnvironmentNetworkSync _environmentNetworkSync; // Set via SetEnvironmentNetworkSync() to avoid circular dependency
 
         // Connection state tracking
         private int _reconnectAttempts = 0;
@@ -47,6 +52,19 @@ namespace BugWars.Network
         #region Properties
         public bool IsConnected => _isConnected;
         public bool IsConnecting => _isConnecting;
+        public bool IsGuestMode => _isGuestMode;
+        #endregion
+
+        #region Dependency Injection Helpers
+        /// <summary>
+        /// Set EnvironmentNetworkSync after construction to avoid circular dependency
+        /// Called by GameLifetimeScope after both WebSocketManager and EnvironmentNetworkSync are constructed
+        /// </summary>
+        public void SetEnvironmentNetworkSync(EnvironmentNetworkSync environmentNetworkSync)
+        {
+            _environmentNetworkSync = environmentNetworkSync;
+            Debug.Log("[WebSocketManager] EnvironmentNetworkSync injected");
+        }
         #endregion
 
         #region Unity Lifecycle
@@ -108,7 +126,9 @@ namespace BugWars.Network
                     }
                 });
 
-            // If already authenticated, connect immediately
+            // Connect immediately if authenticated
+            // NOTE: Guest mode does NOT connect to WebSocket - guests don't need real-time features
+            // They can still view the world using client-side procedural generation (Phase 2)
             if (playerData.IsAuthenticated)
             {
                 Debug.Log("[WebSocketManager] Player already authenticated, connecting to WebSocket");
@@ -116,7 +136,7 @@ namespace BugWars.Network
             }
             else
             {
-                Debug.Log("[WebSocketManager] Player not authenticated yet, waiting for authentication");
+                Debug.Log("[WebSocketManager] Player not authenticated - WebSocket disabled for guests (they use client-side world generation)");
             }
         }
 
@@ -189,24 +209,24 @@ namespace BugWars.Network
                 _webSocketUrl = BugWars.JavaScriptBridge.WebGLBridge.Instance?.GetWebSocketEndpoint() ?? "ws://localhost:4321/ws";
                 Debug.Log($"[WebSocketManager] Connecting to: {_webSocketUrl}");
 
-                // Get access token from PlayerData
+                // Get authenticated user JWT token
+                // NOTE: Guest mode is not supported - guests use client-side world generation only
                 var playerData = BugWars.Entity.EntityManager.Instance?.PlayerData;
-                if (playerData == null || !playerData.IsAuthenticated)
+
+                if (playerData != null && playerData.IsAuthenticated && !string.IsNullOrEmpty(playerData.AccessToken))
                 {
-                    Debug.LogError("[WebSocketManager] Cannot connect - player not authenticated");
+                    // AUTHENTICATED MODE: User has a valid JWT token
+                    _accessToken = playerData.AccessToken;
+                    _isGuestMode = false;
+                    Debug.Log($"[WebSocketManager] Connecting as authenticated user (token length: {_accessToken.Length})");
+                }
+                else
+                {
+                    // NO AUTH AVAILABLE: Cannot connect (guests should not call ConnectAsync)
+                    Debug.LogError("[WebSocketManager] Cannot connect - no user authentication available (guest mode not supported for WebSocket)");
                     _isConnecting = false;
                     return;
                 }
-
-                _accessToken = playerData.AccessToken;
-                if (string.IsNullOrEmpty(_accessToken))
-                {
-                    Debug.LogError("[WebSocketManager] Cannot connect - access token is null or empty");
-                    _isConnecting = false;
-                    return;
-                }
-
-                Debug.Log($"[WebSocketManager] Using access token (length: {_accessToken.Length})");
 
                 // Create WebSocket connection
                 // Note: In WebGL builds, the browser's WebSocket API doesn't support custom headers.
@@ -324,7 +344,9 @@ namespace BugWars.Network
             _lastPongReceivedTime = Time.time;
 
             var playerData = BugWars.Entity.EntityManager.Instance?.PlayerData;
-            Debug.Log($"[WebSocketManager] ✓ Connected to WebSocket server as {playerData?.GetBestDisplayName() ?? "Unknown"}");
+            string connectionMode = _isGuestMode ? "GUEST" : "AUTHENTICATED";
+            string playerName = _isGuestMode ? "Guest" : (playerData?.GetBestDisplayName() ?? "Unknown");
+            Debug.Log($"[WebSocketManager] ✓ Connected to WebSocket server as {playerName} (Mode: {connectionMode})");
 
             // Send queued messages
             while (_messageQueue.Count > 0)
@@ -406,6 +428,19 @@ namespace BugWars.Network
                         Debug.LogError($"[WebSocketManager] Server error: {messageData.message}");
                         break;
 
+                    // Environment messages - Route to EnvironmentNetworkSync
+                    case "environment_objects":
+                        _environmentNetworkSync?.OnEnvironmentObjects(message);
+                        break;
+
+                    case "harvest_result":
+                        _environmentNetworkSync?.OnHarvestResult(message);
+                        break;
+
+                    case "object_respawned":
+                        _environmentNetworkSync?.OnObjectRespawned(message);
+                        break;
+
                     default:
                         Debug.Log($"[WebSocketManager] Unknown message type: {messageData.type}");
                         break;
@@ -432,6 +467,15 @@ namespace BugWars.Network
 
             string json = JsonUtility.ToJson(message);
             SendMessageInternal(json);
+        }
+
+        /// <summary>
+        /// Send a raw JSON message to the WebSocket server
+        /// Used for complex messages that need custom serialization
+        /// </summary>
+        public void SendRawMessage(string jsonMessage)
+        {
+            SendMessageInternal(jsonMessage);
         }
 
         /// <summary>

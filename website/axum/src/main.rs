@@ -76,6 +76,37 @@ async fn main() -> anyhow::Result<()> {
     let entity_state = game::EntityStateManager::new(120); // 2 minute stale timeout
     info!("Entity state manager initialized for Unity clients");
 
+    // Environment manager for server-authoritative environment objects (trees, rocks, bushes)
+    let environment_manager = Arc::new(game::EnvironmentManager::new(
+        50.0,  // chunk_size (matches Unity terrain chunks)
+        3,     // view_distance_chunks (3 = 7x7 grid)
+        10.0,  // max_harvest_range (anti-cheat validation)
+    ));
+    info!("Environment manager initialized");
+
+    // Generate initial world environment objects
+    let generator = game::EnvironmentGenerator::new(
+        12345, // world seed (deterministic generation)
+        50.0,  // chunk_size (must match environment_manager)
+    );
+
+    // Generate starting area around spawn (0, 0)
+    let spawn_chunk = game::ChunkCoord { x: 0, z: 0 };
+    let initial_objects = generator.generate_area(&spawn_chunk, 5); // 11x11 chunks
+    info!("Generated {} initial environment objects", initial_objects.len());
+
+    // Add objects to manager
+    for object in initial_objects {
+        environment_manager.add_object(object);
+    }
+
+    // Start respawn background task
+    let env_manager_clone = environment_manager.clone();
+    tokio::spawn(async move {
+        info!("Starting environment respawn task");
+        env_manager_clone.start_respawn_task().await;
+    });
+
     // Spawn cache manager task
     let cache_manager = {
         let cache = jwt_cache.clone();
@@ -93,7 +124,12 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Tokio
-    let http = tokio::spawn(transports::https::serve(bus.clone(), jwt_cache.clone(), entity_state.clone()));
+    let http = tokio::spawn(transports::https::serve(
+        bus.clone(),
+        jwt_cache.clone(),
+        entity_state.clone(),
+        environment_manager.clone(),
+    ));
 
     // Print
     info!("BugWars v{}", env!("CARGO_PKG_VERSION"));

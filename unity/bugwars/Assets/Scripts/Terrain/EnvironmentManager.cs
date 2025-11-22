@@ -247,6 +247,10 @@ namespace BugWars.Terrain
         private Dictionary<Vector2Int, ChunkEnvironmentData> chunkEnvironmentData = new Dictionary<Vector2Int, ChunkEnvironmentData>();
         private GameObject environmentContainer;
 
+        // Server object ID tracking (Phase 3)
+        // Maps server object IDs to (chunk coordinate, spawn data index) for efficient lookup
+        private Dictionary<string, (Vector2Int chunk, int index)> serverObjectIdMap = new Dictionary<string, (Vector2Int, int)>();
+
         // Object pooling
         private EnvironmentObjectPool objectPool;
         private Transform playerTransform; // Cached player position for distance checks
@@ -1438,6 +1442,298 @@ namespace BugWars.Terrain
                 UnloadChunkEnvironment(chunk);
             }
         }
+
+        #region Server-Authoritative Methods (Phase 3)
+
+        /// <summary>
+        /// Spawn environment objects from server data.
+        /// Called when server sends initial objects or chunk updates.
+        /// Creates EnvironmentSpawnData entries marked as server-managed for proper pooling behavior.
+        /// </summary>
+        public void SpawnObjectsFromServer(BugWars.Network.EnvironmentObjectData[] objects)
+        {
+            if (objects == null || objects.Length == 0)
+            {
+                Debug.Log("[EnvironmentManager] SpawnObjectsFromServer called with no objects");
+                return;
+            }
+
+            if (showDebugInfo)
+                Debug.Log($"[EnvironmentManager] Spawning {objects.Length} server-authoritative objects");
+
+            foreach (var serverObj in objects)
+            {
+                // Match server asset name to local environment asset
+                EnvironmentAsset asset = GetAssetByName(serverObj.assetName);
+                if (asset == null)
+                {
+                    Debug.LogWarning($"[EnvironmentManager] No local asset found for server asset '{serverObj.assetName}'");
+                    continue;
+                }
+
+                // Determine chunk coordinate from position
+                Vector2Int chunkCoord = GetChunkCoordFromPosition(serverObj.position);
+
+                // Get or create chunk environment data
+                if (!chunkEnvironmentData.ContainsKey(chunkCoord))
+                {
+                    chunkEnvironmentData[chunkCoord] = new ChunkEnvironmentData
+                    {
+                        chunkCoord = chunkCoord,
+                        spawnDataGenerated = true // Mark as generated so we don't procedurally generate
+                    };
+                }
+
+                var chunkData = chunkEnvironmentData[chunkCoord];
+
+                // Create spawn data entry marked as server-managed
+                var spawnData = new EnvironmentSpawnData
+                {
+                    position = serverObj.position,
+                    rotation = serverObj.rotation,
+                    scale = serverObj.scale,
+                    asset = asset,
+                    chunkCoord = chunkCoord,
+                    isHarvested = false,
+                    isServerManaged = true, // CRITICAL: Mark as server-managed
+                    serverObjectId = serverObj.objectId,
+                    activeInstance = null
+                };
+
+                // Add to chunk spawn points
+                int spawnIndex = chunkData.spawnPoints.Count;
+                chunkData.spawnPoints.Add(spawnData);
+
+                // Track server object ID for fast lookup
+                serverObjectIdMap[serverObj.objectId] = (chunkCoord, spawnIndex);
+
+                // If chunk is already loaded, spawn the object immediately
+                if (chunkData.isLoaded && playerTransform != null)
+                {
+                    float distance = Vector3.Distance(playerTransform.position, serverObj.position);
+                    if (distance <= objectSpawnDistance)
+                    {
+                        SpawnObjectFromData(spawnData, serverObj.objectId);
+                    }
+                }
+            }
+
+            if (showDebugInfo)
+                Debug.Log($"[EnvironmentManager] Successfully registered {objects.Length} server objects");
+        }
+
+        /// <summary>
+        /// Despawn a specific environment object by server ID.
+        /// Called when server confirms harvest or removes object.
+        /// Returns object to pool for later reuse.
+        /// </summary>
+        public void DespawnObject(string objectId)
+        {
+            if (string.IsNullOrEmpty(objectId))
+            {
+                Debug.LogWarning("[EnvironmentManager] DespawnObject called with null/empty objectId");
+                return;
+            }
+
+            // Look up object by server ID
+            if (!serverObjectIdMap.TryGetValue(objectId, out var location))
+            {
+                Debug.LogWarning($"[EnvironmentManager] DespawnObject: Unknown server object ID '{objectId}'");
+                return;
+            }
+
+            var (chunkCoord, spawnIndex) = location;
+
+            // Get chunk data
+            if (!chunkEnvironmentData.TryGetValue(chunkCoord, out var chunkData))
+            {
+                Debug.LogWarning($"[EnvironmentManager] DespawnObject: Chunk {chunkCoord} not found for object '{objectId}'");
+                return;
+            }
+
+            if (spawnIndex < 0 || spawnIndex >= chunkData.spawnPoints.Count)
+            {
+                Debug.LogWarning($"[EnvironmentManager] DespawnObject: Invalid spawn index {spawnIndex} for object '{objectId}'");
+                return;
+            }
+
+            var spawnData = chunkData.spawnPoints[spawnIndex];
+
+            // If object is currently spawned, destroy it (will return to pool via EnvironmentObjectTracker)
+            if (spawnData.activeInstance != null)
+            {
+                if (showDebugInfo)
+                    Debug.Log($"[EnvironmentManager] Despawning server object '{objectId}'");
+
+                UnityEngine.Object.Destroy(spawnData.activeInstance);
+                spawnData.activeInstance = null;
+            }
+
+            // NOTE: Don't mark as harvested - server controls respawning
+            // EnvironmentObjectTracker.OnDestroy will handle this correctly based on isServerManaged flag
+        }
+
+        /// <summary>
+        /// Respawn a previously harvested object.
+        /// Called when server sends respawn message after timer.
+        /// Spawns object from pool if player is in range.
+        /// </summary>
+        public void RespawnObject(BugWars.Network.EnvironmentObjectData obj)
+        {
+            if (string.IsNullOrEmpty(obj.objectId))
+            {
+                Debug.LogWarning("[EnvironmentManager] RespawnObject called with null/empty objectId");
+                return;
+            }
+
+            // Look up object by server ID
+            if (!serverObjectIdMap.TryGetValue(obj.objectId, out var location))
+            {
+                Debug.LogWarning($"[EnvironmentManager] RespawnObject: Unknown server object ID '{obj.objectId}' - creating new entry");
+                // Fall back to creating new object (server may have restarted or this is a new client)
+                SpawnObjectsFromServer(new[] { obj });
+                return;
+            }
+
+            var (chunkCoord, spawnIndex) = location;
+
+            // Get chunk data
+            if (!chunkEnvironmentData.TryGetValue(chunkCoord, out var chunkData))
+            {
+                Debug.LogWarning($"[EnvironmentManager] RespawnObject: Chunk {chunkCoord} not found for object '{obj.objectId}'");
+                return;
+            }
+
+            if (spawnIndex < 0 || spawnIndex >= chunkData.spawnPoints.Count)
+            {
+                Debug.LogWarning($"[EnvironmentManager] RespawnObject: Invalid spawn index {spawnIndex} for object '{obj.objectId}'");
+                return;
+            }
+
+            var spawnData = chunkData.spawnPoints[spawnIndex];
+
+            // Update spawn data from server (position may have changed)
+            spawnData.position = obj.position;
+            spawnData.rotation = obj.rotation;
+            spawnData.scale = obj.scale;
+
+            // If object is already spawned, do nothing (shouldn't happen but safety check)
+            if (spawnData.activeInstance != null)
+            {
+                Debug.LogWarning($"[EnvironmentManager] RespawnObject: Object '{obj.objectId}' is already spawned");
+                return;
+            }
+
+            // If player is in range, spawn it
+            if (playerTransform != null)
+            {
+                float distance = Vector3.Distance(playerTransform.position, obj.position);
+                if (distance <= objectSpawnDistance)
+                {
+                    if (showDebugInfo)
+                        Debug.Log($"[EnvironmentManager] Respawning server object '{obj.objectId}' at {obj.position}");
+
+                    SpawnObjectFromData(spawnData, obj.objectId);
+                }
+                else
+                {
+                    if (showDebugInfo)
+                        Debug.Log($"[EnvironmentManager] Server object '{obj.objectId}' respawned but player out of range (distance: {distance:F1}m)");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Helper: Spawn a single object from EnvironmentSpawnData
+        /// Sets the server object ID on InteractableObject component for harvest validation
+        /// </summary>
+        private void SpawnObjectFromData(EnvironmentSpawnData spawnData, string serverObjectId)
+        {
+            if (spawnData.activeInstance != null)
+                return; // Already spawned
+
+            if (objectPool == null)
+            {
+                Debug.LogError("[EnvironmentManager] Cannot spawn object - object pool not initialized");
+                return;
+            }
+
+            // Get object from pool
+            GameObject obj = objectPool.Spawn(spawnData.asset, spawnData.position, spawnData.rotation, spawnData.scale);
+            if (obj == null)
+            {
+                Debug.LogWarning($"[EnvironmentManager] Failed to spawn object from pool for asset '{spawnData.asset.assetName}'");
+                return;
+            }
+
+            // Set up tracking
+            spawnData.activeInstance = obj;
+
+            // Add EnvironmentObjectTracker if not present
+            var tracker = obj.GetComponent<EnvironmentObjectTracker>();
+            if (tracker == null)
+            {
+                tracker = obj.AddComponent<EnvironmentObjectTracker>();
+            }
+            tracker.Initialize(spawnData);
+
+            // CRITICAL: Set server object ID on InteractableObject for harvest validation
+            if (spawnData.isServerManaged && !string.IsNullOrEmpty(serverObjectId))
+            {
+                var interactable = obj.GetComponent<InteractableObject>();
+                if (interactable != null)
+                {
+                    interactable.SetObjectId(serverObjectId);
+                }
+                else
+                {
+                    Debug.LogWarning($"[EnvironmentManager] Server object '{serverObjectId}' has no InteractableObject component");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Helper: Get asset by name (case-insensitive search across all asset lists)
+        /// </summary>
+        private EnvironmentAsset GetAssetByName(string assetName)
+        {
+            if (string.IsNullOrEmpty(assetName))
+                return null;
+
+            // Search all asset lists
+            foreach (var asset in treeAssets)
+                if (asset.assetName.Equals(assetName, StringComparison.OrdinalIgnoreCase))
+                    return asset;
+
+            foreach (var asset in bushAssets)
+                if (asset.assetName.Equals(assetName, StringComparison.OrdinalIgnoreCase))
+                    return asset;
+
+            foreach (var asset in rockAssets)
+                if (asset.assetName.Equals(assetName, StringComparison.OrdinalIgnoreCase))
+                    return asset;
+
+            foreach (var asset in grassAssets)
+                if (asset.assetName.Equals(assetName, StringComparison.OrdinalIgnoreCase))
+                    return asset;
+
+            return null;
+        }
+
+        /// <summary>
+        /// Helper: Get chunk coordinate from world position
+        /// </summary>
+        private Vector2Int GetChunkCoordFromPosition(Vector3 position)
+        {
+            // Assuming chunk size matches TerrainManager (500 units)
+            const float chunkSize = 500f;
+            return new Vector2Int(
+                Mathf.FloorToInt(position.x / chunkSize),
+                Mathf.FloorToInt(position.z / chunkSize)
+            );
+        }
+
+        #endregion
 
         /// <summary>
         /// Dispose pattern implementation for proper cleanup

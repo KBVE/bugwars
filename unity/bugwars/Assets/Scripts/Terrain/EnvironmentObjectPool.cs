@@ -5,6 +5,8 @@ namespace BugWars.Terrain
 {
     /// <summary>
     /// Represents a potential environment object spawn point (data-only, not yet instantiated)
+    /// Used for client-side procedural generation (Phase 2)
+    /// For server-authoritative objects (Phase 3), use EnvironmentManager's server object tracking
     /// </summary>
     public class EnvironmentSpawnData
     {
@@ -15,6 +17,8 @@ namespace BugWars.Terrain
         public Vector2Int chunkCoord;
         public GameObject activeInstance; // null if not currently spawned
         public bool isHarvested; // true if object was harvested/destroyed - don't respawn
+        public bool isServerManaged; // true if this object is managed by server (Phase 3)
+        public string serverObjectId; // Server-assigned ID for server-managed objects
         public bool isActive => activeInstance != null && !isHarvested;
     }
 

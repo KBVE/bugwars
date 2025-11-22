@@ -23,13 +23,19 @@ use tower_http::{
 };
 use tracing::{debug, error, info, warn, Level};
 
+use std::sync::Arc;
 use crate::core::{AppBus, AppCmd};
 use crate::auth::{extract_auth_user_from_parts, AuthUser, jwt_cache::JwtCache};
-use crate::game::{EntityStateManager, GameMessage, ServerMessage};
+use crate::game::{EntityStateManager, GameMessage, ServerMessage, EnvironmentManager};
 
 /* ------------------------------- serve() -------------------------------- */
 
-pub async fn serve(bus: AppBus, jwt_cache: JwtCache, entity_state: EntityStateManager) -> Result<()> {
+pub async fn serve(
+    bus: AppBus,
+    jwt_cache: JwtCache,
+    entity_state: EntityStateManager,
+    environment_manager: Arc<EnvironmentManager>,
+) -> Result<()> {
     // Env-configurable bind
     let host = std::env::var("HTTP_HOST").unwrap_or_else(|_| "0.0.0.0".into());
     let port: u16 = std::env::var("HTTP_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(4321);
@@ -41,7 +47,7 @@ pub async fn serve(bus: AppBus, jwt_cache: JwtCache, entity_state: EntityStateMa
     info!("HTTP/WS listening on http://{addr}");
 
     // Build app
-    let app = router(bus, jwt_cache, entity_state);
+    let app = router(bus, jwt_cache, entity_state, environment_manager);
 
     // Axum/Hyper tuning
     axum::serve(listener, app)
@@ -54,7 +60,12 @@ pub async fn serve(bus: AppBus, jwt_cache: JwtCache, entity_state: EntityStateMa
 
 /* ------------------------------- router() ------------------------------- */
 
-fn router(bus: crate::core::AppBus, jwt_cache: JwtCache, entity_state: EntityStateManager) -> axum::Router {
+fn router(
+    bus: crate::core::AppBus,
+    jwt_cache: JwtCache,
+    entity_state: EntityStateManager,
+    environment_manager: Arc<EnvironmentManager>,
+) -> axum::Router {
     // bring trait for .and() on compression predicates
     use tower_http::compression::Predicate as _;
 
@@ -117,7 +128,7 @@ fn router(bus: crate::core::AppBus, jwt_cache: JwtCache, entity_state: EntitySta
         // Optional: Add dynamic Askama routes
         // .route("/dashboard", axum::routing::get(crate::astro::askama::private_dashboard))
         // .route("/page/*path", axum::routing::get(crate::astro::askama::dynamic_page_handler))
-        .with_state((bus, jwt_cache, entity_state));
+        .with_state((bus, jwt_cache, entity_state, environment_manager));
 
     // Merge static and dynamic routers, then apply middleware
     static_router
@@ -149,7 +160,7 @@ struct EchoOut {
     message: String,
 }
 
-async fn echo(State((bus, _, _)): State<(AppBus, JwtCache, EntityStateManager)>, Json(input): Json<EchoIn>) -> impl IntoResponse {
+async fn echo(State((bus, _, _, _)): State<(AppBus, JwtCache, EntityStateManager, Arc<EnvironmentManager>)>, Json(input): Json<EchoIn>) -> impl IntoResponse {
     use tokio::sync::oneshot;
     let (tx, rx) = oneshot::channel();
     let _ = bus.tx.send(AppCmd::Hello { name: input.name, reply: tx }).await;
@@ -168,7 +179,7 @@ struct WsQuery {
 
 async fn ws_upgrade(
     ws: WebSocketUpgrade,
-    State((bus, jwt_cache, entity_state)): State<(AppBus, JwtCache, EntityStateManager)>,
+    State((bus, jwt_cache, entity_state, environment_manager)): State<(AppBus, JwtCache, EntityStateManager, Arc<EnvironmentManager>)>,
     Query(query): Query<WsQuery>,
     req: Request<axum::body::Body>,
 ) -> impl IntoResponse {
@@ -278,7 +289,7 @@ async fn ws_upgrade(
         .max_frame_size(1 << 20)
         .on_upgrade(move |socket| {
             debug!(user_id = %auth_user.user_id(), "WebSocket connection upgraded, entering message loop");
-            ws_loop(socket, bus, auth_user, entity_state)
+            ws_loop(socket, bus, auth_user, entity_state, environment_manager)
         })
 }
 
@@ -298,7 +309,13 @@ fn extract_token_from_header(headers: &http::HeaderMap) -> Result<String, String
     Ok(auth_str[7..].to_string())
 }
 
-async fn ws_loop(mut socket: WebSocket, _bus: AppBus, auth_user: AuthUser, entity_state: EntityStateManager) {
+async fn ws_loop(
+    mut socket: WebSocket,
+    _bus: AppBus,
+    auth_user: AuthUser,
+    entity_state: EntityStateManager,
+    environment_manager: Arc<EnvironmentManager>,
+) {
     use tokio::sync::oneshot;
 
     let user_id = auth_user.user_id();
@@ -314,6 +331,38 @@ async fn ws_loop(mut socket: WebSocket, _bus: AppBus, auth_user: AuthUser, entit
     if let Err(e) = socket.send(Message::Text(welcome_msg.into())).await {
         error!(user_id = %user_id, error = %e, "Failed to send welcome message");
         return;
+    }
+
+    // Send initial environment objects (spawn area: chunk 0,0 + surrounding chunks)
+    let spawn_chunk = crate::game::ChunkCoord { x: 0, z: 0 };
+
+    // Generate chunk list (7x7 grid around spawn)
+    let mut chunks = Vec::new();
+    for dx in -3..=3 {
+        for dz in -3..=3 {
+            chunks.push(crate::game::ChunkCoord {
+                x: spawn_chunk.x + dx,
+                z: spawn_chunk.z + dz,
+            });
+        }
+    }
+
+    let initial_objects = environment_manager.get_objects_in_chunks(&chunks);
+
+    let objects_json: Vec<serde_json::Value> = initial_objects.iter()
+        .filter_map(|obj| serde_json::to_value(obj).ok())
+        .collect();
+
+    let env_msg = ServerMessage::EnvironmentObjects {
+        objects: objects_json,
+    };
+
+    if let Ok(env_json) = serde_json::to_string(&env_msg) {
+        if let Err(e) = socket.send(Message::Text(env_json.into())).await {
+            error!(user_id = %user_id, error = %e, "Failed to send initial environment objects");
+        } else {
+            info!(user_id = %user_id, object_count = initial_objects.len(), "Sent initial environment objects to player");
+        }
     }
 
     info!(user_id = %user_id, "WebSocket session active, listening for messages");
@@ -338,7 +387,7 @@ async fn ws_loop(mut socket: WebSocket, _bus: AppBus, auth_user: AuthUser, entit
                         match serde_json::from_str::<GameMessage>(&text_str) {
                             Ok(game_msg) => {
                                 // Handle game-specific messages
-                                let response = handle_game_message(game_msg, &user_id, &user_email, &entity_state).await;
+                                let response = handle_game_message(game_msg, &user_id, &user_email, &entity_state, &environment_manager).await;
                                 let response_json = serde_json::to_string(&response)
                                     .unwrap_or_else(|_| "{\"type\":\"error\",\"message\":\"serialization failed\"}".to_string());
 
@@ -442,6 +491,7 @@ async fn handle_game_message(
     user_id: &str,
     user_email: &Option<String>,
     entity_state: &EntityStateManager,
+    environment_manager: &Arc<EnvironmentManager>,
 ) -> ServerMessage {
     match msg {
         GameMessage::Ping => {
@@ -565,6 +615,56 @@ async fn handle_game_message(
             info!(user_id = %user_id, "Player left game (explicit leave message)");
             ServerMessage::PlayerLeft {
                 user_id: user_id.to_string(),
+            }
+        }
+        GameMessage::HarvestObject { object_id, player_position } => {
+            use crate::game::{HarvestObjectRequest, Position as EnvPosition};
+
+            // Create harvest request
+            let request = HarvestObjectRequest {
+                object_id: object_id.clone(),
+                player_position: EnvPosition {
+                    x: player_position.x,
+                    y: player_position.y,
+                    z: player_position.z,
+                },
+            };
+
+            // Handle harvest request
+            let response = environment_manager.handle_harvest_request(user_id, request);
+
+            if response.success {
+                info!(
+                    user_id = %user_id,
+                    object_id = %object_id,
+                    resource_type = ?response.resource_type,
+                    resource_amount = response.resource_amount,
+                    "Player harvested object successfully"
+                );
+
+                // Convert single resource to list format
+                let resource_list = vec![(format!("{:?}", response.resource_type), response.resource_amount)];
+
+                ServerMessage::HarvestResult {
+                    object_id: response.object_id,
+                    success: true,
+                    message: "Harvested successfully".to_string(),
+                    resources: Some(resource_list),
+                }
+            } else {
+                let error_msg = response.error_message.as_deref().unwrap_or("Unknown error");
+                warn!(
+                    user_id = %user_id,
+                    object_id = %object_id,
+                    error = %error_msg,
+                    "Harvest failed"
+                );
+                ServerMessage::HarvestResult {
+                    object_id: response.object_id,
+                    success: false,
+                    message: error_msg.to_string(),
+                    resources: None,
+                }
             }
         }
     }

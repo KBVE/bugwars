@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
+using R3;
 
 namespace BugWars.Network
 {
@@ -21,12 +23,20 @@ namespace BugWars.Network
     /// 1. Register syncables: RegisterSyncable(playerDataSync)
     /// 2. Manager handles connect/disconnect automatically
     /// 3. Call SyncAll() to force sync all dirty data
+    ///
+    /// Pure C# class (not MonoBehaviour) - registered via VContainer as ITickable + IAsyncStartable + IDisposable
     /// </summary>
-    public class NetworkSyncManager : MonoBehaviour, ITickable, IAsyncStartable
+    public class NetworkSyncManager : ITickable, IAsyncStartable, IDisposable
     {
-        private WebSocketManager _webSocketManager;
+        private readonly WebSocketManager _webSocketManager;
         private readonly Dictionary<string, INetworkSyncable> _syncables = new();
         private readonly Dictionary<string, SyncConfig> _syncConfigs = new();
+
+        // Resource cleanup - VContainer best practice
+        // NOTE: CancellationTokenSource is WebGL-safe (no threading, just token management)
+        // All async operations use UniTask (Unity PlayerLoop), not System.Threading.Tasks
+        private readonly CompositeDisposable _disposables = new();
+        private readonly CancellationTokenSource _cts = new();
 
         // Batched sync tracking
         private float _timeSinceLastBatchSync = 0f;
@@ -40,12 +50,12 @@ namespace BugWars.Network
             public float BatchInterval;
         }
 
-        // VContainer injection
+        // Constructor for VContainer injection
         [Inject]
-        public void Construct(WebSocketManager webSocketManager)
+        public NetworkSyncManager(WebSocketManager webSocketManager)
         {
             _webSocketManager = webSocketManager;
-            Debug.Log("[NetworkSyncManager] WebSocketManager injected via VContainer");
+            Debug.Log("[NetworkSyncManager] Constructed with WebSocketManager via VContainer");
         }
 
         #region Registration
@@ -81,7 +91,7 @@ namespace BugWars.Network
 
             _syncConfigs[syncId] = config;
 
-            Debug.Log($"[NetworkSyncManager] Registered syncable '{syncId}' with strategy: {config.Strategy}");
+            //Debug.Log($"[NetworkSyncManager] Registered syncable '{syncId}' with strategy: {config.Strategy}");
 
             // If already connected, notify the syncable
             if (_webSocketManager.IsConnected)
@@ -98,7 +108,7 @@ namespace BugWars.Network
             if (_syncables.Remove(syncId))
             {
                 _syncConfigs.Remove(syncId);
-                Debug.Log($"[NetworkSyncManager] Unregistered syncable '{syncId}'");
+                //Debug.Log($"[NetworkSyncManager] Unregistered syncable '{syncId}'");
             }
         }
 
@@ -114,24 +124,28 @@ namespace BugWars.Network
 
         #region Lifecycle (VContainer)
 
-        public async UniTask StartAsync(System.Threading.CancellationToken cancellationToken)
+        public async UniTask StartAsync(CancellationToken cancellationToken)
         {
-            Debug.Log("[NetworkSyncManager] Starting async initialization");
+            // Create linked token source that responds to both VContainer lifecycle and our own disposal
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cts.Token);
+            var token = linkedCts.Token;
+
+            //Debug.Log("[NetworkSyncManager] Starting async initialization");
 
             // Wait for WebSocketManager to be connected
-            while (!_webSocketManager.IsConnected && !cancellationToken.IsCancellationRequested)
+            while (!_webSocketManager.IsConnected && !token.IsCancellationRequested)
             {
-                await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
+                await UniTask.Yield(PlayerLoopTiming.Update, token);
             }
 
-            if (cancellationToken.IsCancellationRequested)
+            if (token.IsCancellationRequested)
             {
                 Debug.LogWarning("[NetworkSyncManager] Cancelled before connection established");
                 return;
             }
 
             // Notify all registered syncables that we're connected
-            Debug.Log($"[NetworkSyncManager] Connection established, notifying {_syncables.Count} syncables");
+            // Debug.Log($"[NetworkSyncManager] Connection established, notifying {_syncables.Count} syncables");
             foreach (var syncable in _syncables.Values)
             {
                 await syncable.OnConnected(_webSocketManager);
@@ -171,9 +185,22 @@ namespace BugWars.Network
             }
         }
 
-        private void OnDestroy()
+        #region IDisposable
+
+        /// <summary>
+        /// Cleanup resources when VContainer disposes this instance
+        /// Called automatically by VContainer on scene unload or application quit
+        /// </summary>
+        public void Dispose()
         {
-            Debug.Log("[NetworkSyncManager] OnDestroy - cleaning up");
+            Debug.Log("[NetworkSyncManager] Disposing - cleaning up");
+
+            // Cancel any pending async operations
+            _cts?.Cancel();
+            _cts?.Dispose();
+
+            // Dispose all R3 subscriptions and MessagePipe subscriptions
+            _disposables?.Dispose();
 
             // Notify all syncables of disconnection
             foreach (var syncable in _syncables.Values)
@@ -184,6 +211,8 @@ namespace BugWars.Network
             _syncables.Clear();
             _syncConfigs.Clear();
         }
+
+        #endregion
 
         #endregion
 
@@ -226,7 +255,7 @@ namespace BugWars.Network
         /// </summary>
         public async UniTask SyncAll()
         {
-            Debug.Log("[NetworkSyncManager] Syncing all dirty data to server");
+            // Debug.Log("[NetworkSyncManager] Syncing all dirty data to server");
 
             foreach (var syncable in _syncables.Values)
             {
@@ -255,7 +284,7 @@ namespace BugWars.Network
             }
 
             _webSocketManager.SendMessage($"request_{syncId}", "");
-            Debug.Log($"[NetworkSyncManager] Requested '{syncId}' from server");
+            // Debug.Log($"[NetworkSyncManager] Requested '{syncId}' from server");
         }
 
         /// <summary>
@@ -274,7 +303,7 @@ namespace BugWars.Network
             {
                 syncable.DeserializeFromSync(json);
                 syncable.MarkClean();
-                Debug.Log($"[NetworkSyncManager] Applied sync from server for '{syncId}'");
+                // Debug.Log($"[NetworkSyncManager] Applied sync from server for '{syncId}'");
             }
             catch (Exception e)
             {
@@ -308,7 +337,7 @@ namespace BugWars.Network
         /// </summary>
         public async void OnWebSocketConnected()
         {
-            Debug.Log($"[NetworkSyncManager] WebSocket connected, notifying {_syncables.Count} syncables");
+            // Debug.Log($"[NetworkSyncManager] WebSocket connected, notifying {_syncables.Count} syncables");
 
             foreach (var syncable in _syncables.Values)
             {
@@ -321,7 +350,7 @@ namespace BugWars.Network
         /// </summary>
         public void OnWebSocketDisconnected()
         {
-            Debug.Log($"[NetworkSyncManager] WebSocket disconnected, notifying {_syncables.Count} syncables");
+            // Debug.Log($"[NetworkSyncManager] WebSocket disconnected, notifying {_syncables.Count} syncables");
 
             foreach (var syncable in _syncables.Values)
             {

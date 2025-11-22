@@ -47,10 +47,10 @@ namespace BugWars.Core
         private InteractionManager interactionManager;
         [SerializeField] [Tooltip("Optional - WebSocketManager component to register. Will create if not assigned.")]
         private BugWars.Network.WebSocketManager webSocketManager;
-        [SerializeField] [Tooltip("Optional - NetworkSyncManager component to register. Will create if not assigned.")]
-        private BugWars.Network.NetworkSyncManager networkSyncManager;
         [SerializeField] [Tooltip("Optional - TokenRefreshManager component to register. Will create if not assigned.")]
         private BugWars.Auth.TokenRefreshManager tokenRefreshManager;
+        [SerializeField] [Tooltip("Optional - SupabaseManager component to register. Will create if not assigned.")]
+        private BugWars.Auth.SupabaseManager supabaseManager;
         [SerializeField] [Tooltip("Optional - InteractionPromptUIToolkit prefab to instantiate. If not assigned, interaction UI will not be shown.")]
         private GameObject interactionPromptUIPrefab;
 
@@ -151,14 +151,8 @@ namespace BugWars.Core
             }
 
             // NetworkSyncManager for centralized data synchronization
-            if (networkSyncManager != null)
-            {
-                builder.RegisterComponent(networkSyncManager).AsImplementedInterfaces().AsSelf();
-            }
-            else
-            {
-                RegisterOrCreateManager<BugWars.Network.NetworkSyncManager>(builder, "NetworkSyncManager");
-            }
+            // Pure C# class (not MonoBehaviour) - implements ITickable + IAsyncStartable + IDisposable
+            builder.RegisterEntryPoint<BugWars.Network.NetworkSyncManager>(Lifetime.Singleton).AsSelf();
 
             // TokenRefreshManager to prevent token expiration
             if (tokenRefreshManager != null)
@@ -170,9 +164,26 @@ namespace BugWars.Core
                 RegisterOrCreateManager<BugWars.Auth.TokenRefreshManager>(builder, "TokenRefreshManager");
             }
 
+            // SupabaseManager for Supabase configuration (anon key, project URL)
+            if (supabaseManager != null)
+            {
+                builder.RegisterComponent(supabaseManager);
+            }
+            else
+            {
+                RegisterOrCreateManager<BugWars.Auth.SupabaseManager>(builder, "SupabaseManager");
+            }
+
+            // EnvironmentNetworkSync registration moved to after EnvironmentManager (dependency order)
+
             // Register sync handlers after container is built
             builder.RegisterBuildCallback(container =>
             {
+                // Wire up EnvironmentNetworkSync to WebSocketManager (avoids circular dependency)
+                var webSocketMgr = container.Resolve<BugWars.Network.WebSocketManager>();
+                var environmentNetworkSync = container.Resolve<BugWars.Network.EnvironmentNetworkSync>();
+                webSocketMgr.SetEnvironmentNetworkSync(environmentNetworkSync);
+
                 var syncManager = container.Resolve<BugWars.Network.NetworkSyncManager>();
                 var entityMgr = container.Resolve<EntityManager>();
 
@@ -221,7 +232,12 @@ namespace BugWars.Core
 
             // EnvironmentManager for environmental objects (trees, rocks, bushes) - depends on TerrainManager
             // Note: Always register as EntryPoint now that it's not a MonoBehaviour
-            builder.RegisterEntryPoint<EnvironmentManager>(Lifetime.Singleton);
+            builder.RegisterEntryPoint<EnvironmentManager>(Lifetime.Singleton).AsSelf();
+
+            // EnvironmentNetworkSync for server-authoritative environment objects
+            // Pure C# class (not MonoBehaviour) - depends on: WebSocketManager, EnvironmentManager, EntityManager
+            // MUST be registered AFTER EnvironmentManager due to dependency order
+            builder.RegisterEntryPoint<BugWars.Network.EnvironmentNetworkSync>(Lifetime.Singleton).AsSelf();
 
             // CameraManager for camera control using Cinemachine
             if (cameraManager != null)

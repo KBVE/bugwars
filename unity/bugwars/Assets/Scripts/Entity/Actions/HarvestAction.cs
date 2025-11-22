@@ -1,6 +1,8 @@
 using UnityEngine;
 using BugWars.Interaction;
 using MessagePipe;
+using VContainer;
+using Cysharp.Threading.Tasks;
 
 namespace BugWars.Entity.Actions
 {
@@ -8,6 +10,7 @@ namespace BugWars.Entity.Actions
     /// Harvest action for gathering resources from interactable objects
     /// Works with trees, rocks, bushes, etc.
     /// Supports both Players and NPCs
+    /// Server-authoritative: Sends harvest request to server and waits for validation
     /// </summary>
     public class HarvestAction : EntityAction
     {
@@ -20,6 +23,9 @@ namespace BugWars.Entity.Actions
 
         // MessagePipe publisher for resource harvesting events
         private IPublisher<ResourceHarvestedMessage> resourcePublisher;
+
+        // Server-authoritative network sync
+        [Inject] private BugWars.Network.EnvironmentNetworkSync _environmentNetworkSync;
 
         /// <summary>
         /// Public setter to configure harvest range at runtime
@@ -150,14 +156,21 @@ namespace BugWars.Entity.Actions
 
         protected override ActionResult OnActionComplete()
         {
-            // CRITICAL: Destroy object FIRST before calculating/giving rewards
-            // This prevents exploit where player moves away but still gets reward
+            // PHASE 3: Server-Authoritative Harvest
+            // Send harvest request to server, wait for validation before giving resources
 
             // SAFETY CHECK: Verify target still exists at completion
             if (target == null || interactableTarget == null)
             {
                 if (showDebugLogs)
                     Debug.LogError($"[HarvestAction] Target was destroyed before completion - no reward given");
+
+                // End interaction to release lock
+                if (interactableTarget != null)
+                {
+                    interactableTarget.EndInteraction();
+                    interactableTarget = null;
+                }
 
                 return new ActionResult
                 {
@@ -173,6 +186,13 @@ namespace BugWars.Entity.Actions
                 if (showDebugLogs)
                     Debug.LogError($"[HarvestAction] Player moved out of range before completion - no reward given");
 
+                // End interaction to release lock
+                if (interactableTarget != null)
+                {
+                    interactableTarget.EndInteraction();
+                    interactableTarget = null;
+                }
+
                 return new ActionResult
                 {
                     Success = false,
@@ -181,7 +201,110 @@ namespace BugWars.Entity.Actions
                 };
             }
 
-            // Calculate resources gained (cache before destroying object)
+            // Cache target data before async call
+            string objectId = interactableTarget.ObjectId;
+            GameObject harvestedObject = target;
+            Vector3 harvestPosition = target.transform.position;
+            ResourceType harvestResourceType = interactableTarget.Resource;
+
+            // Check if server sync is available
+            if (_environmentNetworkSync == null)
+            {
+                Debug.LogWarning("[HarvestAction] No EnvironmentNetworkSync available - falling back to local harvest (Phase 2 mode)");
+                // Fall back to local harvest for testing without server
+                return OnActionComplete_Local();
+            }
+
+            // Check if object has a server ID
+            if (string.IsNullOrEmpty(objectId))
+            {
+                Debug.LogWarning($"[HarvestAction] Object {target.name} has no server ID - falling back to local harvest");
+                return OnActionComplete_Local();
+            }
+
+            // Send harvest request to server (async, fire-and-forget)
+            // The server will validate and send back a response
+            RequestHarvestFromServer(objectId, harvestedObject, harvestPosition, harvestResourceType).Forget();
+
+            // Return optimistic success (object will be despawned when server confirms)
+            // NOTE: If server rejects, the object will respawn (handled by EnvironmentNetworkSync)
+            ActionResult result = new ActionResult
+            {
+                Success = true,
+                Message = $"Harvesting {harvestResourceType}...",
+                Data = new HarvestResult
+                {
+                    ResourceType = harvestResourceType,
+                    Amount = 0, // Server will provide actual amount
+                    HarvestedObject = harvestedObject
+                }
+            };
+
+            return result;
+        }
+
+        /// <summary>
+        /// Send harvest request to server and handle response
+        /// </summary>
+        private async UniTaskVoid RequestHarvestFromServer(string objectId, GameObject harvestedObject, Vector3 harvestPosition, ResourceType harvestResourceType)
+        {
+            if (showDebugLogs)
+                Debug.Log($"[HarvestAction] Sending harvest request to server for object {objectId}");
+
+            try
+            {
+                // Send request and wait for response
+                var response = await _environmentNetworkSync.RequestHarvestAsync(objectId);
+
+                if (response.success)
+                {
+                    if (showDebugLogs)
+                        Debug.Log($"[HarvestAction] Server approved harvest: {response.resourceAmount}x {response.resourceType}");
+
+                    // Server approved - publish resource message for inventory
+                    if (resourcePublisher != null)
+                    {
+                        var message = new ResourceHarvestedMessage(
+                            executingEntity.gameObject,
+                            harvestedObject,
+                            response.resourceType,
+                            response.resourceAmount,
+                            harvestPosition
+                        );
+                        resourcePublisher.Publish(message);
+                    }
+
+                    // Object will be despawned by EnvironmentNetworkSync.OnHarvestResult
+                }
+                else
+                {
+                    Debug.LogWarning($"[HarvestAction] Server rejected harvest: {response.errorMessage}");
+                    // Server rejected - object should respawn if it was despawned
+                    // TODO: Show error message to player
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[HarvestAction] Error requesting harvest from server: {e.Message}");
+            }
+            finally
+            {
+                // End interaction to release lock
+                if (interactableTarget != null)
+                {
+                    interactableTarget.EndInteraction();
+                    interactableTarget = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Local harvest fallback (Phase 2 compatibility mode)
+        /// Used when server sync is not available or object has no server ID
+        /// </summary>
+        private ActionResult OnActionComplete_Local()
+        {
+            // Calculate resources gained
             resourceAmount = Random.Range(
                 interactableTarget != null ? Mathf.Max(1, (int)(interactableTarget.Resource == ResourceType.Wood ? 5 : 3)) : 1,
                 interactableTarget != null ? Mathf.Max(2, (int)(interactableTarget.Resource == ResourceType.Wood ? 8 : 6)) : 2
@@ -191,14 +314,13 @@ namespace BugWars.Entity.Actions
             GameObject harvestedObject = target;
             Vector3 harvestPosition = target.transform.position;
 
-            // STEP 1: End interaction to release the lock on this object
+            // End interaction to release the lock
             if (interactableTarget != null)
             {
                 interactableTarget.EndInteraction();
             }
 
-            // STEP 2: Publish resource harvested message BEFORE destroying object
-            // This allows subscribers (UI, inventory, etc.) to react while object still exists
+            // Publish resource harvested message
             if (resourcePublisher != null)
             {
                 var message = new ResourceHarvestedMessage(
@@ -210,25 +332,20 @@ namespace BugWars.Entity.Actions
                 );
                 resourcePublisher.Publish(message);
             }
-            else
-            {
-                Debug.LogWarning("[HarvestAction] No resource publisher set - resources not sent to inventory!");
-            }
 
-            // STEP 3: Destroy target AFTER publishing message
+            // Destroy target locally
             if (destroyTargetOnComplete && target != null)
             {
                 if (showDebugLogs)
-                    Debug.Log($"[HarvestAction] Destroying {target.name}");
+                    Debug.Log($"[HarvestAction] Destroying {target.name} (local mode)");
 
                 Destroy(target);
-                target = null; // Clear reference immediately
+                target = null;
             }
 
-            // STEP 4: Clear interactableTarget reference for next action
+            // Clear reference
             interactableTarget = null;
 
-            // STEP 5: NOW create result with reward data (AFTER object is destroyed)
             ActionResult result = new ActionResult
             {
                 Success = true,
@@ -237,7 +354,7 @@ namespace BugWars.Entity.Actions
                 {
                     ResourceType = resourceType,
                     Amount = resourceAmount,
-                    HarvestedObject = harvestedObject // Use cached reference
+                    HarvestedObject = harvestedObject
                 }
             };
 
