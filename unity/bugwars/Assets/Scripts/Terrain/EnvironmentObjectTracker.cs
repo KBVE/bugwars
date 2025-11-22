@@ -22,7 +22,6 @@ namespace BugWars.Terrain
             {
                 _spawnData.isHarvested = true;
                 _spawnData.activeInstance = null;
-                Debug.Log($"[EnvironmentObjectTracker] Object destroyed/harvested at {transform.position} - marked as harvested, will not respawn");
             }
         }
     }

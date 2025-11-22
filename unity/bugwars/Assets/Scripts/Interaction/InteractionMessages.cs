@@ -41,4 +41,27 @@ namespace BugWars.Interaction
             Scale = scale;
         }
     }
+
+    /// <summary>
+    /// Message published when a player/entity harvests resources
+    /// Published by HarvestAction, consumed by InventoryManager, UI, etc.
+    /// Decouples action system from inventory/UI for better server-authoritative architecture
+    /// </summary>
+    public readonly struct ResourceHarvestedMessage
+    {
+        public readonly GameObject Harvester; // Player/entity who harvested
+        public readonly GameObject HarvestedObject; // Object that was harvested
+        public readonly ResourceType ResourceType;
+        public readonly int Amount;
+        public readonly Vector3 HarvestPosition; // For VFX/UI positioning
+
+        public ResourceHarvestedMessage(GameObject harvester, GameObject harvestedObject, ResourceType resourceType, int amount, Vector3 harvestPosition)
+        {
+            Harvester = harvester;
+            HarvestedObject = harvestedObject;
+            ResourceType = resourceType;
+            Amount = amount;
+            HarvestPosition = harvestPosition;
+        }
+    }
 }

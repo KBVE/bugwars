@@ -7,6 +7,7 @@ using VContainer;
 using VContainer.Unity;
 using Cysharp.Threading.Tasks;
 using System.Threading;
+using MessagePipe;
 
 namespace BugWars.Interaction
 {
@@ -48,6 +49,9 @@ namespace BugWars.Interaction
         private Camera playerCamera;
         private BugWars.Entity.Actions.EntityActionManager playerActionManager;
 
+        // MessagePipe publisher for resource harvesting events
+        private IPublisher<ResourceHarvestedMessage> resourcePublisher;
+
         // Tracked interactables
         private HashSet<InteractableObject> nearbyInteractables = new();
         private HashSet<InteractableObject> tempNearbySet = new(); // Reusable set for proximity checks
@@ -70,6 +74,15 @@ namespace BugWars.Interaction
             raycastDistance = distance;
             interactableLayer = layer;
             //Debug.Log($"[InteractionManager] Configured with distance: {distance}, layer: {layer.value}");
+        }
+
+        /// <summary>
+        /// VContainer dependency injection for MessagePipe publisher
+        /// </summary>
+        [Inject]
+        public void Construct(IPublisher<ResourceHarvestedMessage> publisher)
+        {
+            resourcePublisher = publisher;
         }
 
         private async void Start()
@@ -110,6 +123,16 @@ namespace BugWars.Interaction
             {
                 float newRange = raycastDistance + 1f;
                 harvestAction.SetHarvestRange(newRange);
+
+                // Inject MessagePipe publisher for resource harvesting
+                if (resourcePublisher != null)
+                {
+                    harvestAction.SetResourcePublisher(resourcePublisher);
+                }
+                else
+                {
+                    Debug.LogWarning("[InteractionManager] ResourcePublisher is null - harvest events won't be published!");
+                }
             }
             else
             {

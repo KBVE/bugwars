@@ -125,10 +125,6 @@ namespace BugWars.Interaction
             {
                 Debug.LogError("[InteractionPromptUIToolkit] Failed to query required UI elements from UXML!");
             }
-            else
-            {
-                Debug.Log("[InteractionPromptUIToolkit] UI elements queried successfully");
-            }
         }
 
         /// <summary>
@@ -196,7 +192,6 @@ namespace BugWars.Interaction
         private void ShowPrompt(InteractableObject target)
         {
             currentState = UIState.Prompt;
-            Debug.Log($"[InteractionPromptUIToolkit] ShowPrompt called for {target.name}");
 
             if (promptContainer != null)
             {
@@ -212,7 +207,6 @@ namespace BugWars.Interaction
                 // Format: "Tree\nPress E to chop"
                 string objectName = target.name.Replace("(Clone)", "").Trim();
                 promptText.text = $"{objectName}\n{target.InteractionPrompt}";
-                Debug.Log($"[InteractionPromptUIToolkit] Set prompt text: {promptText.text}");
             }
             else
             {

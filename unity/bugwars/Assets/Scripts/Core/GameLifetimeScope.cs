@@ -268,6 +268,12 @@ namespace BugWars.Core
                 });
             }
 
+            // ResourceManager for collecting harvested resources via MessagePipe
+            // Pure C# class (not MonoBehaviour) that subscribes to ResourceHarvestedMessage
+            builder.Register<ResourceManager>(Lifetime.Singleton);
+            // Force eager instantiation so subscription starts immediately
+            builder.RegisterBuildCallback(container => container.Resolve<ResourceManager>());
+
             // InteractionPromptUIToolkit - UI for interaction prompts
             // Use RegisterInstance with a callback to properly handle DI and setup
             if (interactionPromptUIPrefab != null)

@@ -1,5 +1,6 @@
 using UnityEngine;
 using BugWars.Interaction;
+using MessagePipe;
 
 namespace BugWars.Entity.Actions
 {
@@ -17,6 +18,9 @@ namespace BugWars.Entity.Actions
         // Harvest-specific data
         private InteractableObject interactableTarget;
 
+        // MessagePipe publisher for resource harvesting events
+        private IPublisher<ResourceHarvestedMessage> resourcePublisher;
+
         /// <summary>
         /// Public setter to configure harvest range at runtime
         /// Allows InteractionManager to sync with its raycast distance
@@ -26,6 +30,15 @@ namespace BugWars.Entity.Actions
             harvestRange = range;
             if (showDebugLogs)
                 Debug.Log($"[HarvestAction] Harvest range set to: {range}");
+        }
+
+        /// <summary>
+        /// Set MessagePipe publisher for resource harvesting events
+        /// Called by EntityActionManager during initialization
+        /// </summary>
+        public void SetResourcePublisher(IPublisher<ResourceHarvestedMessage> publisher)
+        {
+            resourcePublisher = publisher;
         }
         private ResourceType resourceType;
         private int resourceAmount;
@@ -174,8 +187,9 @@ namespace BugWars.Entity.Actions
                 interactableTarget != null ? Mathf.Max(2, (int)(interactableTarget.Resource == ResourceType.Wood ? 8 : 6)) : 2
             );
 
-            // Cache target reference before destroying
+            // Cache target reference and position before destroying
             GameObject harvestedObject = target;
+            Vector3 harvestPosition = target.transform.position;
 
             // STEP 1: End interaction to release the lock on this object
             if (interactableTarget != null)
@@ -183,7 +197,25 @@ namespace BugWars.Entity.Actions
                 interactableTarget.EndInteraction();
             }
 
-            // STEP 2: Destroy target BEFORE creating reward result
+            // STEP 2: Publish resource harvested message BEFORE destroying object
+            // This allows subscribers (UI, inventory, etc.) to react while object still exists
+            if (resourcePublisher != null)
+            {
+                var message = new ResourceHarvestedMessage(
+                    executingEntity.gameObject,
+                    harvestedObject,
+                    resourceType,
+                    resourceAmount,
+                    harvestPosition
+                );
+                resourcePublisher.Publish(message);
+            }
+            else
+            {
+                Debug.LogWarning("[HarvestAction] No resource publisher set - resources not sent to inventory!");
+            }
+
+            // STEP 3: Destroy target AFTER publishing message
             if (destroyTargetOnComplete && target != null)
             {
                 if (showDebugLogs)
@@ -193,10 +225,10 @@ namespace BugWars.Entity.Actions
                 target = null; // Clear reference immediately
             }
 
-            // STEP 3: Clear interactableTarget reference for next action
+            // STEP 4: Clear interactableTarget reference for next action
             interactableTarget = null;
 
-            // STEP 4: NOW create result with reward data (AFTER object is destroyed)
+            // STEP 5: NOW create result with reward data (AFTER object is destroyed)
             ActionResult result = new ActionResult
             {
                 Success = true,

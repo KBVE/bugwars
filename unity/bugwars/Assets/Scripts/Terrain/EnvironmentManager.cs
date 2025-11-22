@@ -308,8 +308,6 @@ namespace BugWars.Terrain
 
             isInitialized = true;
 
-            Debug.Log("[EnvironmentManager] Environment system fully initialized and ready to spawn objects");
-
             // Start the update loop using UniTask PlayerLoop
             UpdateLoop(cancellationToken).Forget();
         }
@@ -497,7 +495,6 @@ namespace BugWars.Terrain
             if (useObjectPooling && objectPool == null)
             {
                 objectPool = new EnvironmentObjectPool(environmentContainer.transform, poolPrewarmSize, poolMaxSize);
-                Debug.Log($"[EnvironmentManager] Object pooling ENABLED (prewarm: {poolPrewarmSize}, max: {poolMaxSize})");
             }
 
             // Cache player transform for distance checks
@@ -517,7 +514,6 @@ namespace BugWars.Terrain
                 if (player != null)
                 {
                     playerTransform = player.transform;
-                    Debug.Log($"[EnvironmentManager] Player transform cached for distance-based spawning (tag: {player.tag})");
                 }
                 else
                 {
@@ -548,8 +544,6 @@ namespace BugWars.Terrain
         /// </summary>
         private async UniTask LoadEnvironmentPrefabsAsync(CancellationToken cancellationToken)
         {
-            Debug.Log("[EnvironmentManager] Loading environment prefabs from Addressables...");
-
             try
             {
                 // Load all tree prefabs with "Trees" label
@@ -571,7 +565,6 @@ namespace BugWars.Terrain
                         });
                     }
                 }
-                Debug.Log($"[EnvironmentManager] Loaded {treeAssets.Count} tree prefabs from Addressables");
 
                 // Load all bush prefabs with "Bushes" label
                 var bushesHandle = Addressables.LoadAssetsAsync<GameObject>("Bushes", null);
@@ -592,7 +585,6 @@ namespace BugWars.Terrain
                         });
                     }
                 }
-                Debug.Log($"[EnvironmentManager] Loaded {bushAssets.Count} bush prefabs from Addressables");
 
                 // Load all rock prefabs with "Rocks" label
                 var rocksHandle = Addressables.LoadAssetsAsync<GameObject>("Rocks", null);
@@ -613,15 +605,10 @@ namespace BugWars.Terrain
                         });
                     }
                 }
-                Debug.Log($"[EnvironmentManager] Loaded {rockAssets.Count} rock prefabs from Addressables");
 
                 if (treeAssets.Count == 0 || bushAssets.Count == 0 || rockAssets.Count == 0)
                 {
                     Debug.LogWarning("[EnvironmentManager] Some prefab types failed to load! Make sure prefabs are marked as Addressable with labels: 'Trees', 'Bushes', 'Rocks'");
-                }
-                else
-                {
-                    Debug.Log($"[EnvironmentManager] Successfully loaded all environment prefabs: {treeAssets.Count} trees, {bushAssets.Count} bushes, {rockAssets.Count} rocks");
                 }
             }
             catch (Exception ex)
@@ -687,8 +674,6 @@ namespace BugWars.Terrain
                     maxScale = 1.3f
                 });
             }
-
-            Debug.Log($"[EnvironmentManager] Loaded from Resources: {treeAssets.Count} trees, {bushAssets.Count} bushes, {rockAssets.Count} rocks");
         }
 
         /// <summary>
@@ -790,11 +775,6 @@ namespace BugWars.Terrain
                             immediateSpawns++;
                         }
                     }
-
-                    if (immediateSpawns > 0)
-                    {
-                        Debug.Log($"[EnvironmentManager] Immediately spawned {immediateSpawns} objects near player in chunk {chunkCoord}");
-                    }
                 }
                 else
                 {
@@ -812,7 +792,6 @@ namespace BugWars.Terrain
                     if (player != null)
                     {
                         playerTransform = player.transform;
-                        Debug.Log($"[EnvironmentManager] Player transform found during chunk load (tag: {player.tag})");
 
                         // Recursive call now that we have player reference
                         Vector3 playerPos = playerTransform.position;
@@ -830,11 +809,6 @@ namespace BugWars.Terrain
                                 SpawnObjectFromPool(spawnData);
                                 immediateSpawns++;
                             }
-                        }
-
-                        if (immediateSpawns > 0)
-                        {
-                            Debug.Log($"[EnvironmentManager] Immediately spawned {immediateSpawns} objects near player in chunk {chunkCoord}");
                         }
                     }
                     else
@@ -1334,8 +1308,6 @@ namespace BugWars.Terrain
 
                         if (webglShader != null)
                         {
-                            Debug.Log($"[EnvironmentManager] [WebGL Fix] Replacing shader: {material.shader.name} → {webglShader.name} on {renderer.gameObject.name}");
-
                             material.shader = webglShader;
 
                             // Restore color and texture (same property names)
